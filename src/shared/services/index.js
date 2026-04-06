@@ -22,4 +22,10 @@ export {
   updatePrivacy,
   userService,
 } from "./userService";
-export { uploadMedia, uploadMultipleMedia, deleteMedia, mediaService } from "./mediaService";
+export {
+  uploadMedia,
+  uploadMultipleMedia,
+  deleteMedia,
+  mediaService,
+} from "./mediaService";
+export { conversationService } from "./conversationService";
