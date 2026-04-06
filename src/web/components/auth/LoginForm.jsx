@@ -15,14 +15,14 @@ export const LoginForm = ({ onSuccess }) => {
 
     try {
       if (!phone || !password) {
-        setError("Please fill in all fields");
+        setError("Vui lòng nhập đầy đủ thông tin");
         return;
       }
 
       await login(phone, password);
       onSuccess?.();
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,9 @@ export const LoginForm = ({ onSuccess }) => {
     <div className="w-full max-w-md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Số điện thoại
+          </label>
           <input
             type="tel"
             value={phone}
@@ -44,19 +46,23 @@ export const LoginForm = ({ onSuccess }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Mật khẩu
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder="Nhập mật khẩu"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
         )}
 
         <button
@@ -64,7 +70,7 @@ export const LoginForm = ({ onSuccess }) => {
           disabled={loading}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition"
         >
-          {loading ? "Logging in..." : "Login"}
+          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
       </form>
     </div>

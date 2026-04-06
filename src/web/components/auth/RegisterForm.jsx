@@ -29,29 +29,29 @@ export const RegisterForm = ({ onSuccess }) => {
       !formData.email ||
       !formData.displayName
     ) {
-      setError("Please fill in all fields");
+      setError("Vui lòng nhập đầy đủ thông tin");
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu xác nhận không khớp");
       return false;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("Mật khẩu phải có ít nhất 6 ký tự");
       return false;
     }
 
     const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(formData.phone)) {
-      setError("Phone number must be 10 digits starting with 0");
+      setError("Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0");
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email");
+      setError("Vui lòng nhập email hợp lệ");
       return false;
     }
 
@@ -73,7 +73,7 @@ export const RegisterForm = ({ onSuccess }) => {
       await register(dataToSend);
       onSuccess?.();
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(err.message || "Đăng ký thất bại");
     } finally {
       setLoading(false);
     }
@@ -84,14 +84,14 @@ export const RegisterForm = ({ onSuccess }) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Display Name
+            Tên hiển thị
           </label>
           <input
             type="text"
             name="displayName"
             value={formData.displayName}
             onChange={handleChange}
-            placeholder="Your name"
+            placeholder="Tên của bạn"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
@@ -114,7 +114,7 @@ export const RegisterForm = ({ onSuccess }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone Number
+            Số điện thoại
           </label>
           <input
             type="tel"
@@ -129,14 +129,14 @@ export const RegisterForm = ({ onSuccess }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
+            Mật khẩu
           </label>
           <input
             type="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
-            placeholder="Enter password"
+            placeholder="Nhập mật khẩu"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
@@ -144,14 +144,14 @@ export const RegisterForm = ({ onSuccess }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
+            Xác nhận mật khẩu
           </label>
           <input
             type="password"
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
-            placeholder="Confirm password"
+            placeholder="Nhập lại mật khẩu"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
@@ -168,7 +168,7 @@ export const RegisterForm = ({ onSuccess }) => {
           disabled={loading}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition"
         >
-          {loading ? "Registering..." : "Register"}
+          {loading ? "Đang đăng ký..." : "Đăng ký"}
         </button>
       </form>
     </div>

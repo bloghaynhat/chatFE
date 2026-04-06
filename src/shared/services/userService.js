@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { authService } from "./authService";
 
 /**
  * Lấy thông tin profile của user hiện tại
@@ -47,7 +48,10 @@ export const updateProfile = async (profileData) => {
     ];
 
     allowedFields.forEach((field) => {
-      if (profileData.hasOwnProperty(field) && profileData[field] !== undefined) {
+      if (
+        profileData.hasOwnProperty(field) &&
+        profileData[field] !== undefined
+      ) {
         updateData[field] = profileData[field];
       }
     });
@@ -90,7 +94,6 @@ export const updateProfileFields = async (fields) => {
  */
 export const updateAvatarViaAuth = async (avatarUrl) => {
   try {
-    const { authService } = await import("./authService");
     const response = await authService.updateAvatar(avatarUrl);
 
     // Cập nhật localStorage với dữ liệu mới

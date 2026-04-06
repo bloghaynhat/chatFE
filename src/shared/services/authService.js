@@ -1,117 +1,113 @@
 import { api } from "./api";
 import { authStorage } from "../runtime/storage";
-import { getApiBaseUrl } from "../runtime/config";
 
 const readAccessToken = (payload) => {
   return payload?.accessToken || payload?.token || "";
+};
+
+const readRefreshToken = (payload) => {
+  return payload?.refreshToken || "";
 };
 
 const readUserProfile = (payload) => {
   return payload?.user || payload?.profile;
 };
 
+const normalizeAuthPayload = (response) => {
+  if (!response) return {};
+  if (response?.data && typeof response.data === "object") return response.data;
+  return response;
+};
+
+const unwrapData = (response) => {
+  if (!response) return response;
+  if (response?.data && typeof response.data === "object") return response.data;
+  return response;
+};
+
+const saveSession = async (payload) => {
+  const accessToken = readAccessToken(payload);
+  const refreshToken = readRefreshToken(payload);
+  const userProfile = readUserProfile(payload);
+
+  if (accessToken) {
+    await authStorage.setItem("token", accessToken);
+  }
+
+  if (refreshToken) {
+    await authStorage.setItem("refreshToken", refreshToken);
+  }
+
+  if (userProfile) {
+    await authStorage.setItem("user", JSON.stringify(userProfile));
+  }
+
+  return { accessToken, refreshToken, userProfile };
+};
+
 export const authService = {
-  // Register new user
   register: async (userData) => {
-    try {
-      const response = await api.post("/auth/register", userData);
-      return response;
-    } catch (error) {
-      throw new Error(error.message || "Registration failed");
-    }
+    return api.post("/auth/register", userData);
   },
 
-  // Login user
   login: async (payload) => {
-    try {
-      let authData = await api.post("/auth/login", payload);
+    const response = await api.post("/auth/login", payload, { skipAuth: true });
+    const authData = normalizeAuthPayload(response);
+    await saveSession(authData);
+    return authData;
+  },
 
-      // If response is wrapped in { data }, extract it
-      if (authData?.data && !authData?.token && !authData?.accessToken) {
-        authData = authData.data;
-      }
-
-      const accessToken = readAccessToken(authData);
-
-      if (accessToken) {
-        console.log("[AUTH] Saving token:", accessToken.substring(0, 20) + "...");
-        await authStorage.setItem("token", accessToken);
-        if (authData.refreshToken) {
-          await authStorage.setItem("refreshToken", authData.refreshToken);
-        }
-      } else {
-        console.warn("[AUTH] No token in login response:", authData);
-      }
-
-      const userProfile = readUserProfile(authData);
-      if (userProfile) {
-        await authStorage.setItem("user", JSON.stringify(userProfile));
-      }
-
-      return authData;
-    } catch (error) {
-      throw new Error(error.message || "Login failed");
+  refreshToken: async () => {
+    const refreshToken = await authStorage.getItem("refreshToken");
+    if (!refreshToken) {
+      throw new Error("Missing refresh token");
     }
+
+    const response = await api.post(
+      "/auth/refresh",
+      { refreshToken },
+      { skipAuth: true },
+    );
+    const payload = normalizeAuthPayload(response);
+    await saveSession(payload);
+    return payload;
   },
 
   getProfile: async (token) => {
-    try {
-      // If token is provided, use it directly
-      if (token) {
-        const url = `${getApiBaseUrl()}/profile`;
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) throw new Error(`Profile fetch failed: ${response.status}`);
-
-        const responseData = await response.json();
-        console.log("Profile response:", responseData);
-
-        // Extract from wrapper if exists
-        return responseData.data || responseData;
-      }
-
-      // Otherwise use api.get which pulls token from storage
-      const response = await api.get("/profile");
-      // Extract from wrapper if backend returns { data: {...} }
-      return response.data || response;
-    } catch (error) {
-      console.error("Get profile error:", error);
-      throw new Error("Failed to fetch profile");
+    if (token) {
+      return api.get("/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
     }
+
+    return api.get("/profile");
   },
 
-  saveToken: (token) => {
-    localStorage.setItem("token", token);
+  saveToken: async (token) => {
+    await authStorage.setItem("token", token);
   },
 
-  getToken: () => {
-    return localStorage.getItem("token");
+  getToken: async () => {
+    return authStorage.getItem("token");
   },
 
-  saveUser: (user) => {
-    localStorage.setItem("user", JSON.stringify(user));
+  saveUser: async (user) => {
+    await authStorage.setItem("user", JSON.stringify(user));
   },
 
-  getUser: () => {
-    const user = localStorage.getItem("user");
+  getUser: async () => {
+    const user = await authStorage.getItem("user");
     return user ? JSON.parse(user) : null;
   },
 
-  // Logout
   async logout() {
     try {
       const refreshToken = await authStorage.getItem("refreshToken");
       if (refreshToken) {
         await api.post("/auth/logout", { refreshToken });
       }
-    } catch (error) {
-      console.error("Logout failed:", error);
     } finally {
       await authStorage.removeItem("token");
       await authStorage.removeItem("refreshToken");
@@ -119,27 +115,39 @@ export const authService = {
     }
   },
 
-  // Forgot password
   async forgotPassword(payload) {
-    const responseData = await api.post("/auth/forgot-password", payload);
-    return responseData;
+    const response = await api.post("/auth/forgot-password", payload, {
+      skipAuth: true,
+    });
+    return unwrapData(response);
   },
 
-  // Update password
+  async verifyResetOtp(payload) {
+    const response = await api.post("/auth/verify-reset-otp", payload, {
+      skipAuth: true,
+    });
+    return unwrapData(response);
+  },
+
+  async resendResetOtp(payload) {
+    const response = await api.post("/auth/resend-reset-otp", payload, {
+      skipAuth: true,
+    });
+    return unwrapData(response);
+  },
+
+  async resetPassword(payload) {
+    const response = await api.post("/auth/reset-password", payload, {
+      skipAuth: true,
+    });
+    return unwrapData(response);
+  },
+
   async updatePassword(payload) {
-    const responseData = await api.patch("/auth/update-password", payload);
-    return responseData;
+    return api.post("/auth/change-password", payload);
   },
 
-  // Update avatar
   async updateAvatar(avatarUrl) {
-    try {
-      const response = await axiosInstance.patch("/auth/avatar", {
-        avatarUrl,
-      });
-      return response;
-    } catch (error) {
-      throw new Error(error.message || "Failed to update avatar");
-    }
+    return api.patch("/auth/avatar", { avatarUrl });
   },
 };

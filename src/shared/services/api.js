@@ -1,98 +1,65 @@
-import { getApiBaseUrl } from "../runtime/config";
-import { authStorage } from "../runtime/storage";
+import { axiosInstance } from "../../api/axios-instance";
 
-const buildUrl = (endpoint) => {
-  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  return `${getApiBaseUrl()}${normalizedEndpoint}`;
-};
-
-const getAuthToken = async () => {
-  let token = await authStorage.getItem("token");
-  // Clean token: remove whitespace and ensure it's a string
-  if (token) {
-    token = String(token).trim();
+const appendQueryParams = (endpoint, params) => {
+  if (!params || typeof params !== "object") {
+    return endpoint;
   }
-  console.log("[API] Token retrieved:", token ? "✅ exists (" + token.substring(0, 20) + "...)" : "❌ missing");
-  return token;
+
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    query.append(key, String(value));
+  });
+
+  const queryString = query.toString();
+  if (!queryString) return endpoint;
+  return `${endpoint}?${queryString}`;
 };
 
-export const apiCall = async (endpoint, options = {}) => {
-  const url = buildUrl(endpoint);
-  const token = await getAuthToken();
+const normalizeError = (error) => {
+  const payload = error?.response?.data || error;
+  const message =
+    payload?.msg ||
+    payload?.message ||
+    payload?.error?.message ||
+    error?.message ||
+    "Request failed";
 
+  const normalized = new Error(message);
+  normalized.code = payload?.code || error?.code;
+  normalized.details = payload?.details;
+  normalized.status = error?.response?.status;
+  normalized.payload = payload;
+  return normalized;
+};
+
+export const apiCall = async (method, endpoint, data, config = {}) => {
   try {
-    const headers = {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    };
+    const { params, ...axiosConfig } = config;
+    const url = appendQueryParams(endpoint, params);
 
-    console.log(`[API] ${options.method || "GET"} ${endpoint}`, {
-      hasToken: !!token,
-      authHeader: headers.Authorization ? "set" : "missing",
+    const response = await axiosInstance({
+      method,
+      url,
+      data,
+      ...axiosConfig,
     });
 
-    const response = await fetch(url, {
-      headers,
-      cache: "no-store",
-      ...options,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.error(`[API] 401 Unauthorized on ${options.method || "GET"} ${endpoint}`, {
-          hasAuthHeader: !!headers.Authorization,
-          authHeaderValue: headers.Authorization ? "Bearer <token>" : "MISSING",
-        });
-      }
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return await response.json();
+    return response ?? null;
   } catch (error) {
-    // Only log non-401 errors to avoid spam on startup
-    if (!error.message?.includes("401")) {
-      console.error("API call failed:", error);
-    }
-    throw error;
+    throw normalizeError(error);
   }
 };
 
 export const api = {
-  get: async (endpoint, config = {}) => {
-    const { params, ...restConfig } = config;
-    const queryString = params ? `?${new URLSearchParams(params).toString()}` : "";
-
-    return apiCall(`${endpoint}${queryString}`, {
-      method: "GET",
-      ...restConfig,
-    });
-  },
-
-  post: async (endpoint, data = null, config = {}) => {
-    return apiCall(endpoint, {
-      method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
-      ...config,
-    });
-  },
-
-  patch: async (endpoint, data = null, config = {}) => {
-    return apiCall(endpoint, {
-      method: "PATCH",
-      body: data ? JSON.stringify(data) : undefined,
-      ...config,
-    });
-  },
-
-  delete: async (endpoint, config = {}) => {
-    return apiCall(endpoint, {
-      method: "DELETE",
-      ...config,
-    });
-  },
+  get: async (endpoint, config = {}) =>
+    apiCall("GET", endpoint, undefined, config),
+  post: async (endpoint, data = null, config = {}) =>
+    apiCall("POST", endpoint, data, config),
+  patch: async (endpoint, data = null, config = {}) =>
+    apiCall("PATCH", endpoint, data, config),
+  put: async (endpoint, data = null, config = {}) =>
+    apiCall("PUT", endpoint, data, config),
+  delete: async (endpoint, config = {}) =>
+    apiCall("DELETE", endpoint, undefined, config),
 };

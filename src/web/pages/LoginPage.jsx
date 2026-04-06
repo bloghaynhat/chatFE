@@ -4,7 +4,6 @@ import { LoginForm } from "../components/auth/LoginForm";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const [showLoginForm, setShowLoginForm] = useState(true);
 
   const handleLoginSuccess = () => {
     navigate("/");
@@ -16,7 +15,9 @@ export const LoginPage = () => {
         <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
           Chat App
         </h1>
-        <p className="text-gray-600 text-center mb-8">Login to your account</p>
+        <p className="text-gray-600 text-center mb-8">
+          Đăng nhập vào tài khoản của bạn
+        </p>
 
         <LoginForm onSuccess={handleLoginSuccess} />
 
@@ -25,17 +26,17 @@ export const LoginPage = () => {
             to="/forgot-password"
             className="text-sm text-blue-600 hover:underline font-medium"
           >
-            Forgot password?
+            Quên mật khẩu?
           </Link>
         </div>
 
         <p className="text-center text-gray-600 mt-6">
-          Don't have an account?{" "}
+          Chưa có tài khoản?{" "}
           <Link
             to="/register"
             className="text-blue-600 hover:underline font-medium"
           >
-            Register now
+            Đăng ký ngay
           </Link>
         </p>
       </div>
