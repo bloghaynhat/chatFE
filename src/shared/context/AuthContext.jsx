@@ -1,7 +1,26 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useMemo, useState } from "react";
 import { authService } from "../services/authService";
 
 export const AuthContext = createContext(null);
+
+const resolveUserProfile = async (authPayload, fallbackPhone) => {
+  const payloadUser = authPayload?.user || authPayload?.profile;
+  if (payloadUser) {
+    return payloadUser;
+  }
+
+  try {
+    return await authService.getProfile();
+  } catch {
+    return {
+      phone: fallbackPhone || "",
+      displayName: authPayload?.displayName || "",
+      email: authPayload?.email || "",
+      bio: authPayload?.bio || "",
+      id: authPayload?.id,
+    };
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -13,47 +32,52 @@ export const AuthProvider = ({ children }) => {
     let isActive = true;
 
     const restoreSession = async () => {
-      const savedToken = authService.getToken();
-      const savedUser = authService.getUser();
+      try {
+        const [savedToken, savedUser] = await Promise.all([
+          authService.getToken(),
+          authService.getUser(),
+        ]);
+        if (!isActive) return;
 
-      if (!isActive) return;
+        if (!savedToken) {
+          if (savedUser) setUser(savedUser);
+          return;
+        }
 
-      if (savedToken) {
         setToken(savedToken);
 
         try {
-          const profileResponse = await authService.getProfile(savedToken);
-          const profile = profileResponse;
-
-          if (!isActive) {
-            return;
-          }
+          const profile = await authService.getProfile(savedToken);
+          if (!isActive) return;
 
           setUser(profile);
-          authService.saveUser(profile);
-        } catch (err) {
-          if (!isActive) {
-            return;
-          }
-
-          // If profile fetch fails, use saved user
-          if (savedUser) {
-            setUser(savedUser);
-          }
+          await authService.saveUser(profile);
+        } catch {
+          if (!isActive) return;
+          if (savedUser) setUser(savedUser);
         }
-      } else if (savedUser) {
-        setUser(savedUser);
+      } finally {
+        if (isActive) setLoading(false);
       }
+    };
 
-      if (isActive) {
-        setLoading(false);
-      }
+    const onSessionExpired = () => {
+      setUser(null);
+      setToken(null);
+      setError("Session expired. Please login again.");
     };
 
     restoreSession();
 
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth:session-expired", onSessionExpired);
+    }
+
     return () => {
       isActive = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("auth:session-expired", onSessionExpired);
+      }
     };
   }, []);
 
@@ -63,8 +87,8 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       return await authService.register(userData);
     } catch (err) {
-      const errorMessage = err.message || "Registration failed";
-      setError(errorMessage);
+      const message = err?.message || "Registration failed";
+      setError(message);
       throw err;
     } finally {
       setLoading(false);
@@ -75,51 +99,25 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       setLoading(true);
-      const response = await authService.login({ phone, password });
-      const data = response || {};
 
-      const accessToken = data.token || data.accessToken;
+      const authPayload = await authService.login({ phone, password });
+      const currentToken =
+        authPayload?.accessToken ||
+        authPayload?.token ||
+        (await authService.getToken());
 
-      // Save token
-      if (accessToken) {
-        // Ensure token is properly saved
-        await authService.saveToken(accessToken);
-
-      authService.saveUser(profile);
-      setUser(profile);
-
-      // Check if login response already contains user profile
-      let userProfile = data.user || data.profile || null;
-
-      // If profile not in login response, construct from available response data
-      if (!userProfile) {
-        // Use data from backend response, fallback to phone
-        userProfile = {
-          phone: data.phone || phone,
-          displayName: data.displayName || "",
-          email: data.email || "",
-          bio: data.bio || "",
-          id: data.id,
-        };
-      } else {
-        // Ensure critical fields exist in backend response
-        userProfile = {
-          id: userProfile.id,
-          phone: userProfile.phone || phone,
-          displayName: userProfile.displayName || "",
-          email: userProfile.email || "",
-          bio: userProfile.bio || "",
-        };
+      if (currentToken) {
+        setToken(currentToken);
       }
 
-      // Save user
+      const userProfile = await resolveUserProfile(authPayload, phone);
       await authService.saveUser(userProfile);
       setUser(userProfile);
 
       return userProfile;
     } catch (err) {
-      const errorMessage = err.message || "Login failed";
-      setError(errorMessage);
+      const message = err?.message || "Login failed";
+      setError(message);
       throw err;
     } finally {
       setLoading(false);
@@ -129,8 +127,6 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authService.logout();
-    } catch (err) {
-      console.error("Logout error:", err);
     } finally {
       setUser(null);
       setToken(null);
@@ -138,50 +134,38 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateProfile = async (profileData) => {
+  const updateProfile = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Verify token exists before API call
-      const currentToken = await authService.getToken();
-      if (!currentToken) {
-        console.warn("[AuthContext] No token available, restoring session...");
-        const savedToken = await authService.getToken();
-        const savedUser = await authService.getUser();
-        if (savedToken) {
-          setToken(savedToken);
-          setUser(savedUser || null);
-        } else {
-          throw new Error("Not authenticated - please login again");
-        }
-      }
-
-      const response = await authService.getProfile(token);
-      const profile = response; // axios interceptor already extracts data
+      const profile = await authService.getProfile();
+      await authService.saveUser(profile);
       setUser(profile);
-      authService.saveUser(profile);
       return profile;
     } catch (err) {
-      const errorMessage = err.message || "Update failed";
-      setError(errorMessage);
-      console.error("[AuthContext] updateProfile error:", err);
+      const message = err?.message || "Update failed";
+      setError(message);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  const value = {
-    user,
-    token,
-    loading,
-    error,
-    login,
-    register,
-    logout,
-    updateProfile,
-    isAuthenticated: !!token,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      loading,
+      error,
+      login,
+      register,
+      logout,
+      updateProfile,
+      isAuthenticated: !!token,
+    }),
+    [user, token, loading, error],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

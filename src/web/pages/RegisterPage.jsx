@@ -13,21 +13,21 @@ export const RegisterPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center px-4 py-6 sm:py-8">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md sm:max-w-lg lg:max-w-xl p-5 sm:p-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-2">
-          Create your account
+          Tạo tài khoản mới
         </h1>
         <p className="text-sm sm:text-base text-gray-600 text-center mb-6 sm:mb-8">
-          Join Chat App and start connecting with your friends.
+          Tham gia Chat App và bắt đầu kết nối với bạn bè.
         </p>
 
         <RegisterForm onSuccess={handleRegisterSuccess} />
 
         <p className="text-center text-sm sm:text-base text-gray-600 mt-6">
-          Already have an account?{" "}
+          Đã có tài khoản?{" "}
           <Link
             to="/login"
             className="text-blue-600 hover:underline font-medium"
           >
-            Back to login
+            Quay lại đăng nhập
           </Link>
         </p>
       </div>

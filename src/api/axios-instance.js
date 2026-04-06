@@ -1,64 +1,53 @@
 import axios from "axios";
+import { authStorage } from "../shared/runtime/storage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 
-const ACCESS_TOKEN_KEY = "token";
-const REFRESH_TOKEN_KEY = "refreshToken";
+const getAccessToken = async () => authStorage.getItem("token");
+const getRefreshToken = async () => authStorage.getItem("refreshToken");
+const setAccessToken = async (token) => authStorage.setItem("token", token);
+const setRefreshToken = async (token) =>
+  authStorage.setItem("refreshToken", token);
 
-const getAccessToken = () => {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
-};
-
-const getRefreshToken = () => {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-};
-
-const setAccessToken = (token) => {
-  localStorage.setItem(ACCESS_TOKEN_KEY, token);
-};
-
-const setRefreshToken = (token) => {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
-};
-
-export const setAuthTokens = ({ accessToken, refreshToken }) => {
-  setAccessToken(accessToken);
+export const setAuthTokens = async ({ accessToken, refreshToken }) => {
+  if (accessToken) {
+    await setAccessToken(accessToken);
+  }
   if (refreshToken) {
-    setRefreshToken(refreshToken);
+    await setRefreshToken(refreshToken);
   }
 };
 
-export const clearAuthTokens = () => {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+export const clearAuthTokens = async () => {
+  await authStorage.removeItem("token");
+  await authStorage.removeItem("refreshToken");
 };
 
-const clearAuthSession = () => {
-  clearAuthTokens();
-  localStorage.removeItem("user");
+const clearAuthSession = async () => {
+  await clearAuthTokens();
+  await authStorage.removeItem("user");
 };
 
-const redirectToLogin = () => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
+const notifySessionExpired = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("auth:session-expired"));
   }
 };
 
-const handleUnauthorized = () => {
-  clearAuthSession();
-  window.dispatchEvent(new CustomEvent("auth:session-expired"));
-  redirectToLogin();
+const handleUnauthorized = async () => {
+  await clearAuthSession();
+  notifySessionExpired();
 };
 
 const extractTokens = (response) => {
   const responseData = response.data;
   const accessToken =
-    responseData?.data?.accessToken || responseData?.data?.token || responseData?.accessToken || responseData?.token;
-  const refreshToken = responseData?.data?.refreshToken || responseData?.refreshToken;
+    responseData?.data?.accessToken ||
+    responseData?.data?.token ||
+    responseData?.accessToken ||
+    responseData?.token;
+  const refreshToken =
+    responseData?.data?.refreshToken || responseData?.refreshToken;
 
   return {
     accessToken: accessToken || "",
@@ -95,14 +84,14 @@ const processQueue = (error, token = null) => {
 };
 
 axiosInstance.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const requestConfig = config;
 
     if (requestConfig.skipAuth) {
       return requestConfig;
     }
 
-    const token = getAccessToken();
+    const token = await getAccessToken();
     if (token) {
       requestConfig.headers.Authorization = `Bearer ${token}`;
     }
@@ -134,8 +123,11 @@ axiosInstance.interceptors.response.use(
     const statusCode = error.response?.status;
     const errorCode = error.response?.data?.code;
 
-    if (errorCode === "UNAUTHORIZED" && (!originalRequest || originalRequest._retry)) {
-      handleUnauthorized();
+    if (
+      errorCode === "UNAUTHORIZED" &&
+      (!originalRequest || originalRequest._retry)
+    ) {
+      await handleUnauthorized();
       return Promise.reject(error);
     }
 
@@ -143,7 +135,10 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (originalRequest.url?.includes("/auth/login") || originalRequest.url?.includes("/auth/refresh-token")) {
+    if (
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/refresh")
+    ) {
       return Promise.reject(error);
     }
 
@@ -164,13 +159,13 @@ axiosInstance.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const refreshToken = getRefreshToken();
+      const refreshToken = await getRefreshToken();
       if (!refreshToken) {
-        handleUnauthorized();
+        await handleUnauthorized();
         throw new Error("Missing refresh token.");
       }
 
-      const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
+      const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
         refreshToken,
       });
 
@@ -179,9 +174,9 @@ axiosInstance.interceptors.response.use(
         throw new Error("Invalid refresh token response.");
       }
 
-      setAccessToken(newTokens.accessToken);
+      await setAccessToken(newTokens.accessToken);
       if (newTokens.refreshToken) {
-        setRefreshToken(newTokens.refreshToken);
+        await setRefreshToken(newTokens.refreshToken);
       }
 
       processQueue(null, newTokens.accessToken);
@@ -192,7 +187,7 @@ axiosInstance.interceptors.response.use(
       return axiosInstance(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      handleUnauthorized();
+      await handleUnauthorized();
 
       return Promise.reject(refreshError);
     } finally {
