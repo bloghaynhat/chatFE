@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { FiEdit2 } from "react-icons/fi";
 import { useAuth } from "../../../shared/hooks";
 import { updateProfile, updateAvatarViaAuth } from "../../../shared/services";
 import { AvatarEditor } from "./AvatarEditor";
@@ -54,7 +55,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
       setError("");
       setSuccess("");
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   // Close on escape key or outside click
   useEffect(() => {
@@ -183,7 +184,9 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleCloseModal = () => {
     if (isEditing && hasUnsavedChanges()) {
-      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to close?");
+      const confirmed = window.confirm(
+        "You have unsaved changes. Are you sure you want to close?",
+      );
       if (confirmed) {
         onClose?.();
       }
@@ -202,7 +205,9 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
       >
         {/* Header */}
         <div className="sticky top-0 border-b dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">My Profile</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            My Profile
+          </h2>
           <div className="flex items-center gap-2">
             {!isEditing ? (
               <button
@@ -210,7 +215,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
                 className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-blue-600 dark:text-blue-400 transition"
                 title="Edit Profile"
               >
-                ✏️
+                <FiEdit2 className="text-lg" />
               </button>
             ) : null}
             <button
@@ -270,7 +275,9 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="space-y-4">
             {/* Display Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Display Name
+              </label>
               {isEditing ? (
                 <input
                   type="text"
@@ -289,7 +296,9 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email
+              </label>
               {isEditing ? (
                 <input
                   type="email"
@@ -308,7 +317,9 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Phone Number
+              </label>
               {isEditing ? (
                 <input
                   type="tel"
@@ -327,7 +338,9 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
             {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Bio
+              </label>
               {isEditing ? (
                 <textarea
                   name="bio"

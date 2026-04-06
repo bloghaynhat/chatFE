@@ -134,6 +134,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserProfile = async (partialProfile) => {
+    setUser((prevUser) => {
+      const nextUser = {
+        ...(prevUser || {}),
+        ...(partialProfile || {}),
+      };
+
+      authService.saveUser(nextUser).catch(() => {
+        // Keep UI responsive even if storage write fails.
+      });
+
+      return nextUser;
+    });
+  };
+
   const updateProfile = async () => {
     try {
       setLoading(true);
@@ -162,6 +177,7 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       updateProfile,
+      updateUserProfile,
       isAuthenticated: !!token,
     }),
     [user, token, loading, error],
