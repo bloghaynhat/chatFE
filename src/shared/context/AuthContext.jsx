@@ -16,9 +16,7 @@ export const AuthProvider = ({ children }) => {
       const savedToken = authService.getToken();
       const savedUser = authService.getUser();
 
-      if (!isActive) {
-        return;
-      }
+      if (!isActive) return;
 
       if (savedToken) {
         setToken(savedToken);
@@ -78,20 +76,47 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       const response = await authService.login({ phone, password });
-      // axios interceptor already returns the data, not wrapped in .data
       const data = response || {};
 
-      authService.saveToken(data.token || data.accessToken);
-      setToken(data.token || data.accessToken);
+      const accessToken = data.token || data.accessToken;
 
-      // Fetch full profile from /profile endpoint
-      const profileResponse = await authService.getProfile(data.token || data.accessToken);
-      const profile = profileResponse; // axios interceptor already extracts data
+      // Save token
+      if (accessToken) {
+        // Ensure token is properly saved
+        await authService.saveToken(accessToken);
 
       authService.saveUser(profile);
       setUser(profile);
 
-      return profile;
+      // Check if login response already contains user profile
+      let userProfile = data.user || data.profile || null;
+
+      // If profile not in login response, construct from available response data
+      if (!userProfile) {
+        // Use data from backend response, fallback to phone
+        userProfile = {
+          phone: data.phone || phone,
+          displayName: data.displayName || "",
+          email: data.email || "",
+          bio: data.bio || "",
+          id: data.id,
+        };
+      } else {
+        // Ensure critical fields exist in backend response
+        userProfile = {
+          id: userProfile.id,
+          phone: userProfile.phone || phone,
+          displayName: userProfile.displayName || "",
+          email: userProfile.email || "",
+          bio: userProfile.bio || "",
+        };
+      }
+
+      // Save user
+      await authService.saveUser(userProfile);
+      setUser(userProfile);
+
+      return userProfile;
     } catch (err) {
       const errorMessage = err.message || "Login failed";
       setError(errorMessage);
@@ -113,10 +138,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const getProfile = async () => {
+  const updateProfile = async (profileData) => {
     try {
-      if (!token) {
-        throw new Error("No token available");
+      setLoading(true);
+
+      // Verify token exists before API call
+      const currentToken = await authService.getToken();
+      if (!currentToken) {
+        console.warn("[AuthContext] No token available, restoring session...");
+        const savedToken = await authService.getToken();
+        const savedUser = await authService.getUser();
+        if (savedToken) {
+          setToken(savedToken);
+          setUser(savedUser || null);
+        } else {
+          throw new Error("Not authenticated - please login again");
+        }
       }
 
       const response = await authService.getProfile(token);
@@ -125,16 +162,13 @@ export const AuthProvider = ({ children }) => {
       authService.saveUser(profile);
       return profile;
     } catch (err) {
-      setError(err.message);
+      const errorMessage = err.message || "Update failed";
+      setError(errorMessage);
+      console.error("[AuthContext] updateProfile error:", err);
       throw err;
+    } finally {
+      setLoading(false);
     }
-  };
-
-  // Update user profile locally (called after API update)
-  const updateUserProfile = (updatedData) => {
-    const newUser = { ...user, ...updatedData };
-    setUser(newUser);
-    authService.saveUser(newUser);
   };
 
   const value = {
@@ -145,8 +179,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    getProfile,
-    updateUserProfile,
+    updateProfile,
     isAuthenticated: !!token,
   };
 
