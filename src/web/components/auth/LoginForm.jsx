@@ -19,8 +19,8 @@ export const LoginForm = ({ onSuccess }) => {
         return;
       }
 
-      await login(phone, password);
-      onSuccess?.();
+      const userProfile = await login(phone, password);
+      onSuccess?.(userProfile);
     } catch (err) {
       setError(err.message || "Đăng nhập thất bại");
     } finally {
