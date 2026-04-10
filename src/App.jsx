@@ -9,8 +9,8 @@ import {
   FriendRequestsPage,
   FriendsPage,
   TermsPage,
-} from "./web/pages";
-import { PrivateRoute } from "./web/components/common";
+} from "./pages";
+import { PrivateRoute } from "./components/common";
 
 function App() {
   return (
