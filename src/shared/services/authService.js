@@ -47,7 +47,43 @@ const saveSession = async (payload) => {
 
 export const authService = {
   register: async (userData) => {
-    return api.post("/auth/register", userData);
+    const response = await api.post("/auth/register", userData, {
+      skipAuth: true,
+    });
+    const authData = normalizeAuthPayload(response);
+
+    // Register may return token/user in some backend flows.
+    await saveSession(authData);
+    return authData;
+  },
+
+  sendVerification: async (payload, options = {}) => {
+    const response = await api.post(
+      "/auth/send-verification",
+      payload,
+      options,
+    );
+    return unwrapData(response);
+  },
+
+  verifyEmail: async (payload) => {
+    const response = await api.post("/auth/verify-email", payload, {
+      skipAuth: true,
+    });
+    const data = unwrapData(response);
+
+    // Some implementations return refreshed auth payload after verification.
+    await saveSession(data);
+    return data;
+  },
+
+  resendVerification: async (payload, options = {}) => {
+    const response = await api.post(
+      "/auth/resend-verification",
+      payload,
+      options,
+    );
+    return unwrapData(response);
   },
 
   login: async (payload) => {

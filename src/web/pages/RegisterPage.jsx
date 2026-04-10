@@ -5,8 +5,10 @@ import { RegisterForm } from "../components/auth/RegisterForm";
 export const RegisterPage = () => {
   const navigate = useNavigate();
 
-  const handleRegisterSuccess = () => {
-    navigate("/login");
+  const handleRegisterSuccess = (registrationContext) => {
+    navigate("/verify-email", {
+      state: registrationContext,
+    });
   };
 
   return (
@@ -16,7 +18,7 @@ export const RegisterPage = () => {
           Tạo tài khoản mới
         </h1>
         <p className="text-sm sm:text-base text-gray-600 text-center mb-6 sm:mb-8">
-          Tham gia Chat App và bắt đầu kết nối với bạn bè.
+          Tham gia ChatChit và bắt đầu kết nối với bạn bè.
         </p>
 
         <RegisterForm onSuccess={handleRegisterSuccess} />

@@ -2,11 +2,13 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import {
   LoginPage,
   RegisterPage,
+  VerifyEmailPage,
   ForgotPasswordPage,
   HomePage,
   SearchFriendsPage,
   FriendRequestsPage,
   FriendsPage,
+  TermsPage,
 } from "./web/pages";
 import { PrivateRoute } from "./web/components/common";
 
@@ -15,7 +17,9 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route
         path="/"
         element={

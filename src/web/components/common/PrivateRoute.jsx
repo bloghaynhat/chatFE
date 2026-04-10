@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../../../shared/hooks";
 
 export const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -15,6 +15,17 @@ export const PrivateRoute = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Redirect to verify email if user is logged in but hasn't verified their email
+  if (user?.verified?.email === false && user?.email) {
+    return (
+      <Navigate
+        to="/verify-email"
+        replace
+        state={{ email: user.email, fromLogin: true }}
+      />
+    );
   }
 
   return children;

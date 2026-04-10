@@ -5,7 +5,13 @@ import { LoginForm } from "../components/auth/LoginForm";
 export const LoginPage = () => {
   const navigate = useNavigate();
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (userProfile) => {
+    if (userProfile?.verified?.email === false && userProfile?.email) {
+      navigate("/verify-email", {
+        state: { email: userProfile.email, fromLogin: true },
+      });
+      return;
+    }
     navigate("/");
   };
 
@@ -13,7 +19,7 @@ export const LoginPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
         <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-          Chat App
+          ChatChit
         </h1>
         <p className="text-gray-600 text-center mb-8">
           Đăng nhập vào tài khoản của bạn

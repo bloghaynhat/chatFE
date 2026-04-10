@@ -1,4 +1,10 @@
-import React, { createContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { authService } from "../services/authService";
 
 export const AuthContext = createContext(null);
@@ -81,7 +87,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     try {
       setError(null);
       setLoading(true);
@@ -93,9 +99,60 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (phone, password) => {
+  const sendVerification = useCallback(async (payload, options) => {
+    try {
+      setError(null);
+      return await authService.sendVerification(payload, options);
+    } catch (err) {
+      const message = err?.message || "Send verification failed";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const verifyEmail = useCallback(async (payload) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const authPayload = await authService.verifyEmail(payload);
+      const currentToken =
+        authPayload?.accessToken ||
+        authPayload?.token ||
+        (await authService.getToken());
+
+      if (currentToken) {
+        setToken(currentToken);
+      }
+
+      const userProfile = await resolveUserProfile(authPayload);
+      await authService.saveUser(userProfile);
+      setUser(userProfile);
+
+      return authPayload;
+    } catch (err) {
+      const message = err?.message || "Email verification failed";
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const resendVerification = useCallback(async (payload, options) => {
+    try {
+      setError(null);
+      return await authService.resendVerification(payload, options);
+    } catch (err) {
+      const message = err?.message || "Resend verification failed";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const login = useCallback(async (phone, password) => {
     try {
       setError(null);
       setLoading(true);
@@ -122,9 +179,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authService.logout();
     } finally {
@@ -132,9 +189,9 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       setError(null);
     }
-  };
+  }, []);
 
-  const updateUserProfile = async (partialProfile) => {
+  const updateUserProfile = useCallback(async (partialProfile) => {
     setUser((prevUser) => {
       const nextUser = {
         ...(prevUser || {}),
@@ -147,9 +204,9 @@ export const AuthProvider = ({ children }) => {
 
       return nextUser;
     });
-  };
+  }, []);
 
-  const updateProfile = async () => {
+  const updateProfile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -165,7 +222,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -175,12 +232,28 @@ export const AuthProvider = ({ children }) => {
       error,
       login,
       register,
+      sendVerification,
+      verifyEmail,
+      resendVerification,
       logout,
       updateProfile,
       updateUserProfile,
       isAuthenticated: !!token,
     }),
-    [user, token, loading, error],
+    [
+      user,
+      token,
+      loading,
+      error,
+      login,
+      register,
+      sendVerification,
+      verifyEmail,
+      resendVerification,
+      logout,
+      updateProfile,
+      updateUserProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
