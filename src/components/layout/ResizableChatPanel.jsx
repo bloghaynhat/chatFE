@@ -42,6 +42,11 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
   const maxWidth = activeView === "contacts" ? 420 : 500;
   const isCollapsed = width <= 120;
 
+  // Ensure width bounds are respected when switching views
+  useEffect(() => {
+    setWidth((currentWidth) => Math.max(minWidth, Math.min(currentWidth, maxWidth)));
+  }, [minWidth, maxWidth]);
+
   const handleMenuAction = (actionId) => {
     if (actionId === "profile") {
       setShowProfileModal(true);
@@ -185,7 +190,7 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
         {isNavigationOpen && (
           <div
             ref={navigationMenuRef}
-            className="absolute left-2 top-2 w-[284px] bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl z-50 overflow-hidden"
+            className="absolute left-2 top-2 w-[284px] bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl z-[60] overflow-hidden origin-top-left animate-menu-pop"
           >
             <div className="px-3 py-2 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
               <button
@@ -297,12 +302,13 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
           </div>
         )}
 
-        {/* Chat List */}
-        <div className="flex-1 overflow-hidden relative">
-          {activeView === "contacts" ? (
-            <ContactsPanel isCollapsed={isCollapsed} onBackToChats={() => onViewChange("chats")} />
-          ) : (
-            <>
+        {/* === SLIDING CONTAINER FOR CHATS/CONTACTS === */}
+        <div className="flex-1 w-full relative overflow-hidden flex flex-col pointer-events-none">
+          {/* Chats View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "contacts" ? "-translate-x-[20%] opacity-0 pointer-events-none" : "translate-x-0 opacity-100 pointer-events-auto"}`}
+          >
+            <div className="flex-1 overflow-hidden relative">
               <ChatList
                 searchQuery={debouncedSearchQuery}
                 filterMode={filterMode}
@@ -333,8 +339,19 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
                   }
                 }}
               />
-            </>
-          )}
+            </div>
+          </div>
+
+          {/* Contacts View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-20 pointer-events-auto ${activeView === "contacts" ? "translate-x-0" : "translate-x-full"}`}
+          >
+            <ContactsPanel
+              isCollapsed={isCollapsed}
+              onBackToChats={() => onViewChange("chats")}
+              onSelectChat={onSelectChat}
+            />
+          </div>
         </div>
       </div>
 

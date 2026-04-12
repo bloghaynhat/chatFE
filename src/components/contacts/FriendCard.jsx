@@ -9,14 +9,19 @@ import { Avatar, UserInfo } from "./shared";
  * Props:
  * - friend: Enriched friendship object {userA, userB, displayName, name, phone, avatarUrl}
  * - onRemove: Callback khi remove button được click
+ * - onClick: Callback click vào item (để mở chat)
  */
-export const FriendCard = ({ friend, onRemove }) => {
+export const FriendCard = ({ friend, onRemove, onClick, style }) => {
   const displayName = friend?.displayName || friend?.name || "Unknown";
   const phone = friend?.phone || "";
   const avatarUrl = friend?.avatarUrl || null;
 
   return (
-    <div className="group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition cursor-pointer">
+    <div
+      onClick={onClick}
+      style={style}
+      className="group flex items-center gap-3 px-3 py-2 mx-2 mb-1 rounded-xl hover:bg-gray-100/80 dark:hover:bg-slate-700/50 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer animate-fade-in-up"
+    >
       {/* Avatar */}
       <Avatar name={displayName} src={avatarUrl} size="lg" />
 
@@ -25,8 +30,11 @@ export const FriendCard = ({ friend, onRemove }) => {
 
       {/* Remove Button */}
       <button
-        onClick={onRemove}
-        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition flex-shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove?.();
+        }}
+        className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-all duration-200 active:scale-90 flex-shrink-0"
         title="Remove friend"
       >
         <FiX className="w-5 h-5" />

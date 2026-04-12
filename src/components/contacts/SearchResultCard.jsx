@@ -16,6 +16,7 @@ import { Avatar, UserInfo } from "./shared";
  * - onAcceptRequest: Callback khi click Accept button
  * - onRejectRequest: Callback khi click Reject button
  * - onUnfriend: Callback khi click Unfriend button
+ * - onClick: Callback click vào item (để mở chat)
  */
 export const SearchResultCard = ({
   user,
@@ -25,19 +26,24 @@ export const SearchResultCard = ({
   onAcceptRequest,
   onRejectRequest,
   onUnfriend,
+  onClick,
+  style,
 }) => {
   const displayName = user?.displayName || user?.name || "Unknown";
   const phone = user?.phone || "";
   const avatarUrl = user?.avatarUrl || null;
 
-  // Xác định UI based on status
+  // XÃ¡c Ä‘á»‹nh UI based on status
   const isRequestSent = requestStatus?.status === "PENDING" && requestStatus?.direction === "OUTGOING";
   const isIncoming = requestStatus?.status === "PENDING" && requestStatus?.direction === "INCOMING";
   const isAccepted = requestStatus?.status === "ACCEPTED";
 
   return (
-    <div className="px-2 pt-2">
-      <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition">
+    <div className="pt-2 animate-fade-in-up" style={style}>
+      <div
+        onClick={onClick}
+        className="flex items-center gap-3 px-3 py-2 mx-2 mb-1 rounded-xl hover:bg-gray-100/80 dark:hover:bg-slate-700/50 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
+      >
         {/* Avatar */}
         <Avatar name={displayName} src={avatarUrl} size="lg" />
 
@@ -49,14 +55,20 @@ export const SearchResultCard = ({
           // Accept / Reject buttons (INCOMING request)
           <div className="flex gap-2 flex-shrink-0">
             <button
-              onClick={onAcceptRequest}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAcceptRequest?.();
+              }}
               disabled={isProcessing}
               className="px-2 py-1 text-white text-xs font-medium rounded-lg bg-green-500 hover:bg-green-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {isProcessing ? "..." : "Accept"}
             </button>
             <button
-              onClick={onRejectRequest}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRejectRequest?.();
+              }}
               disabled={isProcessing}
               className="px-2 py-1 text-white text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
@@ -66,7 +78,10 @@ export const SearchResultCard = ({
         ) : isAccepted ? (
           // Unfriend button (ACCEPTED - already friend)
           <button
-            onClick={onUnfriend}
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnfriend?.();
+            }}
             disabled={isProcessing}
             className="px-3 py-1 text-white text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 transition flex-shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
@@ -75,7 +90,10 @@ export const SearchResultCard = ({
         ) : (
           // Send Request / Cancel Request button (OUTGOING or NONE/REJECTED)
           <button
-            onClick={onSendRequest}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSendRequest?.();
+            }}
             disabled={isProcessing}
             className={`px-3 py-1 text-white text-xs font-medium rounded-lg transition flex-shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed ${
               isRequestSent ? "bg-gray-500 hover:bg-gray-600" : "bg-blue-500 hover:bg-blue-600"

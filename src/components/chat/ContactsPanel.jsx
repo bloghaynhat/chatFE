@@ -21,7 +21,7 @@ import { ContactsHeader, FriendRequestCard, SearchResultCard, FriendCard } from 
  * - Cung cấp search functionality để tìm người dùng mới
  * - Quản lý add/cancel friend request actions
  */
-export const ContactsPanel = ({ isCollapsed, onBackToChats }) => {
+export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
   const { user: currentUser } = useAuth();
   const { friends, loading, error, fetchFriends, getUserId } = useFriendManagement();
 
@@ -330,6 +330,24 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats }) => {
     }
   };
 
+  /**
+   * Mở chat khi click vào user
+   */
+  const handleOpenChat = (user) => {
+    if (!onSelectChat) return;
+
+    // Nếu là friend item thì target là friendUserId, nếu là searchResult thì là id/_id
+    const targetId = user.friendUserId || user.id || user._id;
+
+    // Map data sang format giống ChatList/openChatByRow mong đợi
+    onSelectChat({
+      id: targetId,
+      targetUserId: targetId,
+      name: user.displayName || user.username || user.name || "Unknown",
+      avatarUrl: user.avatarUrl,
+    });
+  };
+
   // Collapsed state
   if (isCollapsed) {
     return (
@@ -360,13 +378,15 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats }) => {
                 Friend Requests ({friendRequests.length})
               </h3>
             </div>
-            {friendRequests.map((request) => (
+            {friendRequests.map((request, index) => (
               <FriendRequestCard
                 key={request._id || request.id}
                 request={request}
                 isProcessing={processingRequestId === (request._id || request.id)}
                 onAccept={() => handleAcceptRequest(request._id || request.id)}
                 onReject={() => handleRejectRequest(request._id || request.id)}
+                style={{ animationDelay: `${index * 0.05}s` }}
+                onClick={() => handleOpenChat(request)}
               />
             ))}
             <div className="h-px bg-gray-200 dark:bg-slate-700 mt-2" />
@@ -383,6 +403,8 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats }) => {
             onAcceptRequest={handleAcceptSearchRequest}
             onRejectRequest={handleRejectSearchRequest}
             onUnfriend={handleUnfriendSearchResult}
+            onClick={() => handleOpenChat(searchResult)}
+            style={{ animationDelay: "0s" }}
           />
         )}
 
@@ -410,8 +432,14 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats }) => {
                 <span className="text-xs text-gray-500 dark:text-gray-400">({filteredFriends.length})</span>
               </div>
               <div className="space-y-0 pb-3">
-                {filteredFriends.map((friend) => (
-                  <FriendCard key={friend.id} friend={friend} onRemove={() => handleUnfriend(friend.friendUserId)} />
+                {filteredFriends.map((friend, index) => (
+                  <FriendCard
+                    key={friend.id}
+                    friend={friend}
+                    onRemove={() => handleUnfriend(friend.friendUserId)}
+                    onClick={() => handleOpenChat(friend)}
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  />
                 ))}
               </div>
             </>

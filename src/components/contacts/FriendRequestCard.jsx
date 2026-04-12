@@ -13,8 +13,9 @@ import { searchUserById } from "../../services";
  * - isProcessing: Có đang xử lý action hay không
  * - onAccept: Callback khi accept button được click
  * - onReject: Callback khi reject button được click
+ * - onClick: Callback click vào item
  */
-export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onReject }) => {
+export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onReject, onClick, style }) => {
   const [senderInfo, setSenderInfo] = useState(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
 
@@ -51,7 +52,11 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
   const senderAvatar = senderInfo?.avatarUrl || null;
 
   return (
-    <div className="px-3 py-2 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+    <div
+      onClick={onClick}
+      style={style}
+      className="flex items-center gap-3 px-3 py-2 mx-2 mb-1 rounded-xl hover:bg-gray-100/80 dark:hover:bg-slate-700/50 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer animate-fade-in-up"
+    >
       {/* Avatar */}
       <Avatar name={senderName} src={senderAvatar} size="md" />
 
@@ -61,17 +66,23 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
       {/* Accept/Reject Buttons */}
       <div className="flex gap-1 flex-shrink-0">
         <button
-          onClick={onAccept}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAccept?.();
+          }}
           disabled={isProcessing}
-          className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+          className="p-1.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
           title="Accept"
         >
           <FiCheck className="w-4 h-4" />
         </button>
         <button
-          onClick={onReject}
+          onClick={(e) => {
+            e.stopPropagation();
+            onReject?.();
+          }}
           disabled={isProcessing}
-          className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+          className="p-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
           title="Reject"
         >
           <FiX className="w-4 h-4" />
