@@ -1,31 +1,45 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatList } from "../chat/ChatList";
+import { ContactsPanel } from "../chat/ContactsPanel";
 import { UserProfileModal } from "../common";
 import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
-import { useAuth } from "../../hooks";
-import { FiPlus, FiBookmark, FiArchive, FiMoon, FiUsers, FiSettings, FiLogOut } from "react-icons/fi";
+import { useAuth, useFriendManagement } from "../../hooks";
+import { useFriendRequestsContext } from "../../context/FriendContext";
+import { FiBookmark, FiArchive, FiMoon, FiUsers, FiSettings, FiLogOut } from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
-export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, onSelectChat }) => {
+export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, openingChatId, onSelectChat }) => {
   const [width, setWidth] = useState(320); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [filterMode, setFilterMode] = useState("all");
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const panelRef = useRef(null);
   const navigationMenuRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { friendRequests, fetchFriendRequests } = useFriendRequestsContext();
 
-  const minWidth = 80;
-  const maxWidth = 500;
+  // Fetch friend requests on mount
+  useEffect(() => {
+    fetchFriendRequests();
+  }, []);
+
+  // Refetch friend requests when switching to contacts view (clear stale cache)
+  useEffect(() => {
+    if (activeView === "contacts") {
+      fetchFriendRequests();
+    }
+  }, [activeView]);
+
+  const minWidth = activeView === "contacts" ? 308 : 80;
+  const maxWidth = activeView === "contacts" ? 420 : 500;
   const isCollapsed = width <= 120;
 
   const handleMenuAction = (actionId) => {
@@ -36,7 +50,7 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
     }
 
     if (actionId === "contacts") {
-      navigate("/friends");
+      onViewChange("contacts");
       setIsNavigationOpen(false);
       return;
     }
@@ -143,7 +157,7 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isResizing, minWidth, maxWidth]);
+  }, [isResizing, minWidth, maxWidth, activeView]);
 
   return (
     <div className="flex h-full relative">
@@ -153,18 +167,19 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
         style={{ width: `${isCollapsed ? minWidth : width}px` }}
         className={`flex flex-col bg-white dark:bg-slate-900 border-r dark:border-slate-700 relative ${isResizing ? "" : "transition-all duration-200"}`}
       >
-        <MainTaskbar
-          searchValue={searchQuery}
-          onSearchChange={(value) => {
-            setSearchQuery(value);
-            setFilterMode("all");
-          }}
-          onOpenMenu={() => setIsNavigationOpen(true)}
-          onClearSearch={() => setSearchQuery("")}
-          onSearchFocus={() => setIsSearchFocused(true)}
-          onSearchBlur={() => setIsSearchFocused(false)}
-          isCollapsed={isCollapsed}
-        />
+        {activeView === "chats" && (
+          <MainTaskbar
+            searchValue={searchQuery}
+            onSearchChange={(value) => {
+              setSearchQuery(value);
+              setFilterMode("all");
+            }}
+            onOpenMenu={() => setIsNavigationOpen(true)}
+            onClearSearch={() => setSearchQuery("")}
+            friendRequestCount={friendRequests.length}
+            isCollapsed={isCollapsed}
+          />
+        )}
 
         {/* Navigation Drawer */}
         {isNavigationOpen && (
@@ -238,10 +253,17 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
 
               <button
                 onClick={() => handleMenuAction("contacts")}
-                className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center gap-3"
+                className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center justify-between"
               >
-                <FiUsers className="text-lg opacity-70" />
-                <span>Contacts</span>
+                <div className="flex items-center gap-3">
+                  <FiUsers className="text-lg opacity-70" />
+                  <span>Contacts</span>
+                </div>
+                {friendRequests.length > 0 && (
+                  <span className="text-xs font-semibold bg-red-500 text-white px-2 py-0.5 rounded-full">
+                    {friendRequests.length}
+                  </span>
+                )}
               </button>
 
               <div className="h-px bg-gray-200 dark:bg-slate-700 my-1" />
@@ -277,40 +299,42 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
 
         {/* Chat List */}
         <div className="flex-1 overflow-hidden relative">
-          <ChatList
-            searchQuery={debouncedSearchQuery}
-            filterMode={filterMode}
-            isCollapsed={isCollapsed}
-            activeChatId={activeChatId}
-            openingChatId={openingChatId}
-            onSelectChat={onSelectChat}
-          />
+          {activeView === "contacts" ? (
+            <ContactsPanel isCollapsed={isCollapsed} onBackToChats={() => onViewChange("chats")} />
+          ) : (
+            <>
+              <ChatList
+                searchQuery={debouncedSearchQuery}
+                filterMode={filterMode}
+                isCollapsed={isCollapsed}
+                activeChatId={activeChatId}
+                openingChatId={openingChatId}
+                onSelectChat={onSelectChat}
+              />
 
-          {!isCollapsed && (
-            <QuickActionFab onClick={() => setIsQuickActionOpen(!isQuickActionOpen)} isOpen={isQuickActionOpen} />
+              {!isCollapsed && (
+                <QuickActionFab onClick={() => setIsQuickActionOpen(!isQuickActionOpen)} isOpen={isQuickActionOpen} />
+              )}
+
+              <QuickActionSheet
+                isOpen={isQuickActionOpen}
+                onClose={() => setIsQuickActionOpen(false)}
+                onSelectAction={(actionId) => {
+                  setIsQuickActionOpen(false);
+
+                  if (actionId === "new-message" || actionId === "add-contact") {
+                    onViewChange("contacts");
+                    return;
+                  }
+
+                  if (actionId === "create-group") {
+                    onViewChange("contacts");
+                    return;
+                  }
+                }}
+              />
+            </>
           )}
-
-          <QuickActionSheet
-            isOpen={isQuickActionOpen}
-            onClose={() => setIsQuickActionOpen(false)}
-            onSelectAction={(actionId) => {
-              setIsQuickActionOpen(false);
-
-              if (actionId === "new-message") {
-                navigate("/search-friends");
-                return;
-              }
-
-              if (actionId === "create-group") {
-                navigate("/friends");
-                return;
-              }
-
-              if (actionId === "add-contact") {
-                navigate("/search-friends");
-              }
-            }}
-          />
         </div>
       </div>
 

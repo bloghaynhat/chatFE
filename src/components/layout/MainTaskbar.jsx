@@ -5,8 +5,7 @@ export const MainTaskbar = ({
   onSearchChange,
   onOpenMenu,
   onClearSearch,
-  onSearchFocus,
-  onSearchBlur,
+  friendRequestCount = 0,
   isCollapsed = false,
 }) => {
   return (
@@ -15,10 +14,15 @@ export const MainTaskbar = ({
     >
       <button
         onClick={onOpenMenu}
-        className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0"
+        className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0 relative"
         title="Open navigation menu"
       >
         <FiMenu className="text-xl" />
+        {friendRequestCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {friendRequestCount > 9 ? "9+" : friendRequestCount}
+          </span>
+        )}
       </button>
 
       {!isCollapsed && (
@@ -27,8 +31,6 @@ export const MainTaskbar = ({
             type="text"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
-            onFocus={onSearchFocus}
-            onBlur={onSearchBlur}
             placeholder="Search conversations..."
             className="w-full h-10 pl-10 pr-10 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
           />

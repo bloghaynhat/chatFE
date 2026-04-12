@@ -18,9 +18,9 @@ export const PrivateRoute = ({ children }) => {
   }
 
   // Redirect to verify email if user is logged in but hasn't verified their email
-  if (user?.verified?.email === false && user?.email) {
-    return <Navigate to="/verify-email" replace state={{ email: user.email, fromLogin: true }} />;
-  }
+  // if (user?.verified?.email === false && user?.email) {
+  //   return <Navigate to="/verify-email" replace state={{ email: user.email, fromLogin: true }} />;
+  // }
 
   return children;
 };

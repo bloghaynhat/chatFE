@@ -2,11 +2,13 @@ export { api, apiCall } from "./api";
 export { authService } from "./authService";
 export {
   searchUserByPhone,
+  searchUserById,
   sendFriendRequest,
   getReceivedFriendRequests,
-  getSentFriendRequests,
   acceptFriendRequest,
   rejectFriendRequest,
+  cancelFriendRequest,
+  checkFriendRequestStatus,
   getFriends,
   removeFriend,
 } from "./friendService";
@@ -22,10 +24,13 @@ export {
   updatePrivacy,
   userService,
 } from "./userService";
-export {
-  uploadMedia,
-  uploadMultipleMedia,
-  deleteMedia,
-  mediaService,
-} from "./mediaService";
+export { uploadMedia, uploadMultipleMedia, deleteMedia, mediaService } from "./mediaService";
 export { conversationService } from "./conversationService";
+export {
+  socketService,
+  initSocket,
+  onFriendRequest,
+  onFriendRequestAccepted,
+  onFriendRequestRejected,
+  onReceiveMessage,
+} from "./socketService";

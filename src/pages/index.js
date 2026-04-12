@@ -3,7 +3,4 @@ export { RegisterPage } from "./RegisterPage";
 export { VerifyEmailPage } from "./VerifyEmailPage";
 export { ForgotPasswordPage } from "./ForgotPasswordPage";
 export { HomePage } from "./HomePage";
-export { SearchFriendsPage } from "./SearchFriendsPage";
-export { FriendsPage } from "./FriendsPage";
-export { FriendRequestsPage } from "./FriendRequestsPage";
 export { TermsPage } from "./TermsPage";
