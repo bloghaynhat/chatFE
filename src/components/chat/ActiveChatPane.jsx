@@ -39,6 +39,7 @@ import {
   FiCornerUpRight,
   FiBookmark,
   FiRotateCcw,
+  FiDownload,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
 import { PhotoProvider, PhotoView } from "react-photo-view";
@@ -115,6 +116,8 @@ export const ActiveChatPane = ({
   const [dragType, setDragType] = useState(null); // 'image' or 'file'
   const [previewFiles, setPreviewFiles] = useState([]);
   const [compressImage, setCompressImage] = useState(true); // for split screen selection
+
+  const [previewVideoUrl, setPreviewVideoUrl] = useState(null);
 
   const [contextMenu, setContextMenu] = useState(null);
 
@@ -939,6 +942,7 @@ export const ActiveChatPane = ({
                 const images = messageFiles.filter(
                   (f) =>
                     f?.type === "image" ||
+                    f?.type === "IMAGE" ||
                     f?.type?.startsWith("image/") ||
                     f?.mimetype?.startsWith("image/") ||
                     f?.url?.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i),
@@ -949,21 +953,39 @@ export const ActiveChatPane = ({
                   images.push({ url: message.imageUrl, type: "image/jpeg" });
                 }
 
+                // Extract all videos
+                const videos = messageFiles.filter(
+                  (f) =>
+                    f?.type === "video" ||
+                    f?.type === "VIDEO" ||
+                    f?.type?.startsWith("video/") ||
+                    f?.mimetype?.startsWith("video/") ||
+                    f?.url?.match(/\.(mp4|webm|ogg|mov)$/i),
+                );
+
                 const isImage = images.length > 0;
+                const isVideo = videos.length > 0;
 
                 const isDocument =
-                  message?.type === "document" ||
-                  message?.type === "file" ||
-                  (messageFiles &&
-                    messageFiles.length > 0 &&
-                    !images.includes(messageFiles[0]));
+                  !isImage &&
+                  !isVideo &&
+                  (message?.type === "document" ||
+                    message?.type === "DOCUMENT" ||
+                    message?.type === "file" ||
+                    (messageFiles &&
+                      messageFiles.length > 0 &&
+                      !images.includes(messageFiles[0]) &&
+                      !videos.includes(messageFiles[0])));
 
                 // If it's classified as an image, don't show it as a document block
                 const isFirst = index === 0;
 
                 const hasText = !!text && text.trim() !== "";
-                const onlyImages =
-                  isImage && !hasText && !isDocument && !isForwarded;
+                const onlyImagesOrVideos =
+                  (isImage || isVideo) &&
+                  !hasText &&
+                  !isDocument &&
+                  !isForwarded;
 
                 if (message.isRevoked || message.deletedAt) {
                   return (
@@ -1060,8 +1082,81 @@ export const ActiveChatPane = ({
                             ))}
                           </div>
                         )}
-                        {onlyImages && (
+                        {onlyImagesOrVideos && (
                           <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white">
+                            {message.isEdited && (
+                              <span className="italic font-semibold text-[10px]">
+                                edited
+                              </span>
+                            )}
+                            <span className="text-[11px] font-medium leading-none">
+                              {getMessageTime(message)}
+                            </span>
+                            {mine && (
+                              <span className="flex -space-x-[3px] ml-0.5">
+                                <FiCheck className="text-[12px]" />
+                                <FiCheck className="text-[12px]" />
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isVideo && (
+                      <div
+                        className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}
+                      >
+                        <div className="grid gap-0.5 rounded-lg overflow-hidden max-w-[340px] grid-cols-1">
+                          {videos.map((vid, i) => {
+                            const vidUrl =
+                              vid.url ||
+                              vid.preview ||
+                              (typeof vid === "string" ? vid : "");
+                            return (
+                              <div
+                                key={i}
+                                className="relative w-full bg-black rounded-lg overflow-hidden group flex justify-center items-center cursor-pointer"
+                                onClick={() => setPreviewVideoUrl(vidUrl)}
+                              >
+                                <video
+                                  src={vidUrl}
+                                  className="w-full h-auto max-h-[400px] object-contain pointer-events-none"
+                                />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                                  <div className="w-14 h-14 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm shadow-xl hover:scale-110 transition-transform">
+                                    <svg
+                                      className="w-6 h-6 ml-1"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <a
+                                  href={vidUrl}
+                                  download={
+                                    vid.filename || vid.name || "video.mp4"
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <FiDownload className="text-sm" />
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {onlyImagesOrVideos && (
+                          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white pointer-events-none">
                             {message.isEdited && (
                               <span className="italic font-semibold text-[10px]">
                                 edited
@@ -1093,26 +1188,50 @@ export const ActiveChatPane = ({
                         const fileSize = file?.size
                           ? `${(file.size / 1024).toFixed(0)} KB`
                           : "";
+                        const fileUrl =
+                          file?.url ||
+                          file?.preview ||
+                          (typeof file === "string" ? file : "");
                         return (
-                          <div className="flex items-center gap-3 p-3 pb-0 bg-black/5 dark:bg-white/5 rounded-t-2xl">
-                            <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
-                            >
-                              <FiFile className="text-xl" />
+                          <div className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-t-2xl gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
+                              >
+                                <FiFile className="text-xl" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium truncate hover:underline cursor-pointer text-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {fileName}
+                                </a>
+                                <span className="text-xs opacity-70">
+                                  {fileSize}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-medium truncate underline hover:no-underline cursor-pointer">
-                                {fileName}
-                              </span>
-                              <span className="text-xs opacity-70">
-                                {fileSize}
-                              </span>
-                            </div>
+                            {fileUrl && (
+                              <a
+                                href={fileUrl}
+                                download={fileName}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <FiDownload className="text-lg" />
+                              </a>
+                            )}
                           </div>
                         );
                       })()}
 
-                    {!onlyImages && (
+                    {!onlyImagesOrVideos && (
                       <div className="px-3 pb-2 pt-2 cursor-default relative">
                         {!!text && (
                           <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
@@ -1744,6 +1863,46 @@ export const ActiveChatPane = ({
           </button>
         </div>
       </div>
+
+      {previewVideoUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setPreviewVideoUrl(null)}
+        >
+          <button
+            className="absolute top-6 right-6 text-white hover:text-gray-300 hover:bg-white/10 p-3 rounded-full z-[10000] transition-colors shadow-lg"
+            onClick={() => setPreviewVideoUrl(null)}
+          >
+            <FiX className="text-3xl" />
+          </button>
+
+          <div
+            className="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-12 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full max-w-[1200px] aspect-video max-h-[85vh] rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black ring-1 ring-white/10 relative group">
+              <video
+                src={previewVideoUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-contain outline-none"
+                controlsList="nodownload"
+              />
+
+              <a
+                href={previewVideoUrl}
+                download="video.mp4"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 backdrop-blur-md border border-white/20 shadow-lg"
+                title="Download video"
+              >
+                <FiDownload className="text-xl" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
