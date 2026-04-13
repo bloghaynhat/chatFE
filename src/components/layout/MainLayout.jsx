@@ -77,34 +77,36 @@ export const MainLayout = ({ children }) => {
       setOpeningChatId(chat.id);
 
       try {
-        // Mock mode for chat pane (API temporarily disabled)
-        await wait(350);
-        setSelectedConversationId(`mock-conversation-${chat.id}`);
-        setMessages(buildMockMessages(chat));
+        const conversation = await conversationService.openPrivateConversation(
+          chat.targetUserId,
+        );
 
-        // API mode (keep for later, do not delete)
-        // const conversation = await conversationService.openPrivateConversation(
-        //   chat.targetUserId,
-        // );
-        //
-        // const conversationId = resolveConversationId(conversation);
-        // if (!conversationId) {
-        //   throw new Error("Conversation id missing");
-        // }
-        //
-        // setSelectedConversationId(conversationId);
-        //
-        // const messageResult =
-        //   await conversationService.getConversationMessages(conversationId);
-        //
-        // setMessages(messageResult.messages || []);
-        //
-        // // fire-and-forget status sync
-        // conversationService.markDelivered(conversationId).catch(() => {});
-        // conversationService.markSeen(conversationId).catch(() => {});
+        const conversationId = resolveConversationId(conversation);
+
+        if (conversationId) {
+          setSelectedConversationId(conversationId);
+          const messageResult =
+            await conversationService.getConversationMessages(conversationId);
+          setMessages(messageResult.messages || []);
+
+          // fire-and-forget status sync
+          conversationService.markDelivered(conversationId).catch(() => {});
+          conversationService.markSeen(conversationId).catch(() => {});
+        } else {
+          setSelectedConversationId(null);
+          setMessages([]);
+        }
       } catch (error) {
         setMessages([]);
-        setChatError(error?.message || "Couldn’t open this conversation");
+        if (
+          error?.status === 404 ||
+          error?.response?.status === 404 ||
+          error?.code === "NOT_FOUND"
+        ) {
+          setChatError("");
+        } else {
+          setChatError(error?.message || "Couldn’t open this conversation");
+        }
       } finally {
         setIsOpeningConversation(false);
         setOpeningChatId(null);
@@ -117,6 +119,58 @@ export const MainLayout = ({ children }) => {
     if (!selectedChat) return;
     openChatByRow(selectedChat);
   }, [openChatByRow, selectedChat]);
+
+  const handleSendMessage = async (payload) => {
+    if (!selectedConversationId) return;
+
+    // Optimistic UI update
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      id: tempId,
+      ...payload,
+      createdAt: new Date().toISOString(),
+      isMine: true,
+      senderId: "me", // Normally this would be the current user's ID
+      status: "sending",
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+
+    try {
+      const response = await conversationService.sendMessage(
+        selectedConversationId,
+        payload,
+      );
+      // Replace optimistic message with actual server message
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === tempId ? response.data : msg)),
+      );
+    } catch (error) {
+      console.error("Failed to send message", error);
+      // Update status to failed
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, status: "failed" } : msg,
+        ),
+      );
+    }
+  };
+
+  const handleRevokeMessage = async (messageId) => {
+    try {
+      await conversationService.revokeMessage(messageId);
+      // Optimistically remove or mark message as revoked
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId
+            ? { ...msg, isRevoked: true, content: "Message revoked" }
+            : msg,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to revoke message", error);
+    }
+  };
 
   return (
     <div className={darkMode ? "dark" : ""}>
@@ -140,6 +194,8 @@ export const MainLayout = ({ children }) => {
               error={chatError}
               messages={messages}
               onRetry={retryOpenCurrentChat}
+              onSendMessage={handleSendMessage}
+              onRevokeMessage={handleRevokeMessage}
             />
           )}
         </div>

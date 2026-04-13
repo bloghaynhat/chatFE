@@ -29,6 +29,7 @@ import {
   FiDelete,
   FiX,
   FiCalendar,
+  FiSend,
 } from "react-icons/fi";
 
 const getMessageId = (message, index) =>
@@ -64,6 +65,8 @@ export const ActiveChatPane = ({
   error,
   messages,
   onRetry,
+  onSendMessage,
+  onRevokeMessage,
 }) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -263,6 +266,17 @@ export const ActiveChatPane = ({
     setDraftMessage("");
   }, [selectedChat?.id]);
 
+  const handleSendMessage = () => {
+    if (!draftMessage.trim()) return;
+    if (onSendMessage) {
+      onSendMessage({
+        content: draftMessage.trim(),
+        type: "text",
+      });
+      setDraftMessage("");
+    }
+  };
+
   if (!selectedChat) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -433,9 +447,18 @@ export const ActiveChatPane = ({
         )}
 
         {!isLoading && !error && messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-gray-500 dark:text-gray-400">
-            <FiMessageCircle className="text-2xl" />
-            <p>No messages yet. Say hello 👋</p>
+          <div className="h-full flex flex-col items-center justify-center">
+            <div className="bg-black/15 dark:bg-black/30 rounded-[20px] p-6 px-8 flex flex-col items-center justify-center text-center max-w-[300px] backdrop-blur-md border border-white/10 shadow-sm">
+              <span className="text-white dark:text-white/90 font-semibold text-[15px] mb-1">
+                No messages here yet...
+              </span>
+              <span className="text-white/90 dark:text-white/70 text-[14px] mb-5">
+                Send a message or tap the greeting below.
+              </span>
+              <div className="text-[70px] drop-shadow-md hover:scale-110 transition-transform cursor-pointer">
+                👋
+              </div>
+            </div>
           </div>
         )}
 
@@ -717,6 +740,9 @@ export const ActiveChatPane = ({
               type="text"
               value={draftMessage}
               onChange={(event) => setDraftMessage(event.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSendMessage();
+              }}
               placeholder="Message"
               className="absolute left-11 right-11 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none"
             />
@@ -734,8 +760,15 @@ export const ActiveChatPane = ({
             </button>
           </div>
 
-          <button className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition">
-            <FiMic className="text-[20px] lg:text-[22px]" />
+          <button
+            className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition"
+            onClick={draftMessage.trim() ? handleSendMessage : undefined}
+          >
+            {draftMessage.trim() ? (
+              <FiSend className="text-[20px] lg:text-[22px]" />
+            ) : (
+              <FiMic className="text-[20px] lg:text-[22px]" />
+            )}
           </button>
         </div>
       </div>

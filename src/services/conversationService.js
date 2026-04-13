@@ -26,7 +26,9 @@ const normalizeMessages = (payload) => {
 
 export const conversationService = {
   async openPrivateConversation(targetUserId) {
-    const payload = await api.post("/conversations/private", { targetUserId });
+    const payload = await api.get("/conversations/private", {
+      params: { targetUserId },
+    });
     return normalizeConversation(payload);
   },
 
@@ -39,6 +41,18 @@ export const conversationService = {
       raw: payload,
       messages: normalizeMessages(payload),
     };
+  },
+
+  async sendMessage(conversationId, data) {
+    return api.post(`/conversations/${conversationId}/messages`, data);
+  },
+
+  async revokeMessage(messageId) {
+    return api.post(`/messages/${messageId}/revoke`);
+  },
+
+  async reactMessage(messageId, reaction) {
+    return api.post(`/messages/${messageId}/react`, { reaction });
   },
 
   async markDelivered(conversationId) {

@@ -39,9 +39,15 @@ export const ResizableChatPanel = ({
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const minWidth = 80;
+  const minWidth = activeView === "contacts" ? 280 : 80;
   const maxWidth = 500;
-  const isCollapsed = width <= 120;
+  const isCollapsed = width <= 120 && activeView !== "contacts";
+
+  useEffect(() => {
+    if (width < minWidth) {
+      setWidth(minWidth);
+    }
+  }, [minWidth, width]);
 
   const handleMenuAction = (actionId) => {
     if (actionId === "profile") {
@@ -304,11 +310,11 @@ export const ResizableChatPanel = ({
               <div className="p-3 flex items-center border-b dark:border-slate-700">
                 <button
                   onClick={() => onViewChange?.("chats")}
-                  className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition text-gray-500 dark:text-gray-400"
+                  className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition text-gray-500 dark:text-gray-400 shrink-0"
                 >
                   <FiArrowLeft className="text-xl" />
                 </button>
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
                   Search global contacts
                 </h2>
               </div>
