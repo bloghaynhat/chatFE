@@ -391,10 +391,41 @@ const MainLayout = ({ children }) => {
       try {
         const msgId = fwMsg.id || fwMsg._id;
         if (msgId) {
-          await conversationService.forwardMessages({
+          const res = await conversationService.forwardMessages({
             messageIds: [msgId],
             targetConversationIds: [conversationId],
           });
+
+          // Normalize res to an array of messages
+          let newMessages = [];
+          if (Array.isArray(res)) {
+            newMessages = res;
+          } else if (res && typeof res === "object") {
+            if (Array.isArray(res.data)) {
+              newMessages = res.data;
+            } else if (res.data) {
+              newMessages = [res.data];
+            } else if (res._id || res.id) {
+              newMessages = [res];
+            }
+          }
+
+          if (newMessages.length > 0) {
+            setMessages((prev) => {
+              const newMsgs = [...prev];
+              newMessages.forEach((newMsg) => {
+                if (
+                  !newMsgs.some(
+                    (m) =>
+                      String(m._id || m.id) === String(newMsg._id || newMsg.id),
+                  )
+                ) {
+                  newMsgs.push(newMsg);
+                }
+              });
+              return newMsgs;
+            });
+          }
         }
       } catch (error) {
         console.error("Failed to forward message via API", error);

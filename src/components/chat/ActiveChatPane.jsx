@@ -1244,59 +1244,6 @@ export const ActiveChatPane = ({
                   </div>
                 </div>
               ))}
-
-              {(!friends || friends.length < 3) && (
-                <>
-                  <div
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
-                    onClick={() => setForwardModalVisible(false)}
-                  >
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white flex items-center justify-center font-bold text-lg shrink-0">
-                      K🔥
-                    </div>
-                    <div className="flex flex-col max-w-full overflow-hidden">
-                      <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
-                        Khóa học HTML CSS Master 🔥
-                      </span>
-                      <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">
-                        353 members
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
-                    onClick={() => setForwardModalVisible(false)}
-                  >
-                    <div className="w-11 h-11 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-lg shrink-0">
-                      N
-                    </div>
-                    <div className="flex flex-col max-w-full overflow-hidden">
-                      <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
-                        NextJs Super
-                      </span>
-                      <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">
-                        344 members
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors bg-gray-50/50 dark:bg-slate-800/50"
-                    onClick={() => setForwardModalVisible(false)}
-                  >
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white flex items-center justify-center text-xl shrink-0">
-                      ⚛️
-                    </div>
-                    <div className="flex flex-col max-w-full overflow-hidden">
-                      <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
-                        ReactJs Super - Thảo luận - chém gió
-                      </span>
-                      <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">
-                        773 members
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         </div>
