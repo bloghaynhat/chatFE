@@ -109,6 +109,8 @@ export const ActiveChatPane = ({
   const isTypingRef = useRef(false);
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
+  const photoVideoInputRef = useRef(null);
+  const documentInputRef = useRef(null);
 
   const [displayCount, setDisplayCount] = useState(20);
 
@@ -297,11 +299,13 @@ export const ActiveChatPane = ({
       id: "photo-video",
       label: "Photo or Video",
       icon: FiImage,
+      onClick: () => photoVideoInputRef.current?.click(),
     },
     {
       id: "document",
       label: "Document",
       icon: FiFile,
+      onClick: () => documentInputRef.current?.click(),
     },
     {
       id: "gift-premium",
@@ -554,6 +558,34 @@ export const ActiveChatPane = ({
       className={`flex-1 flex flex-col min-h-0 relative ${isDragActive ? "bg-slate-50 dark:bg-slate-800/50" : ""}`}
     >
       <input {...getInputProps()} />
+
+      {/* File inputs for attachment actions */}
+      <input
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime"
+        ref={photoVideoInputRef}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            onDrop(Array.from(e.target.files));
+            e.target.value = null;
+          }
+        }}
+      />
+      <input
+        type="file"
+        multiple
+        accept=".pdf,application/pdf"
+        ref={documentInputRef}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            onDrop(Array.from(e.target.files));
+            e.target.value = null;
+          }
+        }}
+      />
 
       {/* Drag Overlay */}
       {isDragActive && (
@@ -1733,7 +1765,10 @@ export const ActiveChatPane = ({
                 return (
                   <button
                     key={action.id}
-                    onClick={() => setIsAttachMenuOpen(false)}
+                    onClick={() => {
+                      setIsAttachMenuOpen(false);
+                      if (action.onClick) action.onClick();
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none text-gray-900 dark:text-gray-100 hover:bg-white/75 dark:hover:bg-slate-700/80 transition"
                   >
                     <ActionIcon className="text-[18px] shrink-0" />
