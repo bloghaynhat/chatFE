@@ -84,11 +84,11 @@ FE/
 ### Login Flow
 
 1. User nhập phone + password
-2. Call `POST /v1/auth/login`
+2. Call `POST /v1/auth/login` với payload gồm `phone`, `password`, và `deviceInfo` (`deviceId`, `userAgent`, `platform`)
 3. Backend trả về token + user data
-4. Frontend lưu token vào `localStorage` (key: `"token"`)
-5. Tự động gọi `GET /v1/profile` để lấy displayName
-6. Token tự động attach vào `Authorization` header cho all requests
+4. Frontend lưu quản lý token/thiết bị qua `authStorage` trong `src/runtime/storage.js` (hỗ trợ localStorage / memory fallback)
+5. Tự động gọi API profile để đồng bộ thông tin (nếu cần)
+6. Token tự động attach vào `Authorization` header tự động thông qua Axios interceptors.
 
 ### Register Flow
 
@@ -97,11 +97,10 @@ FE/
 3. Success → Redirect to `/login`
 4. Đăng nhập với tài khoản vừa tạo
 
-### Protected Routes
+### Protected & Public Routes
 
-- Routes: `/`, `/search-friends`, `/friend-requests`, `/friends`
-- Yêu cầu authentication
-- Non-auth users → redirect to `/login`
+- **Protected Routes**: Các trang như HomePage, Search Friends yêu cầu đăng nhập. Wrap qua `<PrivateRoute>`. Non-auth users → redirect to `/login`.
+- **Public Routes**: Các trang đăng ký, đăng nhập. Wrap qua `<PublicRoute>`. Đã đăng nhập → redirect to `/` ngay lập tức để không thể quay lại.
 
 ### Auto Login
 
@@ -222,13 +221,16 @@ VITE_API_URL=http://localhost:3000/v1
 ### Add New Page + Route
 
 1. Create `src/pages/NewPage.jsx`
-2. Add route in `src/App.jsx`:
+2. Add route in `src/App.jsx` wrapped by `<PrivateRoute>` or `<PublicRoute>`:
    ```jsx
-   {
-     path: "/new-path",
-     element: <NewPage />,
-     requireAuth: true  // if protected
-   }
+   <Route
+     path="/new-path"
+     element={
+       <PrivateRoute>
+         <NewPage />
+       </PrivateRoute>
+     }
+   />
    ```
 3. Use in routing or sidebar
 
@@ -324,12 +326,12 @@ export const MyComponent = () => {
 
 ### Key Things to Know
 
-1. **Auth Token**: Stored in localStorage with key `"token"` (not `"auth"`)
-2. **API Response**: Apps return `{ status, msg, data }`
-3. **Protected Routes**: Any new route should use `requireAuth: true` if protected
-4. **Current User**: Get via `useAuth().user` hook
+1. **Auth Token**: Chứa ở `authStorage` (không gọi trực tiếp `localStorage`). Quản lý `deviceId` bằng UUID.
+2. **API Response**: Format trả về `{ status, msg, data }`. Luôn sử dụng custom service thông qua `apiCall` wrapper.
+3. **Protected / Public Routes**: Dùng các Component là `<PrivateRoute>` tránh truy cập trái phép, và `<PublicRoute>` tránh user đã login quay lại trang Auth.
+4. **Current User**: Get via `useAuth().user` hook. Component lấy data session.
 5. **3-Column Layout**: Sidebar + Left Panel (toggles) + Right Panel
-6. **Friends Data**: Fetched from `/friendships` + `/users/{id}` endpoints
+6. **Friends Data**: Lấy thông qua hooks `useFriendManagement.js` / contexts.
 
 ### To Extend Features
 
