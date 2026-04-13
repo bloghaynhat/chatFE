@@ -239,14 +239,31 @@ export const ActiveChatPane = ({
     setDragType(null);
   };
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (behavior = "smooth") => {
     // Only scroll if we are near the bottom to avoid snapping when loading older messages
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages.length, typingUsers]);
+
+  // Scroll to bottom immediately when switching conversation
+  useEffect(() => {
+    setDisplayCount(20); // Reset display count on chat switch
+    setTimeout(() => {
+      scrollToBottom("auto");
+    }, 100);
+  }, [selectedConversationId]);
+
+  // Force scroll when data finishes loading
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(() => {
+        scrollToBottom("auto");
+      }, 100);
+    }
+  }, [isLoading]);
 
   const visibleMessages = useMemo(() => {
     return messages.length > displayCount
