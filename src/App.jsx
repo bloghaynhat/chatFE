@@ -1,15 +1,50 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { LoginPage, RegisterPage, VerifyEmailPage, ForgotPasswordPage, HomePage, TermsPage } from "./pages";
-import { PrivateRoute } from "./components/common";
+import {
+  LoginPage,
+  RegisterPage,
+  VerifyEmailPage,
+  ForgotPasswordPage,
+  HomePage,
+  TermsPage,
+} from "./pages";
+import { PrivateRoute, PublicRoute } from "./components/common";
 import { FriendProvider } from "./context/FriendContext";
 
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <RegisterPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/verify-email"
+        element={
+          <PublicRoute>
+            <VerifyEmailPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        }
+      />
       <Route path="/terms" element={<TermsPage />} />
       <Route
         path="/"
