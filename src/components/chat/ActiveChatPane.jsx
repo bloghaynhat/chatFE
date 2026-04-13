@@ -83,6 +83,9 @@ export const ActiveChatPane = ({
   onRetry,
   onSendMessage,
   onRevokeMessage,
+  onForwardToTarget,
+  forwardingMessage,
+  onClearForwarding,
 }) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -478,13 +481,22 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
-    if (!draftMessage.trim()) return;
+    if (!draftMessage.trim() && !forwardingMessage) return;
+
     if (onSendMessage) {
-      onSendMessage({
+      // If we are forwarding, we could either send them as two messages, or combine.
+      // Usually, we'd send the forwarded message first, then the user's typed message,
+      // or we pass a special payload. MainLayout's onSendMessage might need to handle array.
+
+      const payload = {
         text: draftMessage.trim(),
         type: "text",
-      });
+        forwardingMessage: forwardingMessage, // pass to MainLayout to handle
+      };
+
+      onSendMessage(payload);
       setDraftMessage("");
+      if (onClearForwarding) onClearForwarding();
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isTypingRef.current) {
@@ -1061,12 +1073,24 @@ export const ActiveChatPane = ({
                   key={friend.id || friend._id}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
                   onClick={() => {
-                    if (onSendMessage && messageToForward) {
-                      // Call logic send if needed, for UI purpose we just close
-                      console.log(
-                        "Forwarding message to",
-                        friend.displayName || friend.name,
-                      );
+                    if (messageToForward) {
+                      const targetUserId =
+                        friend.friendUserId ||
+                        friend.userId ||
+                        friend.id ||
+                        friend._id;
+                      // Create a target chat object compatible with openChatByRow
+                      const targetChat = {
+                        id: `temp-${targetUserId}`,
+                        targetUserId: targetUserId,
+                        isGroup: false,
+                        participants: [friend],
+                        type: "private",
+                      };
+
+                      if (onForwardToTarget) {
+                        onForwardToTarget(targetChat, messageToForward);
+                      }
                     }
                     setForwardModalVisible(false);
                   }}
@@ -1272,6 +1296,33 @@ export const ActiveChatPane = ({
       )}
 
       <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
+        {forwardingMessage && (
+          <div className="max-w-4xl mx-auto mb-2 flex bg-white/95 dark:bg-slate-800/95 rounded-2xl shadow-lg border border-white/90 dark:border-slate-700/90 overflow-hidden relative z-40 p-3">
+            <div className="w-1 h-full min-h-[36px] bg-blue-500 rounded-full mr-3 shrink-0"></div>
+            <div className="flex-1 flex flex-col justify-center min-w-0 pr-6">
+              <span className="text-[13px] font-semibold text-blue-500 flex items-center gap-1.5 leading-none">
+                <FiCornerUpRight className="text-[14px]" /> Forward Message
+              </span>
+              <p className="text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1 leading-none">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {forwardingMessage.senderId === currentUserId
+                    ? "You"
+                    : forwardingMessage.sender?.name || "Someone"}
+                  :
+                </span>{" "}
+                {forwardingMessage.media?.length
+                  ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
+                  : forwardingMessage.text}
+              </p>
+            </div>
+            <button
+              onClick={onClearForwarding}
+              className="absolute right-3 top-3 lg:top-[14px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <FiX className="text-lg" />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2 max-w-4xl mx-auto">
           <div
             ref={attachMenuRef}
@@ -1402,9 +1453,13 @@ export const ActiveChatPane = ({
 
           <button
             className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition"
-            onClick={draftMessage.trim() ? handleSendMessage : undefined}
+            onClick={
+              draftMessage.trim() || forwardingMessage
+                ? handleSendMessage
+                : undefined
+            }
           >
-            {draftMessage.trim() ? (
+            {draftMessage.trim() || forwardingMessage ? (
               <FiSend className="text-[20px] lg:text-[22px]" />
             ) : (
               <FiMic className="text-[20px] lg:text-[22px]" />

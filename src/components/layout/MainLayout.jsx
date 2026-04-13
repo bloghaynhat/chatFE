@@ -15,6 +15,7 @@ const MainLayout = ({ children }) => {
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
+  const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const { user } = useAuth();
 
   useEffect(() => {
@@ -220,11 +221,21 @@ const MainLayout = ({ children }) => {
     openChatByRow(selectedChat);
   }, [openChatByRow, selectedChat]);
 
-  const handleSendMessage = async (
-    payloadOrText,
-    mediaFiles = [],
-    options = {},
-  ) => {
+  const handleForwardToTarget = useCallback(
+    (targetChat, msg) => {
+      // Navigate to user's chat
+      openChatByRow(targetChat);
+      // Set the forwarding message
+      setForwardingMessage(msg);
+    },
+    [openChatByRow],
+  );
+
+  const clearForwardingMessage = useCallback(() => {
+    setForwardingMessage(null);
+  }, []);
+
+  const handleSendMessage = async (payloadOrText, mediaFiles = []) => {
     let conversationId = selectedConversationId || selectedChat?.id;
 
     if (!conversationId) return;
@@ -247,14 +258,41 @@ const MainLayout = ({ children }) => {
       payloadMedia = mediaFiles || [];
     }
 
-    if (!payloadText.trim() && payloadMedia.length === 0) return;
+    if (
+      !payloadText.trim() &&
+      payloadMedia.length === 0 &&
+      !payloadOrText?.forwardingMessage
+    )
+      return;
+
+    const fwMsg = payloadOrText?.forwardingMessage;
+    // Prepare the message text to actually send.
+    // If forwarding, we might combine the forwarded message content with the new text
+    let finalPayloadText = payloadText;
+    let finalPayloadMedia = payloadMedia;
+
+    if (fwMsg) {
+      const forwardedText = `[Forwarded${fwMsg.sender?.name ? " from " + fwMsg.sender.name : ""}]: ${fwMsg.text || ""}`;
+      // For images/media in the forwarding message, ideally we'd re-upload or keep the URLs.
+      // Let's assume we append the original media URLs if present.
+      if (fwMsg.media && fwMsg.media.length > 0) {
+        finalPayloadMedia = [...finalPayloadMedia, ...fwMsg.media]; // Using existing media objects which already have URLs
+      }
+
+      // Combine text lines appropriately
+      if (finalPayloadText) {
+        finalPayloadText = `${forwardedText}\n\n${finalPayloadText}`;
+      } else {
+        finalPayloadText = forwardedText;
+      }
+    }
 
     // Optimistic UI update
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       id: tempId,
-      text: payloadText,
-      media: payloadMedia,
+      text: finalPayloadText,
+      media: finalPayloadMedia,
       createdAt: new Date().toISOString(),
       isMine: true,
       senderId: "me", // Normally this would be the current user's ID
@@ -267,95 +305,32 @@ const MainLayout = ({ children }) => {
       let finalMedia = [];
 
       // If message includes files to upload
-      const hasFiles =
-        payloadMedia.length > 0 &&
-        (payloadMedia[0] instanceof File ||
-          payloadMedia[0] instanceof Blob ||
-          (payloadMedia[0] &&
-            payloadMedia[0].size !== undefined &&
-            payloadMedia[0].name !== undefined));
+      const filesToUpload = finalPayloadMedia.filter((f) => !f.url);
+      const existingMedia = finalPayloadMedia.filter((f) => f.url);
 
-      if (hasFiles && !payloadMedia[0].url) {
+      if (filesToUpload.length > 0) {
         const uploadedMedia = await Promise.all(
-          payloadMedia.map(async (file) => {
-            // Gọi api cấp presigned URL
-            const response = await mediaService.requestUploadUrl(
-              file.name,
-              file.type || "application/octet-stream",
-              file.size,
-            );
-
-            // Xử lý các định dạng dữ liệu (bóc tách tầng "data")
-            const responseData =
-              response?.data?.data || response?.data || response;
-
-            const uploadUrl =
-              responseData?.uploadUrl ||
-              responseData?.url ||
-              responseData?.presignedUrl;
-            const fileUrl =
-              responseData?.fileUrl ||
-              responseData?.publicUrl ||
-              responseData?.downloadUrl ||
-              uploadUrl?.split("?")[0];
-
-            if (!uploadUrl) {
-              console.error("Missing upload URL in response:", response);
-              throw new Error("Upload URL is required from backend");
-            }
-
-            // Gọi SDK (fetch PUT) upload thẳng từ Frontend lên S3/MinIO
-            await mediaService.uploadToPresignedUrl(uploadUrl, file);
-
-            // Lấy ID file để gọi API Confirm (nếu Backend trả về)
-            const fileId =
-              responseData?.fileId || responseData?.id || responseData?.mediaId;
-            if (fileId) {
-              try {
-                const confirmResponse =
-                  await mediaService.confirmUpload(fileId);
-                const confirmData =
-                  confirmResponse.data?.data ||
-                  confirmResponse.data ||
-                  confirmResponse;
-
-                // Nếu API confirm trả về thông tin file thì dùng luôn
-                if (confirmData && (confirmData.url || confirmData.fileUrl)) {
-                  return confirmData;
-                }
-              } catch (confirmError) {
-                console.warn(
-                  "Failed to confirm upload with backend, but file was uploaded to S3:",
-                  confirmError,
-                );
-              }
-            }
-
-            // Fallback (Trường hợp không có fileId gọi confirm hoặc confirm lỗi)
+          filesToUpload.map(async (file) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            const response = await mediaService.uploadSingle(formData);
             return {
-              url: fileUrl,
-              filename: file.name,
-              originalName: file.name,
+              url: response.url,
+              type: file.type?.startsWith("image/") ? "image" : "file",
+              name: file.name,
               size: file.size,
-              mimetype: file.type || "application/octet-stream",
-              type: file.type || "application/octet-stream",
             };
           }),
         );
-        finalMedia = uploadedMedia;
-      } else {
-        finalMedia = payloadMedia;
+
+        finalMedia = [...existingMedia, ...uploadedMedia];
+      } else if (existingMedia.length > 0) {
+        finalMedia = existingMedia;
       }
 
-      // Gọi socketService.sendMessage thay vì conversationService REST
-      console.log("Sending via socket:", {
-        conversationId,
-        payloadText,
-        finalMedia,
-      });
       const sentMessage = await socketService.sendMessage(
-        conversationId,
-        payloadText,
+        selectedConversationId,
+        finalPayloadText,
         finalMedia,
       );
 
@@ -420,6 +395,9 @@ const MainLayout = ({ children }) => {
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
               onRevokeMessage={handleRevokeMessage}
+              onForwardToTarget={handleForwardToTarget}
+              forwardingMessage={forwardingMessage}
+              onClearForwarding={clearForwardingMessage}
             />
           )}
         </div>

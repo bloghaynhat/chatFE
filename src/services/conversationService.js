@@ -25,13 +25,6 @@ const normalizeMessages = (payload) => {
 };
 
 export const conversationService = {
-  async openPrivateConversation(targetUserId) {
-    const payload = await api.get("/conversations/private", {
-      params: { targetUserId },
-    });
-    return normalizeConversation(payload);
-  },
-
   async createPrivateConversation(targetUserId) {
     const payload = await api.post("/conversations/private", { targetUserId });
     return normalizeConversation(payload);
