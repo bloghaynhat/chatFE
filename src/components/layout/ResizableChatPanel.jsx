@@ -1,53 +1,58 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatList } from "../chat/ChatList";
+import { ContactsPanel } from "../chat/ContactsPanel";
 import { UserProfileModal } from "../common";
 import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
-import { useAuth } from "../../hooks";
-import {
-  FiPlus,
+import { useAuth, useFriendManagement } from "../../hooks";
+import { useFriendRequestsContext } from "../../context/FriendContext";
+import { FiPlus,
   FiBookmark,
   FiArchive,
   FiMoon,
   FiUsers,
   FiSettings,
   FiLogOut,
-  FiArrowLeft,
-} from "react-icons/fi";
+  FiArrowLeft, } from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
-export const ResizableChatPanel = ({
-  activeView,
-  onViewChange,
-  activeChatId,
-  openingChatId,
-  onSelectChat,
-}) => {
+export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, openingChatId, onSelectChat }) => {
   const [width, setWidth] = useState(320); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [filterMode, setFilterMode] = useState("all");
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const panelRef = useRef(null);
   const navigationMenuRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { friendRequests, fetchFriendRequests } = useFriendRequestsContext();
 
-  const minWidth = activeView === "contacts" ? 280 : 80;
-  const maxWidth = 500;
-  const isCollapsed = width <= 120 && activeView !== "contacts";
-
+  // Fetch friend requests on mount
   useEffect(() => {
-    if (width < minWidth) {
-      setWidth(minWidth);
+    fetchFriendRequests();
+  }, []);
+
+  // Refetch friend requests when switching to contacts view (clear stale cache)
+  useEffect(() => {
+    if (activeView === "contacts") {
+      fetchFriendRequests();
     }
-  }, [minWidth, width]);
+  }, [activeView]);
+
+  const minWidth = activeView === "contacts" ? 308 : 80;
+  const maxWidth = activeView === "contacts" ? 420 : 500;
+  const isCollapsed = width <= 120;
+
+  // Ensure width bounds are respected when switching views
+  useEffect(() => {
+    setWidth((currentWidth) => Math.max(minWidth, Math.min(currentWidth, maxWidth)));
+  }, [minWidth, maxWidth]);
 
   const handleMenuAction = (actionId) => {
     if (actionId === "profile") {
@@ -57,7 +62,7 @@ export const ResizableChatPanel = ({
     }
 
     if (actionId === "contacts") {
-      onViewChange?.("contacts");
+      onViewChange("contacts");
       setIsNavigationOpen(false);
       return;
     }
@@ -164,7 +169,7 @@ export const ResizableChatPanel = ({
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isResizing, minWidth, maxWidth]);
+  }, [isResizing, minWidth, maxWidth, activeView]);
 
   return (
     <div className="flex h-full relative">
@@ -174,27 +179,25 @@ export const ResizableChatPanel = ({
         style={{ width: `${isCollapsed ? minWidth : width}px` }}
         className={`flex flex-col bg-white dark:bg-slate-900 border-r dark:border-slate-700 relative ${isResizing ? "" : "transition-all duration-200"}`}
       >
-        <MainTaskbar
-          searchValue={searchQuery}
-          onSearchChange={(value) => {
-            setSearchQuery(value);
-            setFilterMode("all");
-          }}
-          onOpenMenu={() => setIsNavigationOpen(true)}
-          onClearSearch={() => setSearchQuery("")}
-          onSearchFocus={() => setIsSearchFocused(true)}
-          onSearchBlur={() => setIsSearchFocused(false)}
-          isCollapsed={isCollapsed}
-          placeholder={
-            activeView === "contacts" ? "Search" : "Search conversations..."
-          }
-        />
+        {activeView === "chats" && (
+          <MainTaskbar
+            searchValue={searchQuery}
+            onSearchChange={(value) => {
+              setSearchQuery(value);
+              setFilterMode("all");
+            }}
+            onOpenMenu={() => setIsNavigationOpen(true)}
+            onClearSearch={() => setSearchQuery("")}
+            friendRequestCount={friendRequests.length}
+            isCollapsed={isCollapsed}
+          />
+        )}
 
         {/* Navigation Drawer */}
         {isNavigationOpen && (
           <div
             ref={navigationMenuRef}
-            className="absolute left-2 top-2 w-[284px] bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl z-50 overflow-hidden"
+            className="absolute left-2 top-2 w-[284px] bg-gray-100 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl z-[60] overflow-hidden origin-top-left animate-menu-pop"
           >
             <div className="px-3 py-2 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
               <button
@@ -266,10 +269,17 @@ export const ResizableChatPanel = ({
 
               <button
                 onClick={() => handleMenuAction("contacts")}
-                className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center gap-3"
+                className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center justify-between"
               >
-                <FiUsers className="text-lg opacity-70" />
-                <span>Contacts</span>
+                <div className="flex items-center gap-3">
+                  <FiUsers className="text-lg opacity-70" />
+                  <span>Contacts</span>
+                </div>
+                {friendRequests.length > 0 && (
+                  <span className="text-xs font-semibold bg-red-500 text-white px-2 py-0.5 rounded-full">
+                    {friendRequests.length}
+                  </span>
+                )}
               </button>
 
               <div className="h-px bg-gray-200 dark:bg-slate-700 my-1" />
@@ -303,72 +313,56 @@ export const ResizableChatPanel = ({
           </div>
         )}
 
-        {/* Chat List */}
-        <div className="flex-1 overflow-hidden relative flex flex-col">
-          {activeView === "contacts" ? (
-            <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-t dark:border-slate-700">
-              <div className="p-3 flex items-center border-b dark:border-slate-700">
-                <button
-                  onClick={() => onViewChange?.("chats")}
-                  className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition text-gray-500 dark:text-gray-400 shrink-0"
-                >
-                  <FiArrowLeft className="text-xl" />
-                </button>
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
-                  Search global contacts
-                </h2>
-              </div>
-              <div className="flex-1 overflow-auto">
-                <ChatList
-                  searchQuery={debouncedSearchQuery}
-                  filterMode="all"
-                  isCollapsed={isCollapsed}
-                  activeChatId={activeChatId}
-                  openingChatId={openingChatId}
-                  isGlobalSearchEnabled={true}
-                  onSelectChat={onSelectChat}
-                />
-              </div>
+        {/* === SLIDING CONTAINER FOR CHATS/CONTACTS === */}
+        <div className="flex-1 w-full relative overflow-hidden flex flex-col pointer-events-none">
+          {/* Chats View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "contacts" ? "-translate-x-[20%] opacity-0 pointer-events-none" : "translate-x-0 opacity-100 pointer-events-auto"}`}
+          >
+            <div className="flex-1 overflow-hidden relative">
+              <ChatList
+                searchQuery={debouncedSearchQuery}
+                filterMode={filterMode}
+                isCollapsed={isCollapsed}
+                activeChatId={activeChatId}
+                openingChatId={openingChatId}
+                onSelectChat={onSelectChat}
+              />
+
+              {!isCollapsed && (
+                <QuickActionFab onClick={() => setIsQuickActionOpen(!isQuickActionOpen)} isOpen={isQuickActionOpen} />
+              )}
+
+              <QuickActionSheet
+                isOpen={isQuickActionOpen}
+                onClose={() => setIsQuickActionOpen(false)}
+                onSelectAction={(actionId) => {
+                  setIsQuickActionOpen(false);
+
+                  if (actionId === "new-message" || actionId === "add-contact") {
+                    onViewChange("contacts");
+                    return;
+                  }
+
+                  if (actionId === "create-group") {
+                    onViewChange("contacts");
+                    return;
+                  }
+                }}
+              />
             </div>
-          ) : (
-            <ChatList
-              searchQuery={debouncedSearchQuery}
-              filterMode={filterMode}
+          </div>
+
+          {/* Contacts View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-20 pointer-events-auto ${activeView === "contacts" ? "translate-x-0" : "translate-x-full"}`}
+          >
+            <ContactsPanel
               isCollapsed={isCollapsed}
-              activeChatId={activeChatId}
-              openingChatId={openingChatId}
+              onBackToChats={() => onViewChange("chats")}
               onSelectChat={onSelectChat}
             />
-          )}
-
-          {!isCollapsed && activeView !== "contacts" && (
-            <QuickActionFab
-              onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
-              isOpen={isQuickActionOpen}
-            />
-          )}
-
-          <QuickActionSheet
-            isOpen={isQuickActionOpen}
-            onClose={() => setIsQuickActionOpen(false)}
-            onSelectAction={(actionId) => {
-              setIsQuickActionOpen(false);
-
-              if (actionId === "new-message") {
-                navigate("/search-friends");
-                return;
-              }
-
-              if (actionId === "create-group") {
-                navigate("/friends");
-                return;
-              }
-
-              if (actionId === "add-contact") {
-                navigate("/search-friends");
-              }
-            }}
-          />
+          </div>
         </div>
       </div>
 

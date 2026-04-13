@@ -18,12 +18,7 @@ const appendQueryParams = (endpoint, params) => {
 
 const normalizeError = (error) => {
   const payload = error?.response?.data || error;
-  const message =
-    payload?.msg ||
-    payload?.message ||
-    payload?.error?.message ||
-    error?.message ||
-    "Request failed";
+  const message = payload?.msg || payload?.message || payload?.error?.message || error?.message || "Request failed";
 
   const normalized = new Error(message);
   normalized.code = payload?.code || error?.code;
@@ -52,14 +47,9 @@ export const apiCall = async (method, endpoint, data, config = {}) => {
 };
 
 export const api = {
-  get: async (endpoint, config = {}) =>
-    apiCall("GET", endpoint, undefined, config),
-  post: async (endpoint, data = null, config = {}) =>
-    apiCall("POST", endpoint, data, config),
-  patch: async (endpoint, data = null, config = {}) =>
-    apiCall("PATCH", endpoint, data, config),
-  put: async (endpoint, data = null, config = {}) =>
-    apiCall("PUT", endpoint, data, config),
-  delete: async (endpoint, config = {}) =>
-    apiCall("DELETE", endpoint, undefined, config),
+  get: async (endpoint, config = {}) => apiCall("GET", endpoint, undefined, config),
+  post: async (endpoint, data = null, config = {}) => apiCall("POST", endpoint, data, config),
+  patch: async (endpoint, data = null, config = {}) => apiCall("PATCH", endpoint, data, config),
+  put: async (endpoint, data = null, config = {}) => apiCall("PUT", endpoint, data, config),
+  delete: async (endpoint, config = {}) => apiCall("DELETE", endpoint, undefined, config),
 };

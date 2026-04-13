@@ -2,7 +2,7 @@ import { api } from "./api";
 
 /**
  * Tìm kiếm user bằng số điện thoại
- * @param {string} phone - Số điện thoại tìm kiếm
+ * @param {string} phone - Số điện thoại tìm kiếm (chính xác)
  * @returns {Promise<Object>} User data
  */
 export const searchUserByPhone = async (phone) => {
@@ -13,12 +13,22 @@ export const searchUserByPhone = async (phone) => {
 };
 
 /**
+ * Tìm kiếm user bằng ID
+ * @param {string} userId - ID user tìm kiếm
+ * @returns {Promise<Object>} User data
+ */
+export const searchUserById = async (userId) => {
+  const response = await api.get(`/users/${userId}`);
+  return response;
+};
+
+/**
  * Gửi lời mời kết bạn
  * @param {string} receiverId - ID người nhận lời mời
  * @returns {Promise<Object>} Friend request data
  */
 export const sendFriendRequest = async (receiverId) => {
-  const response = await api.post(`/friend-requests/${receiverId}`);
+  const response = await api.post(`/friend-requests/${receiverId}`, {});
   return response;
 };
 
@@ -28,15 +38,6 @@ export const sendFriendRequest = async (receiverId) => {
  */
 export const getReceivedFriendRequests = async () => {
   const response = await api.get("/friend-requests/received");
-  return response;
-};
-
-/**
- * Lấy danh sách lời mời kết bạn đã gửi
- * @returns {Promise<Object>} List of sent friend requests
- */
-export const getSentFriendRequests = async () => {
-  const response = await api.get("/friend-requests/sent");
   return response;
 };
 
@@ -65,11 +66,21 @@ export const rejectFriendRequest = async (requestId) => {
 };
 
 /**
+ * Hủy lời mời kết bạn đã gửi
+ * @param {string} requestId - ID lời mời kết bạn
+ * @returns {Promise<Object>} Response data
+ */
+export const cancelFriendRequest = async (requestId) => {
+  const response = await api.delete(`/friend-requests/${requestId}`);
+  return response;
+};
+
+/**
  * Lấy danh sách bạn bè
  * @returns {Promise<Object>} List of friends
  */
 export const getFriends = async () => {
-  const response = await api.get("/friends");
+  const response = await api.get("/friendships");
   return response;
 };
 
@@ -79,6 +90,24 @@ export const getFriends = async () => {
  * @returns {Promise<Object>} Response data
  */
 export const removeFriend = async (friendId) => {
-  const response = await api.delete(`/friends/${friendId}`);
+  const response = await api.delete(`/friendships/${friendId}`, {});
+  return response;
+};
+
+/**
+ * Kiểm tra lời mời kết bạn với một user cụ thể
+ * @param {string} targetUserId - ID người muốn kiểm tra
+ * @returns {Promise<Object>} Response format:
+ *   {
+ *     status: "success",
+ *     data: {
+ *       status: "SELF" | "ACCEPTED" | "PENDING" | "REJECTED" | "NONE",
+ *       direction?: "OUTGOING" | "INCOMING",
+ *       requestId?: string
+ *     }
+ *   }
+ */
+export const checkFriendRequestStatus = async (targetUserId) => {
+  const response = await api.get(`/friend-requests/check/${targetUserId}`);
   return response;
 };
