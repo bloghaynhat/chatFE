@@ -58,6 +58,29 @@ const MainLayout = ({ children }) => {
           );
         });
 
+        socketService.onMessageRevoked((payload) => {
+          console.log("Socket message revoked payload:", payload);
+          const revokedId =
+            payload?.messageId ||
+            payload?.message?._id ||
+            payload?.message?.id ||
+            payload?.id ||
+            payload?._id;
+          if (!revokedId) return;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m._id || m.id) === String(revokedId)
+                ? {
+                    ...m,
+                    isRevoked: true,
+                    deletedAt: payload.deletedAt || new Date().toISOString(),
+                  }
+                : m,
+            ),
+          );
+        });
+
         socketService.onMessageStatusUpdate((payload) => {
           // payload might contain { messageId, status }
           setMessages((prev) =>
@@ -92,6 +115,8 @@ const MainLayout = ({ children }) => {
     return () => {
       active = false;
       socketService.offNewMessage();
+      socketService.offMessageRevoked();
+      socketService.offMessageEdited();
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);
@@ -471,19 +496,24 @@ const MainLayout = ({ children }) => {
       }
     }
   };
-  const handleRevokeMessage = async (messageId) => {
+  const handleRevokeMessage = async (message) => {
     try {
-      await conversationService.revokeMessage(messageId);
-      // Optimistically remove or mark message as revoked
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId
-            ? { ...msg, isRevoked: true, content: "Message revoked" }
-            : msg,
-        ),
-      );
+      const messageId = message?.id || message?._id;
+      if (!messageId) return;
+
+      const res = await socketService.revokeMessage(messageId);
+
+      if (res && res.success) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId || msg._id === messageId
+              ? { ...msg, isRevoked: true, deletedAt: new Date().toISOString() }
+              : msg,
+          ),
+        );
+      }
     } catch (error) {
-      console.error("Failed to revoke message", error);
+      console.error("Failed to revoke message:", error);
     }
   };
 

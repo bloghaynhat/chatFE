@@ -71,7 +71,7 @@ export const conversationService = {
   },
 
   async revokeMessage(messageId) {
-    return api.post(`/messages/${messageId}/revoke`);
+    return api.post(`/messages/${messageId}/revoke`, {});
   },
 
   async reactMessage(messageId, reaction) {

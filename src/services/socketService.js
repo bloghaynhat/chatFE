@@ -91,6 +91,10 @@ class SocketService {
       this.emit("message:edited", data);
     });
 
+    this.messagesSocket.on("message:revoked", (data) => {
+      this.emit("message:revoked", data);
+    });
+
     this.messagesSocket.on("messageSeen", (data) => {
       this.emit("messageSeen", data);
     });
@@ -195,6 +199,14 @@ class SocketService {
     return this.on("typing:stop", callback);
   }
 
+  onMessageRevoked(callback) {
+    return this.on("message:revoked", callback);
+  }
+
+  offMessageRevoked() {
+    this.off("message:revoked");
+  }
+
   joinRoom(conversationId) {
     return this.joinGroup(conversationId);
   }
@@ -267,6 +279,22 @@ class SocketService {
       : { toUserId: conversationId };
 
     this.messagesSocket.emit("typing:stop", payload);
+  }
+
+  revokeMessage(messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("revokeMessage", { messageId }, (res) => {
+        if (res && res.success) {
+          resolve(res);
+        } else {
+          reject(new Error(res?.error || res?.message || "Revoke failed"));
+        }
+      });
+    });
   }
 
   // ================= CLEANUP =================

@@ -965,6 +965,24 @@ export const ActiveChatPane = ({
                 const onlyImages =
                   isImage && !hasText && !isDocument && !isForwarded;
 
+                if (message.isRevoked || message.deletedAt) {
+                  return (
+                    <div
+                      ref={isFirst ? firstMessageRef : null}
+                      key={getMessageId(message, index)}
+                      className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-[14px] shadow-sm flex flex-col relative px-3 py-2 border border-gray-100 dark:border-slate-700/50 bg-black/[0.02] dark:bg-white/[0.02] ${
+                        mine
+                          ? "self-end rounded-br-md"
+                          : "self-start rounded-bl-md"
+                      }`}
+                    >
+                      <span className="text-gray-500 dark:text-gray-400 italic font-medium">
+                        Message recalled
+                      </span>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     ref={isFirst ? firstMessageRef : null}
@@ -1255,14 +1273,14 @@ export const ActiveChatPane = ({
               <button
                 className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
                 onClick={() => {
-                  setContextMenu(null);
                   if (onRevokeMessage && contextMenu.message) {
                     onRevokeMessage(contextMenu.message);
                   }
+                  setContextMenu(null);
                 }}
               >
                 <FiRotateCcw className="text-[18px]" strokeWidth={2} />{" "}
-                <span className="font-medium">Revoke</span>
+                <span className="font-medium">Recall</span>
               </button>
             )}
 
