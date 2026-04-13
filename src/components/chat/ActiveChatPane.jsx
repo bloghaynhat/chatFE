@@ -90,14 +90,39 @@ export const ActiveChatPane = ({
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
   const messagesEndRef = useRef(null);
+  const firstMessageRef = useRef(null);
+  
+  const [displayCount, setDisplayCount] = useState(20);
 
   const scrollToBottom = () => {
+    // Only scroll if we are near the bottom to avoid snapping when loading older messages
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, typingUsers]);
+  }, [messages.length, typingUsers]);
+
+  const visibleMessages = useMemo(() => {
+    return messages.length > displayCount ? messages.slice(messages.length - displayCount) : messages;
+  }, [messages, displayCount]);
+
+  useEffect(() => {
+    if (firstMessageRef.current) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && displayCount < messages.length) {
+            setDisplayCount((prev) => Math.min(prev + 20, messages.length));
+          }
+        },
+        { rootMargin: "100px", threshold: 0.1 }
+      );
+      
+      const el = firstMessageRef.current;
+      observer.observe(el);
+      return () => observer.unobserve(el);
+    }
+  }, [displayCount, messages.length, visibleMessages]);
 
   const attachActions = [
     {
@@ -252,6 +277,7 @@ export const ActiveChatPane = ({
     setIsHeaderSearchOpen(false);
     setIsCalendarModalOpen(false);
     setHeaderSearchValue("");
+    setDisplayCount(20); // Reset message count when switching chats
   }, [selectedChat?.id]);
 
   useEffect(() => {
@@ -515,13 +541,20 @@ export const ActiveChatPane = ({
           </div>
         )}
 
-        {!isLoading && !error && messages.length > 0 && (
+        {!isLoading && !error && visibleMessages.length > 0 && (
           <div className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
-            <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm">
-              {getDateLabel(messages[0]?.createdAt) || "Today"}
+            <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
+              {displayCount < messages.length ? (
+                <div className="flex items-center gap-2">
+                  <FiRefreshCw className="animate-spin" />
+                  Loading older messages...
+                </div>
+              ) : (
+                getDateLabel(visibleMessages[0]?.createdAt) || "Today"
+              )}
             </div>
 
-            {messages.map((message, index) => {
+            {visibleMessages.map((message, index) => {
               const text = getMessageText(message);
               const mine = Boolean(
                 message?.isMine ||
@@ -529,9 +562,11 @@ export const ActiveChatPane = ({
                 (currentUserId && message?.senderId === currentUserId),
               );
               const isImage = message?.type === "image";
+              const isFirst = index === 0;
 
               return (
                 <div
+                  ref={isFirst ? firstMessageRef : null}
                   key={getMessageId(message, index)}
                   className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
                 >
