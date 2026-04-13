@@ -64,6 +64,7 @@ export const ActiveChatPane = ({
   isLoading,
   error,
   messages,
+  currentUserId,
   onRetry,
   onSendMessage,
   onRevokeMessage,
@@ -270,7 +271,7 @@ export const ActiveChatPane = ({
     if (!draftMessage.trim()) return;
     if (onSendMessage) {
       onSendMessage({
-        content: draftMessage.trim(),
+        text: draftMessage.trim(),
         type: "text",
       });
       setDraftMessage("");
@@ -470,7 +471,11 @@ export const ActiveChatPane = ({
 
             {messages.map((message, index) => {
               const text = getMessageText(message);
-              const mine = Boolean(message?.isMine || message?.sender?.isMe);
+              const mine = Boolean(
+                message?.isMine ||
+                message?.sender?.isMe ||
+                (currentUserId && message?.senderId === currentUserId),
+              );
               const isImage = message?.type === "image";
 
               return (

@@ -1,7 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { conversationService } from "../../services";
+import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
 import { ResizableChatPanel } from "./ResizableChatPanel";
+import { useAuth } from "../../hooks";
 
 export const MainLayout = ({ children }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
@@ -12,6 +14,63 @@ export const MainLayout = ({ children }) => {
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
+  const { user } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+
+    // Initialize global socket
+    socketService.connect().then((socket) => {
+      if (!active) return;
+      if (socket) {
+        socketService.onNewMessage((payload) => {
+          // Payload từ receiveMessage: { message: {...}, conversationId: "..." }
+          const message = payload?.message || payload;
+
+          setMessages((prev) => {
+            if (!message || (!message._id && !message.id)) return prev;
+            // Prevent duplicate messages
+            const msgId = message._id || message.id;
+            if (prev.some((m) => String(m._id || m.id) === String(msgId)))
+              return prev;
+
+            // Only add if it belongs to currently open conversation
+            const msgConvId = message.conversationId || payload?.conversationId;
+            if (String(msgConvId) === String(selectedConversationId)) {
+              return [...prev, message];
+            }
+            return prev;
+          });
+        });
+
+        socketService.onMessageStatusUpdate((payload) => {
+          // payload might contain { messageId, status }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === payload.messageId ? { ...m, status: payload.status } : m,
+            ),
+          );
+        });
+      }
+    });
+
+    return () => {
+      active = false;
+      socketService.offNewMessage();
+      // Do not disconnect the socket here to preserve global connectivity
+    };
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (selectedConversationId) {
+      socketService.joinRoom(selectedConversationId);
+    }
+    return () => {
+      if (selectedConversationId) {
+        socketService.leaveRoom(selectedConversationId);
+      }
+    };
+  }, [selectedConversationId]);
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -62,7 +121,7 @@ export const MainLayout = ({ children }) => {
 
   const openChatByRow = useCallback(
     async (chat) => {
-      if (!chat?.targetUserId) {
+      if (!chat?.id) {
         setChatError("Couldn’t open this conversation");
         return;
       }
@@ -77,31 +136,42 @@ export const MainLayout = ({ children }) => {
       setOpeningChatId(chat.id);
 
       try {
-        const conversation = await conversationService.openPrivateConversation(
-          chat.targetUserId,
-        );
+        // Nếu chat.id có dạng temp- (click từ global search), cần tìm conversation thật trước
+        let conversationId = chat.id;
 
-        const conversationId = resolveConversationId(conversation);
-
-        if (conversationId) {
-          setSelectedConversationId(conversationId);
-          const messageResult =
-            await conversationService.getConversationMessages(conversationId);
-          setMessages(messageResult.messages || []);
-
-          // fire-and-forget status sync
-          conversationService.markDelivered(conversationId).catch(() => {});
-          conversationService.markSeen(conversationId).catch(() => {});
-        } else {
-          setSelectedConversationId(null);
-          setMessages([]);
+        if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
+          const conversation =
+            await conversationService.createPrivateConversation(
+              chat.targetUserId,
+            );
+          conversationId = resolveConversationId(conversation);
         }
+
+        if (!conversationId) {
+          setChatError("Conversation not found.");
+          setIsOpeningConversation(false);
+          setOpeningChatId(null);
+          return;
+        }
+
+        setSelectedConversationId(conversationId);
+
+        const messageResult =
+          await conversationService.getConversationMessages(conversationId);
+        setMessages(messageResult.messages || []);
+
+        // fire-and-forget status sync
+        conversationService.markDelivered(conversationId).catch(() => {});
+        conversationService.markSeen(conversationId).catch(() => {});
       } catch (error) {
         setMessages([]);
         if (
           error?.status === 404 ||
           error?.response?.status === 404 ||
-          error?.code === "NOT_FOUND"
+          error?.code === "NOT_FOUND" ||
+          error?.payload?.statusCode === 404 ||
+          error?.code === "VALIDATION_ERROR" ||
+          error?.payload?.statusCode === 400
         ) {
           setChatError("");
         } else {
@@ -121,7 +191,9 @@ export const MainLayout = ({ children }) => {
   }, [openChatByRow, selectedChat]);
 
   const handleSendMessage = async (payload) => {
-    if (!selectedConversationId) return;
+    let conversationId = selectedConversationId || selectedChat?.id;
+
+    if (!conversationId) return;
 
     // Optimistic UI update
     const tempId = `temp-${Date.now()}`;
@@ -137,16 +209,23 @@ export const MainLayout = ({ children }) => {
     setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
-      const response = await conversationService.sendMessage(
-        selectedConversationId,
-        payload,
+      // Gọi socketService.sendMessage thay vì conversationService REST
+      const sentMessage = await socketService.sendMessage(
+        conversationId,
+        payload.text || "",
+        payload.media || [],
       );
+
       // Replace optimistic message with actual server message
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempId ? response.data : msg)),
+        prev.map((msg) =>
+          msg.id === tempId
+            ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
+            : msg,
+        ),
       );
     } catch (error) {
-      console.error("Failed to send message", error);
+      console.error("Failed to send message via socket", error);
       // Update status to failed
       setMessages((prev) =>
         prev.map((msg) =>
@@ -193,6 +272,7 @@ export const MainLayout = ({ children }) => {
               isLoading={isOpeningConversation}
               error={chatError}
               messages={messages}
+              currentUserId={user?.id || user?._id}
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
               onRevokeMessage={handleRevokeMessage}

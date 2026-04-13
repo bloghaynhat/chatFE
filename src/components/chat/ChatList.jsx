@@ -13,7 +13,7 @@ export const ChatList = ({
 }) => {
   const [chats] = useState([
     {
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000001",
       targetUserId: null,
       avatar: <FiArchive className="text-2xl" />,
       name: "Archived chats",
@@ -23,8 +23,8 @@ export const ChatList = ({
       archived: true,
     },
     {
-      id: 4,
-      targetUserId: 4,
+      id: "00000000-0000-0000-0000-000000000004",
+      targetUserId: "00000000-0000-0000-0000-000000000000",
       avatarUrl: "",
       avatar: <FiUser className="text-2xl" />,
       name: "Phương IUH",
