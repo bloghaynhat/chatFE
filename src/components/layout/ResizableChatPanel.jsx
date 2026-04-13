@@ -6,10 +6,25 @@ import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
 import { useAuth } from "../../hooks";
-import { FiPlus, FiBookmark, FiArchive, FiMoon, FiUsers, FiSettings, FiLogOut } from "react-icons/fi";
+import {
+  FiPlus,
+  FiBookmark,
+  FiArchive,
+  FiMoon,
+  FiUsers,
+  FiSettings,
+  FiLogOut,
+  FiArrowLeft,
+} from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
-export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, onSelectChat }) => {
+export const ResizableChatPanel = ({
+  activeView,
+  onViewChange,
+  activeChatId,
+  openingChatId,
+  onSelectChat,
+}) => {
   const [width, setWidth] = useState(320); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -36,7 +51,7 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
     }
 
     if (actionId === "contacts") {
-      navigate("/friends");
+      onViewChange?.("contacts");
       setIsNavigationOpen(false);
       return;
     }
@@ -164,6 +179,9 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
           onSearchFocus={() => setIsSearchFocused(true)}
           onSearchBlur={() => setIsSearchFocused(false)}
           isCollapsed={isCollapsed}
+          placeholder={
+            activeView === "contacts" ? "Search" : "Search conversations..."
+          }
         />
 
         {/* Navigation Drawer */}
@@ -190,8 +208,12 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white truncate">{user?.displayName || "User"}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Online</p>
+                  <p className="font-semibold text-gray-900 dark:text-white truncate">
+                    {user?.displayName || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Online
+                  </p>
                 </div>
               </button>
 
@@ -276,18 +298,48 @@ export const ResizableChatPanel = ({ activeView, activeChatId, openingChatId, on
         )}
 
         {/* Chat List */}
-        <div className="flex-1 overflow-hidden relative">
-          <ChatList
-            searchQuery={debouncedSearchQuery}
-            filterMode={filterMode}
-            isCollapsed={isCollapsed}
-            activeChatId={activeChatId}
-            openingChatId={openingChatId}
-            onSelectChat={onSelectChat}
-          />
+        <div className="flex-1 overflow-hidden relative flex flex-col">
+          {activeView === "contacts" ? (
+            <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-t dark:border-slate-700">
+              <div className="p-3 flex items-center border-b dark:border-slate-700">
+                <button
+                  onClick={() => onViewChange?.("chats")}
+                  className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition text-gray-500 dark:text-gray-400"
+                >
+                  <FiArrowLeft className="text-xl" />
+                </button>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Search global contacts
+                </h2>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <ChatList
+                  searchQuery={debouncedSearchQuery}
+                  filterMode="all"
+                  isCollapsed={isCollapsed}
+                  activeChatId={activeChatId}
+                  openingChatId={openingChatId}
+                  isGlobalSearchEnabled={true}
+                  onSelectChat={onSelectChat}
+                />
+              </div>
+            </div>
+          ) : (
+            <ChatList
+              searchQuery={debouncedSearchQuery}
+              filterMode={filterMode}
+              isCollapsed={isCollapsed}
+              activeChatId={activeChatId}
+              openingChatId={openingChatId}
+              onSelectChat={onSelectChat}
+            />
+          )}
 
-          {!isCollapsed && (
-            <QuickActionFab onClick={() => setIsQuickActionOpen(!isQuickActionOpen)} isOpen={isQuickActionOpen} />
+          {!isCollapsed && activeView !== "contacts" && (
+            <QuickActionFab
+              onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
+              isOpen={isQuickActionOpen}
+            />
           )}
 
           <QuickActionSheet

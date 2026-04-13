@@ -1,4 +1,4 @@
-import { axiosInstance } from "../../api/axios-instance";
+import { axiosInstance } from "../api/axios-instance";
 
 const appendQueryParams = (endpoint, params) => {
   if (!params || typeof params !== "object") {

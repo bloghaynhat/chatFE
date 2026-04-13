@@ -1,12 +1,13 @@
 import axios from "axios";
 import { authStorage } from "../runtime/storage";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/v1";
 
 const getAccessToken = async () => authStorage.getItem("token");
 const getRefreshToken = async () => authStorage.getItem("refreshToken");
 const setAccessToken = async (token) => authStorage.setItem("token", token);
-const setRefreshToken = async (token) => authStorage.setItem("refreshToken", token);
+const setRefreshToken = async (token) =>
+  authStorage.setItem("refreshToken", token);
 
 export const setAuthTokens = async ({ accessToken, refreshToken }) => {
   if (accessToken) {
@@ -41,8 +42,12 @@ const handleUnauthorized = async () => {
 const extractTokens = (response) => {
   const responseData = response.data;
   const accessToken =
-    responseData?.data?.accessToken || responseData?.data?.token || responseData?.accessToken || responseData?.token;
-  const refreshToken = responseData?.data?.refreshToken || responseData?.refreshToken;
+    responseData?.data?.accessToken ||
+    responseData?.data?.token ||
+    responseData?.accessToken ||
+    responseData?.token;
+  const refreshToken =
+    responseData?.data?.refreshToken || responseData?.refreshToken;
 
   return {
     accessToken: accessToken || "",
@@ -118,7 +123,10 @@ axiosInstance.interceptors.response.use(
     const statusCode = error.response?.status;
     const errorCode = error.response?.data?.code;
 
-    if (errorCode === "UNAUTHORIZED" && (!originalRequest || originalRequest._retry)) {
+    if (
+      errorCode === "UNAUTHORIZED" &&
+      (!originalRequest || originalRequest._retry)
+    ) {
       await handleUnauthorized();
       return Promise.reject(error);
     }
@@ -127,7 +135,10 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (originalRequest.url?.includes("/auth/login") || originalRequest.url?.includes("/auth/refresh")) {
+    if (
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/refresh")
+    ) {
       return Promise.reject(error);
     }
 
