@@ -8,14 +8,7 @@ import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
 import { useAuth, useFriendManagement } from "../../hooks";
 import { useFriendRequestsContext } from "../../context/FriendContext";
-import { FiPlus,
-  FiBookmark,
-  FiArchive,
-  FiMoon,
-  FiUsers,
-  FiSettings,
-  FiLogOut,
-  FiArrowLeft, } from "react-icons/fi";
+import { FiPlus, FiBookmark, FiArchive, FiMoon, FiUsers, FiSettings, FiLogOut, FiArrowLeft } from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
 export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, openingChatId, onSelectChat }) => {
@@ -217,12 +210,8 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white truncate">
-                    {user?.displayName || "User"}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Online
-                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-white truncate">{user?.displayName || "User"}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Online</p>
                 </div>
               </button>
 

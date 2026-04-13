@@ -22,17 +22,14 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
   useEffect(() => {
     // Fetch user info từ fromUserId
     if (!request?.fromUserId) {
-      console.log("[FriendRequestCard] No fromUserId in request");
       return;
     }
 
     const fetchSenderInfo = async () => {
       try {
         setLoadingInfo(true);
-        console.log("[FriendRequestCard] Fetching sender info for userId:", request.fromUserId);
 
         const response = await searchUserById(request.fromUserId);
-        console.log("[FriendRequestCard] Sender info fetched:", response);
 
         // Extract user data từ response
         const userData = response?.data || response;

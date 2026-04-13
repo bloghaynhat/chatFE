@@ -10,69 +10,93 @@ class SocketService {
 
   // ================= INIT =================
   async initMessagesSocket() {
-    if (this.messagesSocket?.connected) {
+    if (this.messagesSocket) {
+      if (!this.messagesSocket.connected) {
+        this.messagesSocket.connect();
+      }
       return this.messagesSocket;
     }
 
-    const token = await authStorage.getItem("token");
-    if (!token) return null;
+    if (this.initMessagesPromise) return this.initMessagesPromise;
 
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    this.initMessagesPromise = (async () => {
+      const token = await authStorage.getItem("token");
+      if (!token) return null;
 
-    this.messagesSocket = io(`${serverUrl}/messages`, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+      const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
 
-    this.messagesSocket.on("connect", () => {
-      console.log("[Messages] connected:", this.messagesSocket.id);
-    });
+      this.messagesSocket = io(`${serverUrl}/messages`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-    this.messagesSocket.on("disconnect", (reason) => {
-      console.log("[Messages] disconnected:", reason);
-    });
+      this.messagesSocket.on("connect", () => {
+        // Socket connected
+      });
 
-    this.messagesSocket.on("connect_error", (err) => {
-      console.error("[Messages] error:", err.message);
-    });
+      this.messagesSocket.on("disconnect", () => {
+        this.initMessagesPromise = null;
+      });
 
-    this.setupMessageListeners();
+      this.messagesSocket.on("connect_error", (err) => {
+        console.error("[Messages] error:", err.message);
+        this.initMessagesPromise = null;
+      });
 
-    return this.messagesSocket;
+      this.setupMessageListeners();
+
+      return this.messagesSocket;
+    })();
+
+    return this.initMessagesPromise;
   }
 
   async initFriendsSocket() {
-    if (this.friendsSocket?.connected) {
+    if (this.friendsSocket) {
+      if (!this.friendsSocket.connected) {
+        this.friendsSocket.connect();
+      }
       return this.friendsSocket;
     }
 
-    const token = await authStorage.getItem("token");
-    if (!token) return null;
+    if (this.initFriendsPromise) return this.initFriendsPromise;
 
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    this.initFriendsPromise = (async () => {
+      const token = await authStorage.getItem("token");
+      if (!token) return null;
 
-    this.friendsSocket = io(`${serverUrl}/friends`, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+      const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
 
-    this.friendsSocket.on("connect", () => {
-      console.log("[Friends] connected:", this.friendsSocket.id);
-    });
+      this.friendsSocket = io(`${serverUrl}/friends`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-    this.friendsSocket.on("disconnect", (reason) => {
-      console.log("[Friends] disconnected:", reason);
-    });
+      this.friendsSocket.on("connect", () => {
+        // Socket connected
+      });
 
-    this.setupFriendListeners();
+      this.friendsSocket.on("disconnect", () => {
+        this.initFriendsPromise = null;
+      });
 
-    return this.friendsSocket;
+      this.friendsSocket.on("connect_error", (err) => {
+        console.error("[Friends] error:", err.message);
+        this.initFriendsPromise = null;
+      });
+
+      this.setupFriendListeners();
+
+      return this.friendsSocket;
+    })();
+
+    return this.initFriendsPromise;
   }
 
   // ================= LISTENERS =================
@@ -171,6 +195,10 @@ class SocketService {
     return this.on("messageSeen", callback);
   }
 
+  onMessageDelivered(callback) {
+    return this.on("messageDelivered", callback);
+  }
+
   onTypingStart(callback) {
     return this.on("typing:start", callback);
   }
@@ -199,6 +227,16 @@ class SocketService {
         else reject(new Error(res?.error || "Send failed"));
       });
     });
+  }
+
+  markMessageSeen(conversationId, lastSeenMessageId) {
+    if (!this.messagesSocket?.connected) return;
+    this.messagesSocket.emit("messageSeen", { conversationId, lastSeenMessageId });
+  }
+
+  markMessageDelivered(conversationId, lastDeliveredMessageId) {
+    if (!this.messagesSocket?.connected) return;
+    this.messagesSocket.emit("messageDelivered", { conversationId, lastDeliveredMessageId });
   }
 
   joinGroup(conversationId) {
@@ -271,6 +309,7 @@ export const initSocket = async () => {
 export const onReceiveMessage = (cb) => socketService.on("receiveMessage", cb);
 
 export const onMessageSeen = (cb) => socketService.on("messageSeen", cb);
+export const onMessageDelivered = (cb) => socketService.on("messageDelivered", cb);
 
 export const onTypingStart = (cb) => socketService.on("typing:start", cb);
 

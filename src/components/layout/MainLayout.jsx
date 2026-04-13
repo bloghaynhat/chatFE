@@ -20,12 +20,11 @@ export const MainLayout = ({ children }) => {
   useEffect(() => {
     let active = true;
 
-    // Initialize global socket
+    let unsubs = {};
     socketService.connect().then((socket) => {
       if (!active) return;
       if (socket) {
-        socketService.onNewMessage((payload) => {
-          // Payload từ receiveMessage: { message: {...}, conversationId: "..." }
+        unsubs.unsubNewMessage = socketService.onNewMessage((payload) => {
           const message = payload?.message || payload;
 
           setMessages((prev) => {
@@ -36,19 +35,53 @@ export const MainLayout = ({ children }) => {
 
             // Only add if it belongs to currently open conversation
             const msgConvId = message.conversationId || payload?.conversationId;
+            const msgIdForLog = message._id || message.id;
             if (String(msgConvId) === String(selectedConversationId)) {
-              return [...prev, message];
+              conversationService.markSeen(msgConvId, msgIdForLog);
+              return [...prev, { ...message, status: "SENT" }];
+            } else {
+              conversationService.markDelivered(msgConvId, msgIdForLog);
             }
             return prev;
           });
         });
 
-        socketService.onMessageStatusUpdate((payload) => {
-          // payload might contain { messageId, status }
-          setMessages((prev) => prev.map((m) => (m.id === payload.messageId ? { ...m, status: payload.status } : m)));
+        unsubs.unsubMessageStatus = socketService.onMessageStatusUpdate((payload) => {
+          if (payload.lastSeenMessageId) {
+            setMessages((prev) => {
+              const seenIndex = prev.findIndex((m) => (m._id || m.id) === payload.lastSeenMessageId);
+              if (seenIndex === -1) return prev;
+              const newMessages = [...prev];
+              for (let i = 0; i <= seenIndex; i++) {
+                if (newMessages[i].senderId === user?.id || newMessages[i].userId === user?.id) {
+                  newMessages[i] = { ...newMessages[i], status: "SEEN" };
+                }
+              }
+              return newMessages;
+            });
+          }
         });
 
-        socketService.onTypingStart((payload) => {
+        unsubs.unsubMessageDelivered = socketService.onMessageDelivered((payload) => {
+          if (payload.lastDeliveredMessageId) {
+            setMessages((prev) => {
+              const delivIndex = prev.findIndex((m) => (m._id || m.id) === payload.lastDeliveredMessageId);
+              if (delivIndex === -1) return prev;
+              const newMessages = [...prev];
+              for (let i = 0; i <= delivIndex; i++) {
+                if (
+                  (newMessages[i].senderId === user?.id || newMessages[i].userId === user?.id) &&
+                  newMessages[i].status !== "SEEN"
+                ) {
+                  newMessages[i] = { ...newMessages[i], status: "DELIVERED" };
+                }
+              }
+              return newMessages;
+            });
+          }
+        });
+
+        unsubs.unsubTypingStart = socketService.onTypingStart((payload) => {
           if (payload?.userId) {
             setTypingUsers((prev) => {
               const newSet = new Set(prev);
@@ -58,7 +91,7 @@ export const MainLayout = ({ children }) => {
           }
         });
 
-        socketService.onTypingStop((payload) => {
+        unsubs.unsubTypingStop = socketService.onTypingStop((payload) => {
           if (payload?.userId) {
             setTypingUsers((prev) => {
               const newSet = new Set(prev);
@@ -72,7 +105,7 @@ export const MainLayout = ({ children }) => {
 
     return () => {
       active = false;
-      socketService.offNewMessage();
+      Object.values(unsubs).forEach((unsub) => unsub && unsub());
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);
@@ -89,36 +122,49 @@ export const MainLayout = ({ children }) => {
     };
   }, [selectedConversationId]);
 
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  // Mark messages as delivered when chat is opened
+  useEffect(() => {
+    if (!selectedConversationId) return;
 
-  const buildMockMessages = (chat) => {
-    const base = new Date("2026-02-08T07:30:00").getTime();
-    return [
-      {
-        id: `${chat.id}-1`,
-        type: "text",
-        text: "Đã đủ",
-        createdAt: new Date(base + 1000 * 60 * 14).toISOString(),
-        isMine: false,
-      },
-      {
-        id: `${chat.id}-2`,
-        type: "image",
-        text: "TẠI HẠ BÁI PHỤC",
-        imageUrl: "https://picsum.photos/420/280?random=12",
-        imageAlt: "Mock meme",
-        createdAt: new Date(base + 1000 * 60 * 15).toISOString(),
-        isMine: false,
-      },
-      {
-        id: `${chat.id}-3`,
-        type: "text",
-        text: "Tin nhắn mock để preview khung chat giống ảnh tham chiếu.",
-        createdAt: new Date(base + 1000 * 60 * 35).toISOString(),
-        isMine: true,
-      },
-    ];
-  };
+    const markMessagesAsDelivered = async () => {
+      try {
+        // Get conversation detail to get lastMessage.messageId from backend
+        const detail = await conversationService.getConversationDetail(selectedConversationId);
+        const lastMessageId = detail?.conversation?.lastMessage?.messageId;
+
+        if (lastMessageId) {
+          await conversationService.markDelivered(selectedConversationId, lastMessageId);
+        }
+      } catch (error) {
+        console.error("[MainLayout] Error marking as delivered:", error);
+      }
+    };
+
+    markMessagesAsDelivered();
+  }, [selectedConversationId]);
+
+  // Mark messages as seen when chat is opened
+  useEffect(() => {
+    if (!selectedConversationId) return;
+
+    const markMessagesAsSeen = async () => {
+      try {
+        // Wait a bit for messages to render
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const detail = await conversationService.getConversationDetail(selectedConversationId);
+        const lastMessageId = detail?.conversation?.lastMessage?.messageId;
+
+        if (lastMessageId) {
+          await conversationService.markSeen(selectedConversationId, lastMessageId);
+        }
+      } catch (error) {
+        // Silently fail for seen marking (temporary, will fix backend later)
+      }
+    };
+
+    markMessagesAsSeen();
+  }, [selectedConversationId]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -179,11 +225,13 @@ export const MainLayout = ({ children }) => {
           return dateA - dateB;
         });
 
-        setMessages(sortedMessages);
+        // Ensure all messages have status field (default to SENT)
+        const messagesWithStatus = sortedMessages.map((msg) => ({
+          ...msg,
+          status: msg.status || "SENT",
+        }));
 
-        // fire-and-forget status sync
-        conversationService.markDelivered(conversationId).catch(() => {});
-        conversationService.markSeen(conversationId).catch(() => {});
+        setMessages(messagesWithStatus);
       } catch (error) {
         setMessages([]);
         if (
@@ -241,6 +289,9 @@ export const MainLayout = ({ children }) => {
             : msg,
         ),
       );
+
+      // Emit event to notify ChatList to refetch conversations
+      window.dispatchEvent(new CustomEvent("messageAdded", { detail: { conversationId } }));
     } catch (error) {
       console.error("Failed to send message via socket", error);
       // Update status to failed

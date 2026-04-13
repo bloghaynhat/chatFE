@@ -32,6 +32,8 @@ import {
   FiX,
   FiCalendar,
   FiSend,
+  FiEye,
+  FiCheck,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
 import { UserInfoPanel } from "./UserInfoPanel";
@@ -91,6 +93,7 @@ export const ActiveChatPane = ({
   const isTypingRef = useRef(false);
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const [displayCount, setDisplayCount] = useState(20);
 
@@ -372,7 +375,6 @@ export const ActiveChatPane = ({
   const [isLoadingUserInfo, setIsLoadingUserInfo] = useState(false);
 
   const handleOpenUserInfo = async () => {
-    console.log("Selected User (Chat Data):", selectedChat);
     setIsUserInfoOpen(true);
 
     const targetId = selectedChat?.targetUserId;
@@ -380,8 +382,6 @@ export const ActiveChatPane = ({
       setIsLoadingUserInfo(true);
       try {
         const response = await searchUserById(targetId);
-        console.log("Fetched Full User Response:", response);
-        // Extract user data from response if it's nested under data or user
         const userData = response?.user || response?.data?.user || response?.data || response;
         setDetailedUser({ ...selectedChat, ...userData });
       } catch (error) {
@@ -700,7 +700,7 @@ export const ActiveChatPane = ({
           )}
 
           {!isLoading && !error && visibleMessages.length > 0 && (
-            <div className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
+            <div ref={messagesContainerRef} className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
               <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
                 {displayCount < messages.length ? (
                   <div className="flex items-center gap-2">
@@ -725,6 +725,20 @@ export const ActiveChatPane = ({
                   message?.type === "file" ||
                   (message?.files && message.files[0] && !message.files[0].type?.startsWith("image/"));
                 const isFirst = index === 0;
+                const isLast = index === visibleMessages.length - 1;
+                const isSystem = message?.type === "SYSTEM" || message?.type === "system" || message?.isSystem;
+
+                if (isSystem) {
+                  return (
+                    <div
+                      ref={isFirst ? firstMessageRef : null}
+                      key={getMessageId(message, index)}
+                      className="mx-auto my-1.5 px-4 py-1.5 rounded-full text-[13px] font-medium bg-black/10 dark:bg-white/10 text-gray-600 dark:text-gray-300 backdrop-blur-sm shadow-sm text-center max-w-[85%]"
+                    >
+                      {text}
+                    </div>
+                  );
+                }
 
                 return (
                   <div
@@ -777,11 +791,48 @@ export const ActiveChatPane = ({
 
                     <div className="px-3 pb-2 pt-2">
                       {!!text && <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{text}</p>}
-                      <p
-                        className={`mt-1 text-[11px] text-right ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
+                      <div
+                        className={`mt-1 text-[11px] text-right flex items-center justify-end gap-1 ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
                       >
-                        {getMessageTime(message)}
-                      </p>
+                        <span>{getMessageTime(message)}</span>
+                        {isLast && mine && message?.status === "SEEN" && (
+                          <span title="Seen" className="flex items-center">
+                            <FiEye className="w-3 h-3 text-blue-500" />
+                          </span>
+                        )}
+                        {isLast && mine && message?.status === "DELIVERED" && (
+                          <span title="Delivered" className="flex items-center">
+                            <svg
+                              className="w-3 h-3 text-gray-400"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M1 8L5.5 12.5L15 3"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M6 8L10.5 12.5L14 9"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        )}
+                        {isLast &&
+                          mine &&
+                          (!message?.status || message?.status === "SENT" || message?.status === "sending") && (
+                            <span title="Sent" className="flex items-center">
+                              <FiCheck className="w-3 h-3 text-gray-400" />
+                            </span>
+                          )}
+                      </div>
                     </div>
                   </div>
                 );

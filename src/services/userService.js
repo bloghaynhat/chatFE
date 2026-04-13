@@ -7,7 +7,7 @@ import { authService } from "./authService";
  */
 export const getProfile = async () => {
   try {
-    const response = await api.get("/profile");
+    const response = await api.get("/users/profile");
     return response;
   } catch (error) {
     throw new Error(error.message || "Failed to fetch profile");
@@ -48,15 +48,12 @@ export const updateProfile = async (profileData) => {
     ];
 
     allowedFields.forEach((field) => {
-      if (
-        profileData.hasOwnProperty(field) &&
-        profileData[field] !== undefined
-      ) {
+      if (profileData.hasOwnProperty(field) && profileData[field] !== undefined) {
         updateData[field] = profileData[field];
       }
     });
 
-    const response = await api.patch("/profile", updateData);
+    const response = await api.patch("/users/profile", updateData);
 
     // Cập nhật localStorage với dữ liệu mới
     if (response.data) {
@@ -176,6 +173,32 @@ export const searchUsers = async (query) => {
 };
 
 /**
+ * Lấy thông tin Public Profile của người dùng khác
+ * @param {string} userId - ID của người dùng cần lấy thông tin
+ * @returns {Promise<Object>} Thông tin public profile
+ */
+export const getPublicProfile = async (userId) => {
+  try {
+    return await api.get(`/users/${userId}/public`);
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch public profile");
+  }
+};
+
+/**
+ * Lấy trạng thái hoạt động (online/offline) của người dùng
+ * @param {string} userId - ID của người dùng
+ * @returns {Promise<Object>} Thông tin presence
+ */
+export const getUserPresence = async (userId) => {
+  try {
+    return await api.get(`/users/${userId}/presence`);
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch user presence");
+  }
+};
+
+/**
  * Export tất cả các hàm như một object để dễ sử dụng
  */
 export const userService = {
@@ -188,6 +211,8 @@ export const userService = {
   updatePassword,
   updatePrivacy,
   searchUsers,
+  getPublicProfile,
+  getUserPresence,
 };
 
 export default userService;

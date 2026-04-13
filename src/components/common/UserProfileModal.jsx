@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiEdit2 } from "react-icons/fi";
 import { useAuth } from "../../hooks";
-import { updateProfile, updateAvatarViaAuth } from "../../services";
+import { updateProfile, updateAvatar } from "../../services";
 import { AvatarEditor } from "./AvatarEditor";
 
 /**
