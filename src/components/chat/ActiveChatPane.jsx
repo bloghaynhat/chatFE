@@ -1046,68 +1046,102 @@ export const ActiveChatPane = ({
 
         {contextMenu && (
           <div
-            className="fixed z-[9999] w-48 bg-white dark:bg-slate-800 rounded-xl shadow-2xl py-2 flex flex-col text-gray-800 dark:text-white border border-gray-200 dark:border-slate-700"
+            className="fixed z-[9999] w-[180px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700/50 mb-1 flex items-center justify-between text-xs font-semibold text-gray-500">
-              <FiCheck className="text-gray-400" />
-              <span>
-                {getDateLabel(
-                  contextMenu.message?.createdAt ||
-                    contextMenu.message?.updatedAt,
-                )}{" "}
-                at {getMessageTime(contextMenu.message)}
-              </span>
-            </div>
+            {contextMenu.message?.senderId === currentUserId ||
+            contextMenu.message?.sender?.id === currentUserId ||
+            contextMenu.message?.id_sender === currentUserId ? (
+              <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
+                <div className="flex -space-x-[4px] text-blue-500">
+                  <FiCheck className="text-sm" />
+                  <FiCheck className="text-sm" />
+                </div>
+                <span>
+                  {getDateLabel(
+                    contextMenu.message?.createdAt ||
+                      contextMenu.message?.updatedAt,
+                  )}{" "}
+                  at {getMessageTime(contextMenu.message)}
+                </span>
+              </div>
+            ) : null}
             <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
                 setContextMenu(null); /* Implement Reply */
               }}
             >
-              <FiCornerUpLeft className="text-gray-500 text-base" /> Reply
+              <FiCornerUpLeft className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Reply</span>
             </button>
+            {(contextMenu.message?.senderId === currentUserId ||
+              contextMenu.message?.sender?.id === currentUserId ||
+              contextMenu.message?.id_sender === currentUserId) && (
+              <button
+                className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+                onClick={() => {
+                  setContextMenu(null); /* Implement Edit */
+                }}
+              >
+                <FiEdit2 className="text-[18px]" strokeWidth={2} />{" "}
+                <span className="font-medium">Edit</span>
+              </button>
+            )}
             <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
-              onClick={() => {
-                setContextMenu(null); /* Implement Edit */
-              }}
-            >
-              <FiEdit2 className="text-gray-500 text-base" /> Edit
-            </button>
-            <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
                 setContextMenu(null); /* Implement Copy */
               }}
             >
-              <FiCopy className="text-gray-500 text-base" /> Copy
+              <FiCopy className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Copy</span>
+            </button>
+            {/* Translate button */}
+            <button
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Translate */
+              }}
+            >
+              <div className="relative flex items-center text-[18px] w-[18px] h-[18px] justify-center font-bold">
+                <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">
+                  A
+                </span>
+                <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">
+                  文
+                </span>
+              </div>
+              <span className="font-medium">Translate</span>
             </button>
             <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
                 setContextMenu(null); /* Implement Pin */
               }}
             >
-              <FiMapPin className="text-gray-500 text-base" /> Pin
+              <FiMapPin className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Pin</span>
             </button>
             <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => handleOpenForwardModal(contextMenu.message)}
             >
-              <FiCornerUpRight className="text-gray-500 text-base" /> Forward
+              <FiCornerUpRight className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Forward</span>
             </button>
             <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
                 setContextMenu(null); /* Implement Select */
               }}
             >
-              <FiCheckCircle className="text-gray-500 text-base" /> Select
+              <FiCheckCircle className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Select</span>
             </button>
             <button
-              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 flex items-center gap-3 transition-colors"
+              className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
               onClick={() => {
                 setContextMenu(null);
                 if (onRevokeMessage && contextMenu.message) {
@@ -1115,7 +1149,8 @@ export const ActiveChatPane = ({
                 }
               }}
             >
-              <FiTrash2 className="text-red-500 text-base" /> Delete
+              <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Delete</span>
             </button>
           </div>
         )}
