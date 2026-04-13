@@ -32,8 +32,7 @@ export const MainLayout = ({ children }) => {
             if (!message || (!message._id && !message.id)) return prev;
             // Prevent duplicate messages
             const msgId = message._id || message.id;
-            if (prev.some((m) => String(m._id || m.id) === String(msgId)))
-              return prev;
+            if (prev.some((m) => String(m._id || m.id) === String(msgId))) return prev;
 
             // Only add if it belongs to currently open conversation
             const msgConvId = message.conversationId || payload?.conversationId;
@@ -46,11 +45,7 @@ export const MainLayout = ({ children }) => {
 
         socketService.onMessageStatusUpdate((payload) => {
           // payload might contain { messageId, status }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === payload.messageId ? { ...m, status: payload.status } : m,
-            ),
-          );
+          setMessages((prev) => prev.map((m) => (m.id === payload.messageId ? { ...m, status: payload.status } : m)));
         });
 
         socketService.onTypingStart((payload) => {
@@ -162,10 +157,7 @@ export const MainLayout = ({ children }) => {
         let conversationId = chat.id;
 
         if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
-          const conversation =
-            await conversationService.createPrivateConversation(
-              chat.targetUserId,
-            );
+          const conversation = await conversationService.createPrivateConversation(chat.targetUserId);
           conversationId = resolveConversationId(conversation);
         }
 
@@ -178,8 +170,7 @@ export const MainLayout = ({ children }) => {
 
         setSelectedConversationId(conversationId);
 
-        const messageResult =
-          await conversationService.getConversationMessages(conversationId);
+        const messageResult = await conversationService.getConversationMessages(conversationId);
 
         // Sort messages by createdAt in ascending order (oldest first)
         const sortedMessages = (messageResult.messages || []).sort((a, b) => {
@@ -240,28 +231,20 @@ export const MainLayout = ({ children }) => {
 
     try {
       // Gọi socketService.sendMessage thay vì conversationService REST
-      const sentMessage = await socketService.sendMessage(
-        conversationId,
-        payload.text || "",
-        payload.media || [],
-      );
+      const sentMessage = await socketService.sendMessage(conversationId, payload.text || "", payload.media || []);
 
       // Replace optimistic message with actual server message
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempId
-            ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
+            ? { ...(sentMessage || msg), id: sentMessage?._id || sentMessage?.id || tempId, status: "sent" }
             : msg,
         ),
       );
     } catch (error) {
       console.error("Failed to send message via socket", error);
       // Update status to failed
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempId ? { ...msg, status: "failed" } : msg,
-        ),
-      );
+      setMessages((prev) => prev.map((msg) => (msg.id === tempId ? { ...msg, status: "failed" } : msg)));
     }
   };
 
@@ -270,11 +253,7 @@ export const MainLayout = ({ children }) => {
       await conversationService.revokeMessage(messageId);
       // Optimistically remove or mark message as revoked
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId
-            ? { ...msg, isRevoked: true, content: "Message revoked" }
-            : msg,
-        ),
+        prev.map((msg) => (msg.id === messageId ? { ...msg, isRevoked: true, content: "Message revoked" } : msg)),
       );
     } catch (error) {
       console.error("Failed to revoke message", error);

@@ -27,18 +27,6 @@ export const FriendCard = ({ friend, onRemove, onClick, style }) => {
 
       {/* User Info */}
       <UserInfo name={displayName} phone={phone} />
-
-      {/* Remove Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove?.();
-        }}
-        className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-all duration-200 active:scale-90 flex-shrink-0"
-        title="Remove friend"
-      >
-        <FiX className="w-5 h-5" />
-      </button>
     </div>
   );
 };

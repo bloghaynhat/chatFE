@@ -63,6 +63,16 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     fetchFriendRequests();
   }, []);
 
+  // Listen to custom refresh event (e.g. from UserInfoPanel when deleting contact)
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchFriends().catch((err) => console.error("Global refresh friends failed:", err));
+      refreshSearchResultStatus();
+    };
+    window.addEventListener("friendList_refresh", handleRefresh);
+    return () => window.removeEventListener("friendList_refresh", handleRefresh);
+  }, []);
+
   // Setup socket listeners (badge updates handled by FriendContext globally)
   useContactsSocketListeners({
     onFriendRequestReceived: () => {

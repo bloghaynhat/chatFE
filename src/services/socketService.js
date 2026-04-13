@@ -195,7 +195,7 @@ class SocketService {
 
     return new Promise((resolve, reject) => {
       this.messagesSocket.emit("sendMessage", { conversationId, text, media }, (res) => {
-        if (res?.success) resolve(res.message);
+        if (res?.success) resolve(res.messages?.[0] || res.message);
         else reject(new Error(res?.error || "Send failed"));
       });
     });
