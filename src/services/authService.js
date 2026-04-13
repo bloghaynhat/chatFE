@@ -111,14 +111,14 @@ export const authService = {
 
   getProfile: async (token) => {
     if (token) {
-      return api.get("/profile", {
+      return api.get("/users/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
     }
 
-    return api.get("/profile");
+    return api.get("/users/profile");
   },
 
   saveToken: async (token) => {

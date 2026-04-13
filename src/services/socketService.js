@@ -8,13 +8,18 @@ class SocketService {
     this.listeners = new Map();
   }
 
+  // ================= INIT =================
   async initMessagesSocket() {
     if (this.messagesSocket?.connected) {
       return this.messagesSocket;
     }
 
     const token = await authStorage.getItem("token");
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    if (!token) return null;
+
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
 
     this.messagesSocket = io(`${serverUrl}/messages`, {
       auth: { token },
@@ -24,9 +29,19 @@ class SocketService {
       reconnectionDelay: 1000,
     });
 
-    this.messagesSocket.on("connect", () => {});
+    this.messagesSocket.on("connect", () => {
+      console.log("[Messages] connected:", this.messagesSocket.id);
+    });
 
-    this.messagesSocket.on("disconnect", () => {});
+    this.messagesSocket.on("disconnect", (reason) => {
+      console.log("[Messages] disconnected:", reason);
+    });
+
+    this.messagesSocket.on("connect_error", (err) => {
+      console.error("[Messages] error:", err.message);
+    });
+
+    this.setupMessageListeners();
 
     return this.messagesSocket;
   }
@@ -37,7 +52,11 @@ class SocketService {
     }
 
     const token = await authStorage.getItem("token");
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    if (!token) return null;
+
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
 
     this.friendsSocket = io(`${serverUrl}/friends`, {
       auth: { token },
@@ -47,56 +66,33 @@ class SocketService {
       reconnectionDelay: 1000,
     });
 
-    this.friendsSocket.on("connect", () => {});
+    this.friendsSocket.on("connect", () => {
+      console.log("[Friends] connected:", this.friendsSocket.id);
+    });
 
-    this.friendsSocket.on("disconnect", () => {});
+    this.friendsSocket.on("disconnect", (reason) => {
+      console.log("[Friends] disconnected:", reason);
+    });
 
-    // Setup friend request event listeners
-    this.setupFriendRequestListeners();
+    this.setupFriendListeners();
 
     return this.friendsSocket;
   }
 
-  /**
-   * Setup listeners for friend request events
-   */
-  setupFriendRequestListeners() {
-    if (!this.friendsSocket) return;
-
-    // Listen for friend request received
-    this.friendsSocket.on("friend_request:received", (payload) => {
-      this.emit("friend_request:received", payload);
-    });
-
-    // Listen for friend request accepted
-    this.friendsSocket.on("friend_request:accepted", (payload) => {
-      this.emit("friend_request:accepted", payload);
-    });
-
-    // Listen for friend request rejected
-    this.friendsSocket.on("friend_request:rejected", (payload) => {
-      this.emit("friend_request:rejected", payload);
-    });
-
-    // Listen for friend request canceled
-    this.friendsSocket.on("friend_request:canceled", (payload) => {
-      this.emit("friend_request:canceled", payload);
-    });
-
-    // Listen for unfriended event
-    this.friendsSocket.on("friendship:unfriended", (payload) => {
-      this.emit("friendship:unfriended", payload);
-    });
-  }
-
-  /**
-   * Listen for message events
-   */
+  // ================= LISTENERS =================
   setupMessageListeners() {
     if (!this.messagesSocket) return;
 
     this.messagesSocket.on("receiveMessage", (data) => {
       this.emit("receiveMessage", data);
+    });
+
+    this.messagesSocket.on("messageSeen", (data) => {
+      this.emit("messageSeen", data);
+    });
+
+    this.messagesSocket.on("messageDelivered", (data) => {
+      this.emit("messageDelivered", data);
     });
 
     this.messagesSocket.on("typing:start", (data) => {
@@ -108,132 +104,167 @@ class SocketService {
     });
   }
 
-  /**
-   * Emit socket event to custom listeners
-   */
-  emit(eventName, data) {
-    if (this.listeners.has(eventName)) {
-      const callbacks = this.listeners.get(eventName);
-      callbacks.forEach((cb) => cb(data));
-    }
+  setupFriendListeners() {
+    if (!this.friendsSocket) return;
+
+    this.friendsSocket.on("friend_request:received", (payload) => {
+      this.emit("friend_request:received", payload);
+    });
+
+    this.friendsSocket.on("friend_request:accepted", (payload) => {
+      this.emit("friend_request:accepted", payload);
+    });
+
+    this.friendsSocket.on("friend_request:rejected", (payload) => {
+      this.emit("friend_request:rejected", payload);
+    });
+
+    this.friendsSocket.on("friend_request:canceled", (payload) => {
+      this.emit("friend_request:canceled", payload);
+    });
+
+    this.friendsSocket.on("friendship:unfriended", (payload) => {
+      this.emit("friendship:unfriended", payload);
+    });
   }
 
-  /**
-   * Register custom listener
-   */
+  // ================= EVENT BUS =================
+  emit(eventName, data) {
+    if (!this.listeners.has(eventName)) return;
+
+    this.listeners.get(eventName).forEach((cb) => cb(data));
+  }
+
   on(eventName, callback) {
     if (!this.listeners.has(eventName)) {
       this.listeners.set(eventName, []);
     }
+
     this.listeners.get(eventName).push(callback);
 
-    // Return unsubscribe function
+    // unsubscribe
     return () => {
-      const callbacks = this.listeners.get(eventName);
-      const index = callbacks.indexOf(callback);
-      if (index > -1) {
-        callbacks.splice(index, 1);
-      }
+      const arr = this.listeners.get(eventName);
+      const index = arr.indexOf(callback);
+      if (index !== -1) arr.splice(index, 1);
     };
   }
 
-  /**
-   * Send message via socket
-   */
+  // ================= MESSAGE ACTIONS =================
   sendMessage(conversationId, text, media = []) {
     if (!this.messagesSocket?.connected) {
-      console.error("[Messages] Socket not connected");
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("sendMessage", { conversationId, text, media }, (res) => {
-        if (res.success) {
-          resolve(res.message);
-        } else {
-          reject(new Error(res.error || "Failed to send message"));
+      this.messagesSocket.emit(
+        "sendMessage",
+        { conversationId, text, media },
+        (res) => {
+          if (res?.success) resolve(res.message);
+          else reject(new Error(res?.error || "Send failed"));
         }
-      });
+      );
     });
   }
 
-  /**
-   * Join group chat room
-   */
   joinGroup(conversationId) {
     if (!this.messagesSocket?.connected) {
-      console.error("[Messages] Socket not connected");
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("joinGroup", { conversationId }, (res) => {
-        if (res.success) {
-          resolve(res);
-        } else {
-          reject(new Error(res.error || "Failed to join group"));
+      this.messagesSocket.emit(
+        "joinGroup",
+        { conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Join failed"));
         }
-      });
+      );
     });
   }
 
-  /**
-   * Leave group chat room
-   */
   leaveGroup(conversationId) {
     if (!this.messagesSocket?.connected) {
-      console.error("[Messages] Socket not connected");
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("leaveGroup", { conversationId }, (res) => {
-        if (res.success) {
-          resolve(res);
-        } else {
-          reject(new Error(res.error || "Failed to leave group"));
+      this.messagesSocket.emit(
+        "leaveGroup",
+        { conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Leave failed"));
         }
-      });
+      );
     });
   }
 
-  /**
-   * Disconnect all sockets
-   */
+  startTyping(conversationId, isGroup = false) {
+    if (!this.messagesSocket?.connected) return;
+
+    const payload = isGroup
+      ? { groupId: conversationId }
+      : { toUserId: conversationId };
+
+    this.messagesSocket.emit("typing:start", payload);
+  }
+
+  stopTyping(conversationId, isGroup = false) {
+    if (!this.messagesSocket?.connected) return;
+
+    const payload = isGroup
+      ? { groupId: conversationId }
+      : { toUserId: conversationId };
+
+    this.messagesSocket.emit("typing:stop", payload);
+  }
+
+  // ================= CLEANUP =================
   disconnect() {
     if (this.messagesSocket) {
       this.messagesSocket.disconnect();
       this.messagesSocket = null;
     }
+
     if (this.friendsSocket) {
       this.friendsSocket.disconnect();
       this.friendsSocket = null;
     }
+
     this.listeners.clear();
   }
 }
 
-// Create singleton instance
+// ================= EXPORT =================
 export const socketService = new SocketService();
 
-// Export for convenience in components
 export const initSocket = async () => {
   await socketService.initMessagesSocket();
   await socketService.initFriendsSocket();
 };
 
-export const onFriendRequest = (callback) => {
-  return socketService.on("friend_request:received", callback);
-};
+// Message
+export const onReceiveMessage = (cb) =>
+  socketService.on("receiveMessage", cb);
 
-export const onFriendRequestAccepted = (callback) => {
-  return socketService.on("friend_request:accepted", callback);
-};
+export const onMessageSeen = (cb) =>
+  socketService.on("messageSeen", cb);
 
-export const onFriendRequestRejected = (callback) => {
-  return socketService.on("friend_request:rejected", callback);
-};
+export const onTypingStart = (cb) =>
+  socketService.on("typing:start", cb);
 
-export const onReceiveMessage = (callback) => {
-  return socketService.on("receiveMessage", callback);
-};
+export const onTypingStop = (cb) =>
+  socketService.on("typing:stop", cb);
+
+// Friend
+export const onFriendRequest = (cb) =>
+  socketService.on("friend_request:received", cb);
+
+export const onFriendAccepted = (cb) =>
+  socketService.on("friend_request:accepted", cb);
+
+export const onUnfriend = (cb) =>
+  socketService.on("friendship:unfriended", cb);

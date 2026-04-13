@@ -23,7 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .github
-
+contexts
+docs
 # Environment variables
 # .env
 # .env.local

@@ -7,6 +7,7 @@ export const MainTaskbar = ({
   onClearSearch,
   friendRequestCount = 0,
   isCollapsed = false,
+  placeholder = "Search conversations...",
 }) => {
   return (
     <div
@@ -31,7 +32,9 @@ export const MainTaskbar = ({
             type="text"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search conversations..."
+            onFocus={onSearchFocus}
+            onBlur={onSearchBlur}
+            placeholder={placeholder}
             className="w-full h-10 pl-10 pr-10 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
           />
 

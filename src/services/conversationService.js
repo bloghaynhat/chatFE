@@ -26,6 +26,13 @@ const normalizeMessages = (payload) => {
 
 export const conversationService = {
   async openPrivateConversation(targetUserId) {
+    const payload = await api.get("/conversations/private", {
+      params: { targetUserId },
+    });
+    return normalizeConversation(payload);
+  },
+
+  async createPrivateConversation(targetUserId) {
     const payload = await api.post("/conversations/private", { targetUserId });
     return normalizeConversation(payload);
   },
@@ -41,11 +48,55 @@ export const conversationService = {
     };
   },
 
+  async sendMessage(conversationId, data) {
+    return api.post(`/conversations/${conversationId}/messages`, data);
+  },
+
+  async revokeMessage(messageId) {
+    return api.post(`/messages/${messageId}/revoke`);
+  },
+
+  async reactMessage(messageId, reaction) {
+    return api.post(`/messages/${messageId}/react`, { reaction });
+  },
+
   async markDelivered(conversationId) {
     return api.post(`/conversations/${conversationId}/delivered`);
   },
 
   async markSeen(conversationId) {
     return api.post(`/conversations/${conversationId}/seen`);
+  },
+
+  async getPinnedMessages(conversationId) {
+    return api.get(`/conversations/${conversationId}/pinned-messages`);
+  },
+
+  async editMessage(messageId, data) {
+    return api.put(`/messages/${messageId}`, data);
+  },
+
+  async deleteMessageForMe(messageId) {
+    return api.post(`/messages/${messageId}/delete`);
+  },
+
+  async deleteMessageForEveryone(messageId) {
+    return api.post(`/messages/${messageId}/delete-for-everyone`);
+  },
+
+  async pinMessage(messageId) {
+    return api.post(`/messages/${messageId}/pin`);
+  },
+
+  async unpinMessage(messageId) {
+    return api.delete(`/messages/${messageId}/pin`);
+  },
+
+  async quoteMessage(messageId, data) {
+    return api.post(`/messages/${messageId}/quote`, data);
+  },
+
+  async forwardMessages(data) {
+    return api.post(`/messages/forward`, data);
   },
 };

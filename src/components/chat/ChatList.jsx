@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { FiArchive, FiUser, FiSearch, FiXCircle } from "react-icons/fi";
+import { userService } from "../../services";
 
 export const ChatList = ({
   searchQuery = "",
@@ -7,11 +8,12 @@ export const ChatList = ({
   isCollapsed = false,
   activeChatId = null,
   openingChatId = null,
+  isGlobalSearchEnabled = false,
   onSelectChat,
 }) => {
   const [chats] = useState([
     {
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000001",
       targetUserId: null,
       avatar: <FiArchive className="text-2xl" />,
       name: "Archived chats",
@@ -21,8 +23,8 @@ export const ChatList = ({
       archived: true,
     },
     {
-      id: 4,
-      targetUserId: 4,
+      id: "00000000-0000-0000-0000-000000000004",
+      targetUserId: "00000000-0000-0000-0000-000000000000",
       avatarUrl: "",
       avatar: <FiUser className="text-2xl" />,
       name: "Phương IUH",
@@ -31,7 +33,53 @@ export const ChatList = ({
     },
   ]);
 
+  const [globalUsers, setGlobalUsers] = useState([]);
+  const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  useEffect(() => {
+    // Chỉ gọi API nếu được phép
+    if (!isGlobalSearchEnabled) return;
+
+    // API backend chỉ chấp nhận tìm kiếm phone hợp lệ (đủ 10 số, bắt đầu bằng 0)
+    // Ngăn chặn việc gọi API liên tục với các chuỗi gõ dở dang hoặc từ khóa không phải số điện thoại
+    const isPossiblePhone = /^0\d{9}$/.test(normalizedQuery);
+
+    if (!normalizedQuery || !isPossiblePhone) {
+      setGlobalUsers([]);
+      setIsSearchingGlobal(false);
+      return;
+    }
+
+    const fetchGlobalSearch = async () => {
+      setIsSearchingGlobal(true);
+      try {
+        const response = await userService.searchUsers(normalizedQuery);
+        // Do axios interceptor trả về payload.data nên response chính là object/array chứa data
+        const results = response?.users || response || [];
+        setGlobalUsers(
+          Array.isArray(results)
+            ? results
+            : results.id || results._id
+              ? [results]
+              : [],
+        );
+      } catch (err) {
+        console.error("Global search error:", err);
+        setGlobalUsers([]);
+      } finally {
+        setIsSearchingGlobal(false);
+      }
+    };
+
+    // Thêm một lớp debounce nhỏ 500ms riêng cho Global Search để chống spam API nếu gõ rất nhanh
+    const timeoutId = setTimeout(() => {
+      fetchGlobalSearch();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [normalizedQuery, isGlobalSearchEnabled]);
 
   const visibleChats = useMemo(() => {
     let baseList = chats;
@@ -54,8 +102,14 @@ export const ChatList = ({
   return (
     <div className="flex flex-col h-full w-full">
       {/* Chats List */}
-      <div className="flex-1 overflow-y-auto">
-        {visibleChats.length === 0 ? (
+      <div className="flex-1 overflow-y-auto pb-20">
+        {normalizedQuery && (
+          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+            Recent Chats
+          </div>
+        )}
+
+        {visibleChats.length === 0 && !normalizedQuery ? (
           <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6 text-gray-500 dark:text-gray-400">
             {!isCollapsed && (
               <>
@@ -133,6 +187,71 @@ export const ChatList = ({
               )}
             </div>
           ))
+        )}
+
+        {/* Global Search Results */}
+        {isGlobalSearchEnabled && normalizedQuery && (
+          <div className="mt-2">
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400 border-t dark:border-slate-700">
+              Global Users
+            </div>
+
+            {isSearchingGlobal ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              </div>
+            ) : globalUsers.length === 0 ? (
+              <div className="py-4 text-center text-sm text-gray-500">
+                No users found
+              </div>
+            ) : (
+              globalUsers.map((user) => (
+                <div
+                  key={`global-${user.id || user._id}`}
+                  onClick={() => {
+                    const mappedChat = {
+                      id: `temp-${user.id || user._id}`,
+                      targetUserId: user.id || user._id,
+                      name: user.displayName || user.username || "User",
+                      avatarUrl: user.avatarUrl,
+                      avatar: <FiUser className="text-2xl" />,
+                    };
+                    onSelectChat?.(mappedChat);
+                  }}
+                  className={`flex items-center transition relative ${
+                    isCollapsed ? "justify-center py-3" : "gap-3 px-3 py-3"
+                  } cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700`}
+                >
+                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-600 flex items-center justify-center overflow-hidden flex-shrink-0 flex-none relative">
+                    {user.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-gray-500 text-lg dark:text-gray-300 font-bold uppercase">
+                        {(user.displayName || user.username || "U").charAt(0)}
+                      </span>
+                    )}
+                  </div>
+
+                  {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                        {user.displayName || user.username}
+                      </h3>
+                      {user.phone && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user.phone}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         )}
       </div>
     </div>

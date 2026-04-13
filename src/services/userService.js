@@ -162,6 +162,20 @@ export const updatePrivacy = async (privacy) => {
 };
 
 /**
+ * Tìm kiếm người dùng
+ * @param {string|Object} query - phone người dùng cần tìm (hoặc object params)
+ * @returns {Promise<Object>} Danh sách người dùng
+ */
+export const searchUsers = async (query) => {
+  try {
+    const params = typeof query === "string" ? { phone: query } : query;
+    return await api.get("/users/search", { params });
+  } catch (error) {
+    throw new Error(error.message || "Failed to search users");
+  }
+};
+
+/**
  * Export tất cả các hàm như một object để dễ sử dụng
  */
 export const userService = {
@@ -173,6 +187,7 @@ export const userService = {
   updateBio,
   updatePassword,
   updatePrivacy,
+  searchUsers,
 };
 
 export default userService;

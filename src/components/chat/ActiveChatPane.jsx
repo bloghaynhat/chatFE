@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { socketService } from "../../services/socketService";
 import {
   FiMessageCircle,
   FiRefreshCw,
@@ -29,7 +30,9 @@ import {
   FiDelete,
   FiX,
   FiCalendar,
+  FiSend,
 } from "react-icons/fi";
+import { useDropzone } from "react-dropzone";
 
 const getMessageId = (message, index) => message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
 const getMessageText = (message) => message?.text || message?.content || message?.message || "";
@@ -56,7 +59,18 @@ const getDateLabel = (dateValue) => {
 
 const CALENDAR_WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
-export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRetry }) => {
+export const ActiveChatPane = ({
+  selectedChat,
+  selectedConversationId,
+  isLoading,
+  error,
+  messages,
+  typingUsers = new Set(),
+  currentUserId,
+  onRetry,
+  onSendMessage,
+  onRevokeMessage,
+}) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -70,6 +84,111 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
   const moreMenuRef = useRef(null);
   const emojiMenuRef = useRef(null);
   const headerSearchInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const messagesEndRef = useRef(null);
+  const firstMessageRef = useRef(null);
+
+  const [displayCount, setDisplayCount] = useState(20);
+
+  // File upload state for UI/UX
+  const [dragType, setDragType] = useState(null); // 'image' or 'file'
+  const [previewFiles, setPreviewFiles] = useState([]);
+  const [compressImage, setCompressImage] = useState(true); // for split screen selection
+
+  const onDrop = useCallback((acceptedFiles) => {
+    if (acceptedFiles?.length === 0) return;
+
+    // Determine the type: if any file is not an image, treat it as a 'file'
+    const hasNonImage = acceptedFiles.some((f) => !f.type.startsWith("image/"));
+    const isImageDrop = !hasNonImage;
+
+    const filesWithPreview = acceptedFiles.map((file) =>
+      Object.assign(file, {
+        preview: URL.createObjectURL(file),
+      }),
+    );
+
+    setPreviewFiles(filesWithPreview);
+    setDragType(null); // close drag overlay upon drop
+    // Compress is defaulted to true, user can toggle in overlay if they hovered over "uncompressed" option if we had one
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive, isDragAccept } =
+    useDropzone({
+      onDrop,
+      noClick: true,
+      noKeyboard: true,
+      onDragEnter: (e) => {
+        // Basic check, dropzone doesn't give us item types reliably until drop.
+        // We will default drag overlay but can't fully know if it's image or file until drop or reading datatransfer items.
+        const items = e.dataTransfer?.items;
+        let hasImage = false;
+        let hasFile = false;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith("image/")) hasImage = true;
+            else hasFile = true;
+          }
+        }
+        setDragType(hasFile ? "file" : "image");
+      },
+      onDragLeave: () => {
+        setDragType(null);
+      },
+    });
+
+  const handleSendAttachedFiles = () => {
+    // Here we'd map over previewFiles and send them along with draftMessage
+    // This assumes onSendMessage deals with file attachments
+    if (previewFiles.length === 0) return;
+
+    // Call the parent handler
+    onSendMessage(draftMessage, previewFiles, { compress: compressImage });
+
+    // Clear state
+    previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
+    setPreviewFiles([]);
+    setDraftMessage("");
+  };
+
+  const handleCancelAttachment = () => {
+    previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
+    setPreviewFiles([]);
+    setDragType(null);
+  };
+
+  const scrollToBottom = () => {
+    // Only scroll if we are near the bottom to avoid snapping when loading older messages
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length, typingUsers]);
+
+  const visibleMessages = useMemo(() => {
+    return messages.length > displayCount
+      ? messages.slice(messages.length - displayCount)
+      : messages;
+  }, [messages, displayCount]);
+
+  useEffect(() => {
+    if (firstMessageRef.current) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && displayCount < messages.length) {
+            setDisplayCount((prev) => Math.min(prev + 20, messages.length));
+          }
+        },
+        { rootMargin: "100px", threshold: 0.1 },
+      );
+
+      const el = firstMessageRef.current;
+      observer.observe(el);
+      return () => observer.unobserve(el);
+    }
+  }, [displayCount, messages.length, visibleMessages]);
 
   const attachActions = [
     {
@@ -140,7 +259,7 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
     "😅",
     "😚",
     "🙊",
-    "😌",
+    "🤤",
     "😃",
     "😋",
     "😆",
@@ -217,6 +336,7 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
     setIsHeaderSearchOpen(false);
     setIsCalendarModalOpen(false);
     setHeaderSearchValue("");
+    setDisplayCount(20); // Reset message count when switching chats
   }, [selectedChat?.id]);
 
   useEffect(() => {
@@ -246,6 +366,55 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
     setDraftMessage("");
   }, [selectedChat?.id]);
 
+  const handleInputChange = (event) => {
+    setDraftMessage(event.target.value);
+
+    // Xác định đang chat nhóm hay cá nhân
+    const isGroup =
+      selectedChat?.type === "GROUP" || !selectedChat?.targetUserId;
+    const targetId = isGroup
+      ? selectedConversationId
+      : selectedChat?.targetUserId;
+
+    if (targetId) {
+      if (!isTypingRef.current) {
+        socketService.startTyping(targetId, isGroup);
+        isTypingRef.current = true;
+      }
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+        socketService.stopTyping(targetId, isGroup);
+      }, 3000);
+    }
+  };
+
+  const handleSendMessage = () => {
+    if (!draftMessage.trim()) return;
+    if (onSendMessage) {
+      onSendMessage({
+        text: draftMessage.trim(),
+        type: "text",
+      });
+      setDraftMessage("");
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        const isGroup =
+          selectedChat?.type === "GROUP" || !selectedChat?.targetUserId;
+        const targetId = isGroup
+          ? selectedConversationId
+          : selectedChat?.targetUserId;
+        socketService.stopTyping(targetId, isGroup);
+      }
+    }
+  };
+
   if (!selectedChat) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -255,7 +424,114 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative">
+    <div
+      {...getRootProps()}
+      className={`flex-1 flex flex-col min-h-0 relative ${isDragActive ? "bg-slate-50 dark:bg-slate-800/50" : ""}`}
+    >
+      <input {...getInputProps()} />
+
+      {/* Drag Overlay */}
+      {isDragActive && (
+        <div className="absolute inset-0 z-[100] flex flex-col pointer-events-none">
+          {dragType === "image" ? (
+            <div className="flex-1 flex flex-col justify-center items-center backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 p-6 md:p-12">
+              <div className="flex flex-col gap-6 w-full max-w-3xl h-full pb-16">
+                <div className="flex-1 flex flex-col items-center justify-center border-[5px] border-dashed border-blue-500 rounded-[2.5rem] bg-white/95 dark:bg-slate-800/95 shadow-2xl transition-transform hover:scale-[1.01]">
+                  <FiImage className="text-7xl md:text-8xl text-blue-500 mb-6" />
+                  <p className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
+                    Drop as Image
+                  </p>
+                  <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 mt-4">
+                    Compresses image
+                  </p>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center border-[5px] border-dashed border-purple-500 rounded-[2.5rem] bg-white/95 dark:bg-slate-800/95 shadow-2xl transition-transform hover:scale-[1.01]">
+                  <FiFile className="text-7xl md:text-8xl text-purple-500 mb-6" />
+                  <p className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
+                    Drop as File
+                  </p>
+                  <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 mt-4">
+                    Original quality
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="absolute inset-4 border-4 border-dashed border-blue-500 rounded-3xl backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 flex flex-col items-center justify-center shadow-2xl z-50">
+              <FiFile className="text-8xl text-blue-500 mb-6" />
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
+                Drop files here to send them
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-4 text-xl">
+                without compression
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewFiles.length > 0 && (
+        <div className="absolute inset-0 z-[110] bg-white dark:bg-slate-900 flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleCancelAttachment}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <FiX className="text-2xl text-gray-600 dark:text-gray-300" />
+              </button>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                Send {previewFiles.length}{" "}
+                {previewFiles.length === 1 ? "file" : "files"}
+              </h2>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto bg-gray-50 dark:bg-slate-950">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full">
+              {previewFiles[0].type.startsWith("image/") ? (
+                <div className="relative aspect-video max-h-[60vh] bg-black">
+                  <img
+                    src={previewFiles[0].preview}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                  <FiFile className="text-6xl text-blue-500 mb-4" />
+                  <p className="text-lg font-medium text-gray-800 dark:text-white truncate max-w-full px-4">
+                    {previewFiles[0].name}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    {(previewFiles[0].size / 1024).toFixed(0)} KB
+                  </p>
+                </div>
+              )}
+              <div className="p-4 flex items-center gap-4">
+                <input
+                  type="text"
+                  placeholder="Add a caption..."
+                  className="flex-1 bg-transparent text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none text-lg"
+                  value={draftMessage}
+                  onChange={(e) => setDraftMessage(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && handleSendAttachedFiles()
+                  }
+                  autoFocus
+                />
+                <button
+                  onClick={handleSendAttachedFiles}
+                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-medium transition-colors"
+                >
+                  SEND
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         {!isHeaderSearchOpen ? (
           <div className="flex items-center justify-between">
@@ -400,33 +676,72 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
         )}
 
         {!isLoading && !error && messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-gray-500 dark:text-gray-400">
-            <FiMessageCircle className="text-2xl" />
-            <p>No messages yet. Say hello 👋</p>
+          <div className="h-full flex flex-col items-center justify-center">
+            <div className="bg-black/15 dark:bg-black/30 rounded-[20px] p-6 px-8 flex flex-col items-center justify-center text-center max-w-[300px] backdrop-blur-md border border-white/10 shadow-sm">
+              <span className="text-white dark:text-white/90 font-semibold text-[15px] mb-1">
+                No messages here yet...
+              </span>
+              <span className="text-white/90 dark:text-white/70 text-[14px] mb-5">
+                Send a message or tap the greeting below.
+              </span>
+              <div className="text-[70px] drop-shadow-md hover:scale-110 transition-transform cursor-pointer">
+                👋
+              </div>
+            </div>
           </div>
         )}
 
-        {!isLoading && !error && messages.length > 0 && (
+        {!isLoading && !error && visibleMessages.length > 0 && (
           <div className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
-            <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm">
-              {getDateLabel(messages[0]?.createdAt) || "Today"}
+            <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
+              {displayCount < messages.length ? (
+                <div className="flex items-center gap-2">
+                  <FiRefreshCw className="animate-spin" />
+                  Loading older messages...
+                </div>
+              ) : (
+                getDateLabel(visibleMessages[0]?.createdAt) || "Today"
+              )}
             </div>
 
-            {messages.map((message, index) => {
+            {visibleMessages.map((message, index) => {
               const text = getMessageText(message);
-              const mine = Boolean(message?.isMine || message?.sender?.isMe);
-              const isImage = message?.type === "image";
+              const mine = Boolean(
+                message?.isMine ||
+                message?.sender?.isMe ||
+                (currentUserId && message?.senderId === currentUserId),
+              );
+              // Simple check for image vs file types
+              const isImage =
+                message?.type === "image" ||
+                (message?.files &&
+                  message.files[0]?.type?.startsWith("image/"));
+              const isDocument =
+                message?.type === "document" ||
+                message?.type === "file" ||
+                (message?.files &&
+                  message.files[0] &&
+                  !message.files[0].type?.startsWith("image/"));
+              const isFirst = index === 0;
 
               return (
                 <div
+                  ref={isFirst ? firstMessageRef : null}
                   key={getMessageId(message, index)}
-                  className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
+                  className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
                 >
                   {isImage && (
-                    <div className="p-1">
-                      {message?.imageUrl ? (
+                    <div className="p-1 pb-0">
+                      {message?.imageUrl ||
+                      (message?.files && message.files[0]?.url) ||
+                      (message?.files && message.files[0]?.preview) ? (
                         <img
-                          src={message.imageUrl}
+                          src={
+                            message?.imageUrl ||
+                            (message?.files &&
+                              (message.files[0]?.url ||
+                                message.files[0]?.preview))
+                          }
                           alt={message.imageAlt || "Image message"}
                           className="w-full max-w-[340px] h-auto rounded-xl object-cover"
                         />
@@ -437,6 +752,33 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
                       )}
                     </div>
                   )}
+
+                  {isDocument &&
+                    (() => {
+                      const file =
+                        message?.file || (message?.files && message.files[0]);
+                      const fileName = file?.name || "Document";
+                      const fileSize = file?.size
+                        ? `${(file.size / 1024).toFixed(0)} KB`
+                        : "";
+                      return (
+                        <div className="flex items-center gap-3 p-3 pb-0 bg-black/5 dark:bg-white/5 rounded-t-2xl">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
+                          >
+                            <FiFile className="text-xl" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium truncate underline hover:no-underline cursor-pointer">
+                              {fileName}
+                            </span>
+                            <span className="text-xs opacity-70">
+                              {fileSize}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                   <div className="px-3 pb-2 pt-2">
                     {!!text && <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{text}</p>}
@@ -449,6 +791,30 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
                 </div>
               );
             })}
+
+            {/* Typing Indicator */}
+            {typingUsers.size > 0 &&
+              (selectedChat?.targetUserId
+                ? typingUsers.has(selectedChat.targetUserId)
+                : true) && (
+                <div className="w-fit self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex flex-col gap-1 mt-2">
+                  <div className="flex items-center gap-1.5 h-4">
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    ></div>
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    ></div>
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -656,7 +1022,10 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
             <input
               type="text"
               value={draftMessage}
-              onChange={(event) => setDraftMessage(event.target.value)}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSendMessage();
+              }}
               placeholder="Message"
               className="absolute left-11 right-11 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none"
             />
@@ -674,8 +1043,15 @@ export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRet
             </button>
           </div>
 
-          <button className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition">
-            <FiMic className="text-[20px] lg:text-[22px]" />
+          <button
+            className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition"
+            onClick={draftMessage.trim() ? handleSendMessage : undefined}
+          >
+            {draftMessage.trim() ? (
+              <FiSend className="text-[20px] lg:text-[22px]" />
+            ) : (
+              <FiMic className="text-[20px] lg:text-[22px]" />
+            )}
           </button>
         </div>
       </div>
