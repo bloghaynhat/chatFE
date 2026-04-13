@@ -1,16 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import {
-  LoginPage,
-  RegisterPage,
-  VerifyEmailPage,
-  ForgotPasswordPage,
-  HomePage,
-  SearchFriendsPage,
-  FriendRequestsPage,
-  FriendsPage,
-  TermsPage,
-} from "./pages";
+import { LoginPage, RegisterPage, VerifyEmailPage, ForgotPasswordPage, HomePage, TermsPage } from "./pages";
 import { PrivateRoute } from "./components/common";
+import { FriendProvider } from "./context/FriendContext";
 
 function App() {
   return (
@@ -24,31 +15,9 @@ function App() {
         path="/"
         element={
           <PrivateRoute>
-            <HomePage />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/search-friends"
-        element={
-          <PrivateRoute>
-            <SearchFriendsPage />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/friend-requests"
-        element={
-          <PrivateRoute>
-            <FriendRequestsPage />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/friends"
-        element={
-          <PrivateRoute>
-            <FriendsPage />
+            <FriendProvider>
+              <HomePage />
+            </FriendProvider>
           </PrivateRoute>
         }
       />

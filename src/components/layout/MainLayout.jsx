@@ -124,6 +124,7 @@ export const MainLayout = ({ children }) => {
         {/* Resizable Left Panel - Chat List */}
         <ResizableChatPanel
           activeView={activeView}
+          onViewChange={setActiveView}
           activeChatId={selectedChat?.id || null}
           openingChatId={openingChatId}
           onSelectChat={openChatByRow}

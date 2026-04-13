@@ -31,10 +31,8 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 
-const getMessageId = (message, index) =>
-  message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
-const getMessageText = (message) =>
-  message?.text || message?.content || message?.message || "";
+const getMessageId = (message, index) => message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
+const getMessageText = (message) => message?.text || message?.content || message?.message || "";
 const getMessageTime = (message) => {
   const value = message?.createdAt || message?.updatedAt || message?.time;
   if (!value) return "";
@@ -58,13 +56,7 @@ const getDateLabel = (dateValue) => {
 
 const CALENDAR_WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
-export const ActiveChatPane = ({
-  selectedChat,
-  isLoading,
-  error,
-  messages,
-  onRetry,
-}) => {
+export const ActiveChatPane = ({ selectedChat, isLoading, error, messages, onRetry }) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -72,9 +64,7 @@ export const ActiveChatPane = ({
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [headerSearchValue, setHeaderSearchValue] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(
-    () => new Date(),
-  );
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
   const [draftMessage, setDraftMessage] = useState("");
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -162,14 +152,11 @@ export const ActiveChatPane = ({
     year: "numeric",
   });
 
-  const selectedCalendarHeadline = selectedCalendarDate.toLocaleDateString(
-    "en-US",
-    {
-      weekday: "short",
-      month: "long",
-      day: "numeric",
-    },
-  );
+  const selectedCalendarHeadline = selectedCalendarDate.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+  });
 
   const calendarGrid = useMemo(() => {
     const year = calendarMonth.getFullYear();
@@ -189,19 +176,15 @@ export const ActiveChatPane = ({
 
   const isViewingCurrentMonthOrLater =
     calendarMonth.getFullYear() > todayStart.getFullYear() ||
-    (calendarMonth.getFullYear() === todayStart.getFullYear() &&
-      calendarMonth.getMonth() >= todayStart.getMonth());
+    (calendarMonth.getFullYear() === todayStart.getFullYear() && calendarMonth.getMonth() >= todayStart.getMonth());
 
   useEffect(() => {
     if (!isAttachMenuOpen && !isMoreMenuOpen && !isEmojiPickerOpen) return;
 
     const handleOutsideClick = (event) => {
-      const isInsideAttach =
-        attachMenuRef.current && attachMenuRef.current.contains(event.target);
-      const isInsideMore =
-        moreMenuRef.current && moreMenuRef.current.contains(event.target);
-      const isInsideEmoji =
-        emojiMenuRef.current && emojiMenuRef.current.contains(event.target);
+      const isInsideAttach = attachMenuRef.current && attachMenuRef.current.contains(event.target);
+      const isInsideMore = moreMenuRef.current && moreMenuRef.current.contains(event.target);
+      const isInsideEmoji = emojiMenuRef.current && emojiMenuRef.current.contains(event.target);
 
       if (!isInsideAttach && !isInsideMore && !isInsideEmoji) {
         setIsAttachMenuOpen(false);
@@ -279,24 +262,16 @@ export const ActiveChatPane = ({
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden">
                 {selectedChat.avatarUrl ? (
-                  <img
-                    src={selectedChat.avatarUrl}
-                    alt={selectedChat.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={selectedChat.avatarUrl} alt={selectedChat.name} className="w-full h-full object-cover" />
                 ) : (
                   selectedChat.name?.charAt(0) || "U"
                 )}
               </div>
 
               <div className="min-w-0">
-                <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate">
-                  {selectedChat.name}
-                </p>
+                <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate">{selectedChat.name}</p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  {isLoading
-                    ? "Opening conversation..."
-                    : "last seen 1 hour ago"}
+                  {isLoading ? "Opening conversation..." : "last seen 1 hour ago"}
                 </p>
               </div>
             </div>
@@ -343,9 +318,7 @@ export const ActiveChatPane = ({
                         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none hover:bg-white/75 dark:hover:bg-slate-700/80 transition ${action.danger ? "text-red-500" : "text-gray-900 dark:text-gray-100"}`}
                       >
                         <ActionIcon className="text-[18px] shrink-0" />
-                        <span className="font-semibold tracking-tight flex-1">
-                          {action.label}
-                        </span>
+                        <span className="font-semibold tracking-tight flex-1">{action.label}</span>
                         {action.hasChevron && (
                           <FiChevronRight className="text-[16px] text-gray-400 dark:text-gray-500" />
                         )}
@@ -360,11 +333,7 @@ export const ActiveChatPane = ({
           <div className="flex items-center gap-2 animate-in fade-in duration-200">
             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shrink-0">
               {selectedChat.avatarUrl ? (
-                <img
-                  src={selectedChat.avatarUrl}
-                  alt={selectedChat.name}
-                  className="w-full h-full object-cover"
-                />
+                <img src={selectedChat.avatarUrl} alt={selectedChat.name} className="w-full h-full object-cover" />
               ) : (
                 selectedChat.name?.charAt(0) || "U"
               )}
@@ -419,9 +388,7 @@ export const ActiveChatPane = ({
 
         {!isLoading && error && (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Couldn’t open this conversation
-            </p>
+            <p className="text-sm text-red-600 dark:text-red-400">Couldn’t open this conversation</p>
             <button
               onClick={onRetry}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition"
@@ -472,11 +439,7 @@ export const ActiveChatPane = ({
                   )}
 
                   <div className="px-3 pb-2 pt-2">
-                    {!!text && (
-                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                        {text}
-                      </p>
-                    )}
+                    {!!text && <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{text}</p>}
                     <p
                       className={`mt-1 text-[11px] text-right ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
                     >
@@ -505,12 +468,7 @@ export const ActiveChatPane = ({
 
             <div className="flex items-center justify-between mb-3.5">
               <button
-                onClick={() =>
-                  setCalendarMonth(
-                    (prev) =>
-                      new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-                  )
-                }
+                onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
                 className="h-9 w-9 rounded-full inline-flex items-center justify-center text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
                 title="Previous month"
               >
@@ -520,12 +478,7 @@ export const ActiveChatPane = ({
                 {calendarMonthLabel}
               </p>
               <button
-                onClick={() =>
-                  setCalendarMonth(
-                    (prev) =>
-                      new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-                  )
-                }
+                onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
                 disabled={isViewingCurrentMonthOrLater}
                 className={`h-9 w-9 rounded-full inline-flex items-center justify-center transition ${isViewingCurrentMonthOrLater ? "text-gray-300 dark:text-slate-600 cursor-not-allowed" : "text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800"}`}
                 title="Next month"
@@ -544,41 +497,36 @@ export const ActiveChatPane = ({
                 </div>
               ))}
 
-              {Array.from({ length: calendarGrid.leadingEmptyDays }).map(
-                (_, idx) => (
-                  <div key={`empty-${idx}`} className="h-9" />
-                ),
-              )}
+              {Array.from({ length: calendarGrid.leadingEmptyDays }).map((_, idx) => (
+                <div key={`empty-${idx}`} className="h-9" />
+              ))}
 
-              {Array.from({ length: calendarGrid.totalDays }).map(
-                (_, index) => {
-                  const day = index + 1;
-                  const year = calendarMonth.getFullYear();
-                  const month = calendarMonth.getMonth();
-                  const cellDate = new Date(year, month, day);
-                  cellDate.setHours(0, 0, 0, 0);
-                  const isFutureDate =
-                    cellDate.getTime() > todayStart.getTime();
-                  const isSelected =
-                    selectedCalendarDate.getFullYear() === year &&
-                    selectedCalendarDate.getMonth() === month &&
-                    selectedCalendarDate.getDate() === day;
+              {Array.from({ length: calendarGrid.totalDays }).map((_, index) => {
+                const day = index + 1;
+                const year = calendarMonth.getFullYear();
+                const month = calendarMonth.getMonth();
+                const cellDate = new Date(year, month, day);
+                cellDate.setHours(0, 0, 0, 0);
+                const isFutureDate = cellDate.getTime() > todayStart.getTime();
+                const isSelected =
+                  selectedCalendarDate.getFullYear() === year &&
+                  selectedCalendarDate.getMonth() === month &&
+                  selectedCalendarDate.getDate() === day;
 
-                  return (
-                    <button
-                      key={`day-${day}`}
-                      onClick={() => {
-                        if (isFutureDate) return;
-                        setSelectedCalendarDate(new Date(year, month, day));
-                      }}
-                      disabled={isFutureDate}
-                      className={`h-9 w-9 mx-auto rounded-full inline-flex items-center justify-center text-[14px] transition ${isFutureDate ? "text-gray-300 dark:text-slate-600 cursor-not-allowed" : isSelected ? "bg-blue-500 text-white" : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"}`}
-                    >
-                      {day}
-                    </button>
-                  );
-                },
-              )}
+                return (
+                  <button
+                    key={`day-${day}`}
+                    onClick={() => {
+                      if (isFutureDate) return;
+                      setSelectedCalendarDate(new Date(year, month, day));
+                    }}
+                    disabled={isFutureDate}
+                    className={`h-9 w-9 mx-auto rounded-full inline-flex items-center justify-center text-[14px] transition ${isFutureDate ? "text-gray-300 dark:text-slate-600 cursor-not-allowed" : isSelected ? "bg-blue-500 text-white" : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"}`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-2">
@@ -627,9 +575,7 @@ export const ActiveChatPane = ({
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none text-gray-900 dark:text-gray-100 hover:bg-white/75 dark:hover:bg-slate-700/80 transition"
                   >
                     <ActionIcon className="text-[18px] shrink-0" />
-                    <span className="font-semibold tracking-tight">
-                      {action.label}
-                    </span>
+                    <span className="font-semibold tracking-tight">{action.label}</span>
                   </button>
                 );
               })}
@@ -652,9 +598,7 @@ export const ActiveChatPane = ({
               <div className="px-4 py-2.5 border-b border-gray-200/80 dark:border-slate-700">
                 <div className="h-10 rounded-xl bg-white/70 dark:bg-slate-700/70 flex items-center gap-2.5 px-3 text-gray-500 dark:text-gray-300">
                   <FiSearch className="text-base" />
-                  <span className="text-sm font-medium text-gray-400 dark:text-gray-400">
-                    Search Emoji
-                  </span>
+                  <span className="text-sm font-medium text-gray-400 dark:text-gray-400">Search Emoji</span>
                   <div className="ml-auto flex items-center gap-2 text-gray-400 dark:text-gray-400">
                     <FiHeart className="text-base" />
                     <FiThumbsUp className="text-base" />
@@ -666,17 +610,13 @@ export const ActiveChatPane = ({
               </div>
 
               <div className="px-4 py-3">
-                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2.5">
-                  Frequently Used
-                </p>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2.5">Frequently Used</p>
 
                 <div className="grid grid-cols-8 gap-1 pb-1">
-                  {frequentEmojis.map((emoji) => (
+                  {frequentEmojis.map((emoji, index) => (
                     <button
-                      key={emoji}
-                      onClick={() =>
-                        setDraftMessage((prev) => `${prev}${emoji}`)
-                      }
+                      key={index}
+                      onClick={() => setDraftMessage((prev) => `${prev}${emoji}`)}
                       className="h-10 w-10 rounded-lg inline-flex items-center justify-center text-2xl hover:bg-white/70 dark:hover:bg-slate-700/70 transition"
                     >
                       {emoji}
