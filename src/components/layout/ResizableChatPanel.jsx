@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatList } from "../chat/ChatList";
 import { ContactsPanel } from "../chat/ContactsPanel";
+import { SettingsPanel } from "./SettingsPanel";
+import { DevicesPanel } from "./DevicesPanel";
 import { UserProfileModal } from "../common";
 import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
@@ -82,6 +84,12 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
 
     if (actionId === "new-group") {
       setIsQuickActionOpen(true);
+      setIsNavigationOpen(false);
+      return;
+    }
+
+    if (actionId === "settings") {
+      onViewChange("settings");
       setIsNavigationOpen(false);
       return;
     }
@@ -285,7 +293,7 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
               <div className="h-px bg-gray-200 dark:bg-slate-700 my-1" />
 
               <button
-                onClick={() => setIsNavigationOpen(false)}
+                onClick={() => handleMenuAction("settings")}
                 className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center gap-3"
               >
                 <FiSettings className="text-lg opacity-70" />
@@ -317,7 +325,7 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
         <div className="flex-1 w-full relative overflow-hidden flex flex-col pointer-events-none">
           {/* Chats View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "contacts" ? "-translate-x-[20%] opacity-0 pointer-events-none" : "translate-x-0 opacity-100 pointer-events-auto"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "chats" ? "translate-x-0 opacity-100 pointer-events-auto" : "-translate-x-[20%] opacity-0 pointer-events-none"}`}
           >
             <div className="flex-1 overflow-hidden relative">
               <ChatList
@@ -361,6 +369,27 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
               isCollapsed={isCollapsed}
               onBackToChats={() => onViewChange("chats")}
               onSelectChat={onSelectChat}
+            />
+          </div>
+
+          {/* Settings View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+          >
+            <SettingsPanel
+              isCollapsed={isCollapsed}
+              onBack={() => onViewChange("chats")}
+              onNavigate={onViewChange}
+            />
+          </div>
+
+          {/* Devices View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-40 pointer-events-auto ${activeView === "devices" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+          >
+            <DevicesPanel
+              isCollapsed={isCollapsed}
+              onBack={() => onViewChange("settings")}
             />
           </div>
         </div>
