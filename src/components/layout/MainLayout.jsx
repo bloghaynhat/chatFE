@@ -266,94 +266,87 @@ const MainLayout = ({ children }) => {
       return;
 
     const fwMsg = payloadOrText?.forwardingMessage;
-    // Prepare the message text to actually send.
-    // If forwarding, we might combine the forwarded message content with the new text
-    let finalPayloadText = payloadText;
-    let finalPayloadMedia = payloadMedia;
 
-    if (fwMsg) {
-      const forwardedText = `[Forwarded${fwMsg.sender?.name ? " from " + fwMsg.sender.name : ""}]: ${fwMsg.text || ""}`;
-      // For images/media in the forwarding message, ideally we'd re-upload or keep the URLs.
-      // Let's assume we append the original media URLs if present.
-      if (fwMsg.media && fwMsg.media.length > 0) {
-        finalPayloadMedia = [...finalPayloadMedia, ...fwMsg.media]; // Using existing media objects which already have URLs
-      }
+    const performSend = async (txt, medias, isForward = false) => {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const optimisticMessage = {
+        id: tempId,
+        text: txt,
+        media: medias,
+        createdAt: new Date().toISOString(),
+        isMine: true,
+        senderId: "me",
+        status: "sending",
+      };
 
-      // Combine text lines appropriately
-      if (finalPayloadText) {
-        finalPayloadText = `${forwardedText}\n\n${finalPayloadText}`;
-      } else {
-        finalPayloadText = forwardedText;
-      }
-    }
+      setMessages((prev) => [...prev, optimisticMessage]);
 
-    // Optimistic UI update
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMessage = {
-      id: tempId,
-      text: finalPayloadText,
-      media: finalPayloadMedia,
-      createdAt: new Date().toISOString(),
-      isMine: true,
-      senderId: "me", // Normally this would be the current user's ID
-      status: "sending",
-    };
+      try {
+        let finalMedia = [];
+        const filesToUpload = medias.filter((f) => !f.url);
+        const existingMedia = medias.filter((f) => f.url);
 
-    setMessages((prev) => [...prev, optimisticMessage]);
+        if (filesToUpload.length > 0) {
+          const uploadedMedia = await Promise.all(
+            filesToUpload.map(async (file) => {
+              const formData = new FormData();
+              formData.append("file", file);
+              const response = await mediaService.uploadSingle(formData);
+              return {
+                url: response.url,
+                type: file.type?.startsWith("image/") ? "image" : "file",
+                name: file.name,
+                size: file.size,
+              };
+            }),
+          );
+          finalMedia = [...existingMedia, ...uploadedMedia];
+        } else if (existingMedia.length > 0) {
+          finalMedia = existingMedia;
+        }
 
-    try {
-      let finalMedia = [];
-
-      // If message includes files to upload
-      const filesToUpload = finalPayloadMedia.filter((f) => !f.url);
-      const existingMedia = finalPayloadMedia.filter((f) => f.url);
-
-      if (filesToUpload.length > 0) {
-        const uploadedMedia = await Promise.all(
-          filesToUpload.map(async (file) => {
-            const formData = new FormData();
-            formData.append("file", file);
-            const response = await mediaService.uploadSingle(formData);
-            return {
-              url: response.url,
-              type: file.type?.startsWith("image/") ? "image" : "file",
-              name: file.name,
-              size: file.size,
-            };
-          }),
+        const sentMessage = await socketService.sendMessage(
+          conversationId,
+          txt,
+          finalMedia,
         );
 
-        finalMedia = [...existingMedia, ...uploadedMedia];
-      } else if (existingMedia.length > 0) {
-        finalMedia = existingMedia;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempId
+              ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
+              : msg,
+          ),
+        );
+      } catch (error) {
+        console.error("Failed to send message via socket", error);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempId ? { ...msg, status: "failed" } : msg,
+          ),
+        );
       }
+    };
 
-      const sentMessage = await socketService.sendMessage(
-        selectedConversationId,
-        finalPayloadText,
-        finalMedia,
-      );
-
-      // Replace optimistic message with actual server message
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempId
-            ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
-            : msg,
-        ),
-      );
-    } catch (error) {
-      console.error("Failed to send message via socket", error);
-      // Update status to failed
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempId ? { ...msg, status: "failed" } : msg,
-        ),
-      );
+    // Nếu gửi forward kèm message trước khi gửi thì gửi message trước rồi forward sau
+    if (payloadText.trim() || payloadMedia.length > 0) {
+      await performSend(payloadText, payloadMedia, false);
     }
-  };
 
-  const handleRevokeMessage = async (messageId) => {
+    if (fwMsg) {
+      try {
+        const msgId = fwMsg.id || fwMsg._id;
+        if (msgId) {
+          await conversationService.forwardMessages({
+            messageIds: [msgId],
+            targetConversationIds: [conversationId]
+          });
+        }
+      } catch (error) {
+        console.error("Failed to forward message via API", error);
+      }
+    }
+  };  const handleRevokeMessage = async (messageId) => {
     try {
       await conversationService.revokeMessage(messageId);
       // Optimistically remove or mark message as revoked

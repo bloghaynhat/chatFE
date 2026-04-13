@@ -637,17 +637,17 @@ export const ActiveChatPane = ({
                 {selectedChat.avatarUrl ? (
                   <img
                     src={selectedChat.avatarUrl}
-                    alt={selectedChat.name}
+                    alt={selectedChat.name || selectedChat.displayName}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  selectedChat.name?.charAt(0) || "U"
+                  (selectedChat.name || selectedChat.displayName || ((selectedChat.participants || []).find(p => p.userId !== currentUserId)?.displayName) || "U")?.charAt(0)?.toUpperCase()
                 )}
               </div>
 
               <div className="min-w-0">
                 <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate">
-                  {selectedChat.name}
+                  {selectedChat.name || selectedChat.displayName || ((selectedChat.participants || []).find(p => p.userId !== currentUserId)?.displayName) || "Unknown"}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
                   {isLoading
@@ -718,11 +718,11 @@ export const ActiveChatPane = ({
               {selectedChat.avatarUrl ? (
                 <img
                   src={selectedChat.avatarUrl}
-                  alt={selectedChat.name}
+                  alt={selectedChat.name || selectedChat.displayName}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                selectedChat.name?.charAt(0) || "U"
+                (selectedChat.name || selectedChat.displayName || ((selectedChat.participants || []).find(p => p.userId !== currentUserId)?.displayName) || "U")?.charAt(0)?.toUpperCase()
               )}
             </div>
 
@@ -819,20 +819,49 @@ export const ActiveChatPane = ({
               </div>
 
               {visibleMessages.map((message, index) => {
-                const text = getMessageText(message);
+                const rawText = getMessageText(message);
                 const mine = Boolean(
                   message?.isMine ||
                   message?.sender?.isMe ||
                   (currentUserId && message?.senderId === currentUserId),
                 );
+                
+                // Parse forwarded message
+                let isForwarded = Boolean(message?.originalMessageId);
+                let fwData = null;
+                let text = rawText;
+                
+                if (typeof rawText === 'string' && rawText.startsWith('[FWM]::')) {
+                  isForwarded = true;
+                  try {
+                    fwData = JSON.parse(rawText.replace('[FWM]::', ''));
+                    text = fwData.text || '';
+                  } catch(e) {
+                    text = rawText;
+                  }
+                } else if (isForwarded) {
+                   // Fallback for API forwarded message
+                   fwData = {
+                      senderName: message?.originalMessage?.senderName || message?.originalMessage?.sender?.displayName || message?.originalMessage?.sender?.username || "Unknown",
+                      senderAvatarStr: "U",
+                      text: message?.originalMessage?.text || message?.originalMessage?.content || rawText || "Forwarded Message"
+                   };
+                   if (fwData.senderName !== "Unknown") {
+                      fwData.senderAvatarStr = fwData.senderName.charAt(0).toUpperCase();
+                   }
+                }
+
                 // Simple check for image vs file types
                 const messageFiles = message?.files || message?.media;
                 let isImage =
                   message?.type === "image" ||
+                  (messageFiles && messageFiles[0]?.type === "image") ||
                   (messageFiles &&
                     messageFiles[0]?.type?.startsWith("image/")) ||
                   (messageFiles &&
-                    messageFiles[0]?.mimetype?.startsWith("image/"));
+                    messageFiles[0]?.mimetype?.startsWith("image/")) ||
+                  (messageFiles && messageFiles[0]?.url?.match(/\\.(jpeg|jpg|gif|png|webp|webp|heic)$/i));
+
                 let isDocument =
                   message?.type === "document" ||
                   message?.type === "file" ||
@@ -854,6 +883,22 @@ export const ActiveChatPane = ({
                     onContextMenu={(e) => handleContextMenu(e, message)}
                     className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
                   >
+                    {isForwarded && fwData && (
+                      <div className="px-2.5 pt-2 pb-1 flex flex-col gap-0.5">
+                        <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400">
+                          Forwarded from
+                        </span>
+                        <div className="flex items-center gap-1.5 opacity-90">
+                          <div className="w-[18px] h-[18px] rounded-full bg-pink-500 flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-sm">
+                            {fwData.senderAvatarStr || 'U'}
+                          </div>
+                          <span className="font-semibold text-[14px] text-emerald-700 dark:text-emerald-300 tracking-tight">
+                            {fwData.senderName || 'Unknown'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {isImage && (
                       <div className="p-1 pb-0 cursor-pointer">
                         {message?.imageUrl ||
@@ -1079,6 +1124,29 @@ export const ActiveChatPane = ({
                         friend.userId ||
                         friend.id ||
                         friend._id;
+
+                      const augmentedMsg = { ...messageToForward };
+                      if (!augmentedMsg.sender) augmentedMsg.sender = {};
+                      
+                      const isMyMsg = Boolean(
+                        augmentedMsg.isMine || 
+                        augmentedMsg.sender?.isMe || 
+                        (currentUserId && augmentedMsg.senderId === currentUserId)
+                      );
+
+                      if (isMyMsg) {
+                         augmentedMsg.isMine = true;
+                      } else if (!augmentedMsg.sender.name && !augmentedMsg.sender.displayName) {
+                         const participant = selectedChat?.participants?.find(
+                           p => p.userId === augmentedMsg.senderId || p.id === augmentedMsg.senderId || p._id === augmentedMsg.senderId
+                         );
+                         if (participant) {
+                           augmentedMsg.sender.name = participant.displayName || participant.name || participant.username;
+                         } else if (selectedChat?.targetUserId === augmentedMsg.senderId) {
+                           augmentedMsg.sender.name = selectedChat?.displayName || selectedChat?.name;
+                         }
+                      }
+
                       // Create a target chat object compatible with openChatByRow
                       const targetChat = {
                         id: `temp-${targetUserId}`,
@@ -1086,10 +1154,12 @@ export const ActiveChatPane = ({
                         isGroup: false,
                         participants: [friend],
                         type: "private",
+                        name: friend.displayName || friend.name || friend.phone || "Unknown",
+                        avatarUrl: friend.avatarUrl,
                       };
 
                       if (onForwardToTarget) {
-                        onForwardToTarget(targetChat, messageToForward);
+                        onForwardToTarget(targetChat, augmentedMsg);
                       }
                     }
                     setForwardModalVisible(false);
