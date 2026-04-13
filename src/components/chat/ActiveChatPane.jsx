@@ -33,6 +33,8 @@ import {
   FiSend,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
+import { PhotoProvider, PhotoView } from "react-photo-view";
+import "react-photo-view/dist/react-photo-view.css";
 
 const getMessageId = (message, index) =>
   message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
@@ -728,146 +730,158 @@ export const ActiveChatPane = ({
         )}
 
         {!isLoading && !error && visibleMessages.length > 0 && (
-          <div className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
-            <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
-              {displayCount < messages.length ? (
-                <div className="flex items-center gap-2">
-                  <FiRefreshCw className="animate-spin" />
-                  Loading older messages...
-                </div>
-              ) : (
-                getDateLabel(visibleMessages[0]?.createdAt) || "Today"
-              )}
-            </div>
+          <PhotoProvider maskOpacity={0.8}>
+            <div className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
+              <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
+                {displayCount < messages.length ? (
+                  <div className="flex items-center gap-2">
+                    <FiRefreshCw className="animate-spin" />
+                    Loading older messages...
+                  </div>
+                ) : (
+                  getDateLabel(visibleMessages[0]?.createdAt) || "Today"
+                )}
+              </div>
 
-            {visibleMessages.map((message, index) => {
-              const text = getMessageText(message);
-              const mine = Boolean(
-                message?.isMine ||
-                message?.sender?.isMe ||
-                (currentUserId && message?.senderId === currentUserId),
-              );
-              // Simple check for image vs file types
-              const messageFiles = message?.files || message?.media;
-              let isImage =
-                message?.type === "image" ||
-                (messageFiles && messageFiles[0]?.type?.startsWith("image/")) ||
-                (messageFiles &&
-                  messageFiles[0]?.mimetype?.startsWith("image/"));
-              let isDocument =
-                message?.type === "document" ||
-                message?.type === "file" ||
-                (messageFiles &&
-                  messageFiles[0] &&
-                  !messageFiles[0].type?.startsWith("image/") &&
-                  !messageFiles[0].mimetype?.startsWith("image/"));
+              {visibleMessages.map((message, index) => {
+                const text = getMessageText(message);
+                const mine = Boolean(
+                  message?.isMine ||
+                  message?.sender?.isMe ||
+                  (currentUserId && message?.senderId === currentUserId),
+                );
+                // Simple check for image vs file types
+                const messageFiles = message?.files || message?.media;
+                let isImage =
+                  message?.type === "image" ||
+                  (messageFiles &&
+                    messageFiles[0]?.type?.startsWith("image/")) ||
+                  (messageFiles &&
+                    messageFiles[0]?.mimetype?.startsWith("image/"));
+                let isDocument =
+                  message?.type === "document" ||
+                  message?.type === "file" ||
+                  (messageFiles &&
+                    messageFiles[0] &&
+                    !messageFiles[0].type?.startsWith("image/") &&
+                    !messageFiles[0].mimetype?.startsWith("image/"));
 
-              // If it's classified as an image, don't show it as a document block
-              if (isImage) {
-                isDocument = false;
-              }
-              const isFirst = index === 0;
+                // If it's classified as an image, don't show it as a document block
+                if (isImage) {
+                  isDocument = false;
+                }
+                const isFirst = index === 0;
 
-              return (
-                <div
-                  ref={isFirst ? firstMessageRef : null}
-                  key={getMessageId(message, index)}
-                  className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
-                >
-                  {isImage && (
-                    <div className="p-1 pb-0">
-                      {message?.imageUrl ||
-                      (messageFiles && messageFiles[0]?.url) ||
-                      (messageFiles && messageFiles[0]?.preview) ? (
-                        <img
-                          src={
-                            message?.imageUrl ||
-                            (messageFiles &&
-                              (messageFiles[0]?.url ||
-                                messageFiles[0]?.preview))
-                          }
-                          alt={message.imageAlt || "Image message"}
-                          className="w-full max-w-[340px] h-auto rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="w-[320px] h-[220px] rounded-xl bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-gray-500 dark:text-gray-300">
-                          Image preview
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {isDocument &&
-                    (() => {
-                      const file =
-                        message?.file || (messageFiles && messageFiles[0]);
-                      const fileName =
-                        file?.name ||
-                        file?.filename ||
-                        file?.originalName ||
-                        "Document";
-                      const fileSize = file?.size
-                        ? `${(file.size / 1024).toFixed(0)} KB`
-                        : "";
-                      return (
-                        <div className="flex items-center gap-3 p-3 pb-0 bg-black/5 dark:bg-white/5 rounded-t-2xl">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
+                return (
+                  <div
+                    ref={isFirst ? firstMessageRef : null}
+                    key={getMessageId(message, index)}
+                    className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
+                  >
+                    {isImage && (
+                      <div className="p-1 pb-0 cursor-zoom-in">
+                        {message?.imageUrl ||
+                        (messageFiles && messageFiles[0]?.url) ||
+                        (messageFiles && messageFiles[0]?.preview) ? (
+                          <PhotoView
+                            src={
+                              message?.imageUrl ||
+                              (messageFiles &&
+                                (messageFiles[0]?.url ||
+                                  messageFiles[0]?.preview))
+                            }
                           >
-                            <FiFile className="text-xl" />
+                            <img
+                              src={
+                                message?.imageUrl ||
+                                (messageFiles &&
+                                  (messageFiles[0]?.url ||
+                                    messageFiles[0]?.preview))
+                              }
+                              alt={message.imageAlt || "Image message"}
+                              className="w-full max-w-[340px] h-auto rounded-xl object-cover"
+                            />
+                          </PhotoView>
+                        ) : (
+                          <div className="w-[320px] h-[220px] rounded-xl bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-gray-500 dark:text-gray-300">
+                            Image preview
                           </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium truncate underline hover:no-underline cursor-pointer">
-                              {fileName}
-                            </span>
-                            <span className="text-xs opacity-70">
-                              {fileSize}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                  <div className="px-3 pb-2 pt-2">
-                    {!!text && (
-                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                        {text}
-                      </p>
+                        )}
+                      </div>
                     )}
-                    <p
-                      className={`mt-1 text-[11px] text-right ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
-                    >
-                      {getMessageTime(message)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
 
-            {/* Typing Indicator */}
-            {typingUsers.size > 0 &&
-              (selectedChat?.targetUserId
-                ? typingUsers.has(selectedChat.targetUserId)
-                : true) && (
-                <div className="w-fit self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex flex-col gap-1 mt-2">
-                  <div className="flex items-center gap-1.5 h-4">
-                    <div
-                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    ></div>
-                    <div
-                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    ></div>
-                    <div
-                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    ></div>
+                    {isDocument &&
+                      (() => {
+                        const file =
+                          message?.file || (messageFiles && messageFiles[0]);
+                        const fileName =
+                          file?.name ||
+                          file?.filename ||
+                          file?.originalName ||
+                          "Document";
+                        const fileSize = file?.size
+                          ? `${(file.size / 1024).toFixed(0)} KB`
+                          : "";
+                        return (
+                          <div className="flex items-center gap-3 p-3 pb-0 bg-black/5 dark:bg-white/5 rounded-t-2xl">
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
+                            >
+                              <FiFile className="text-xl" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium truncate underline hover:no-underline cursor-pointer">
+                                {fileName}
+                              </span>
+                              <span className="text-xs opacity-70">
+                                {fileSize}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                    <div className="px-3 pb-2 pt-2">
+                      {!!text && (
+                        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                          {text}
+                        </p>
+                      )}
+                      <p
+                        className={`mt-1 text-[11px] text-right ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
+                      >
+                        {getMessageTime(message)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-            <div ref={messagesEndRef} />
-          </div>
+                );
+              })}
+
+              {/* Typing Indicator */}
+              {typingUsers.size > 0 &&
+                (selectedChat?.targetUserId
+                  ? typingUsers.has(selectedChat.targetUserId)
+                  : true) && (
+                  <div className="w-fit self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex flex-col gap-1 mt-2">
+                    <div className="flex items-center gap-1.5 h-4">
+                      <div
+                        className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      ></div>
+                      <div
+                        className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      ></div>
+                      <div
+                        className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              <div ref={messagesEndRef} />
+            </div>
+          </PhotoProvider>
         )}
       </div>
 
