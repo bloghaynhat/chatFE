@@ -289,14 +289,68 @@ const MainLayout = ({ children }) => {
         if (filesToUpload.length > 0) {
           const uploadedMedia = await Promise.all(
             filesToUpload.map(async (file) => {
-              const formData = new FormData();
-              formData.append("file", file);
-              const response = await mediaService.uploadSingle(formData);
+              // 1. Lấy Pre-signed URL
+              const reqResponse = await mediaService.requestUploadUrl(
+                file.name,
+                file.type,
+                file.size,
+              );
+              // Phụ thuộc vào dữ liệu trả về từ backend, fix triệt để các format có thể trả về:
+              const uploadUrl =
+                reqResponse?.uploadUrl ||
+                reqResponse?.presignedUrl ||
+                reqResponse?.url ||
+                reqResponse?.signedUrl ||
+                reqResponse?.data?.uploadUrl ||
+                reqResponse?.data?.url ||
+                reqResponse?.data?.presignedUrl;
+              const fileId =
+                reqResponse?.fileId ||
+                reqResponse?.id ||
+                reqResponse?.data?.fileId ||
+                reqResponse?.data?.id;
+
+              if (!uploadUrl) {
+                console.error("Missing uploadUrl in response:", reqResponse);
+                throw new Error(
+                  "Không lấy được pre-signed upload URL từ server",
+                );
+              }
+
+              // 2. Upload file trực tiếp lên S3 qua Pre-signed URL
+              await mediaService.uploadToPresignedUrl(uploadUrl, file);
+
+              // URL upload file cần gọi confirm: bỏ phần query
+              const uploadedUrlClean = uploadUrl.split("?")[0];
+
+              // 3. Confirm quá trình upload với backend
+              const confirmResponse = await mediaService.confirmUpload(
+                fileId,
+                uploadedUrlClean,
+              );
+
+              // Lấy URL cuối cùng từ confirm hoặc cắt URL upload bỏ đi phần query
+              const finalUrl =
+                confirmResponse?.url ||
+                confirmResponse?.fileUrl ||
+                confirmResponse?.data?.url ||
+                uploadedUrlClean;
+
               return {
-                url: response.url,
-                type: file.type?.startsWith("image/") ? "image" : "file",
-                name: file.name,
-                size: file.size,
+                fileId:
+                  confirmResponse?.fileId || confirmResponse?._id || fileId,
+                type: file.type?.startsWith("image/")
+                  ? "IMAGE"
+                  : file.type?.startsWith("video/")
+                    ? "VIDEO"
+                    : file.type?.startsWith("audio/")
+                      ? "AUDIO"
+                      : "DOCUMENT",
+                url: finalUrl,
+                thumbnailUrl: finalUrl,
+                filename: file.name || "unknown",
+                size: file.size || 0,
+                mimetype: file.type,
               };
             }),
           );
@@ -339,14 +393,15 @@ const MainLayout = ({ children }) => {
         if (msgId) {
           await conversationService.forwardMessages({
             messageIds: [msgId],
-            targetConversationIds: [conversationId]
+            targetConversationIds: [conversationId],
           });
         }
       } catch (error) {
         console.error("Failed to forward message via API", error);
       }
     }
-  };  const handleRevokeMessage = async (messageId) => {
+  };
+  const handleRevokeMessage = async (messageId) => {
     try {
       await conversationService.revokeMessage(messageId);
       // Optimistically remove or mark message as revoked

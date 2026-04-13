@@ -641,13 +641,27 @@ export const ActiveChatPane = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  (selectedChat.name || selectedChat.displayName || ((selectedChat.participants || []).find(p => p.userId !== currentUserId)?.displayName) || "U")?.charAt(0)?.toUpperCase()
+                  (
+                    selectedChat.name ||
+                    selectedChat.displayName ||
+                    (selectedChat.participants || []).find(
+                      (p) => p.userId !== currentUserId,
+                    )?.displayName ||
+                    "U"
+                  )
+                    ?.charAt(0)
+                    ?.toUpperCase()
                 )}
               </div>
 
               <div className="min-w-0">
                 <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate">
-                  {selectedChat.name || selectedChat.displayName || ((selectedChat.participants || []).find(p => p.userId !== currentUserId)?.displayName) || "Unknown"}
+                  {selectedChat.name ||
+                    selectedChat.displayName ||
+                    (selectedChat.participants || []).find(
+                      (p) => p.userId !== currentUserId,
+                    )?.displayName ||
+                    "Unknown"}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
                   {isLoading
@@ -722,7 +736,16 @@ export const ActiveChatPane = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                (selectedChat.name || selectedChat.displayName || ((selectedChat.participants || []).find(p => p.userId !== currentUserId)?.displayName) || "U")?.charAt(0)?.toUpperCase()
+                (
+                  selectedChat.name ||
+                  selectedChat.displayName ||
+                  (selectedChat.participants || []).find(
+                    (p) => p.userId !== currentUserId,
+                  )?.displayName ||
+                  "U"
+                )
+                  ?.charAt(0)
+                  ?.toUpperCase()
               )}
             </div>
 
@@ -825,30 +848,43 @@ export const ActiveChatPane = ({
                   message?.sender?.isMe ||
                   (currentUserId && message?.senderId === currentUserId),
                 );
-                
+
                 // Parse forwarded message
                 let isForwarded = Boolean(message?.originalMessageId);
                 let fwData = null;
                 let text = rawText;
-                
-                if (typeof rawText === 'string' && rawText.startsWith('[FWM]::')) {
+
+                if (
+                  typeof rawText === "string" &&
+                  rawText.startsWith("[FWM]::")
+                ) {
                   isForwarded = true;
                   try {
-                    fwData = JSON.parse(rawText.replace('[FWM]::', ''));
-                    text = fwData.text || '';
-                  } catch(e) {
+                    fwData = JSON.parse(rawText.replace("[FWM]::", ""));
+                    text = fwData.text || "";
+                  } catch (e) {
                     text = rawText;
                   }
                 } else if (isForwarded) {
-                   // Fallback for API forwarded message
-                   fwData = {
-                      senderName: message?.originalMessage?.senderName || message?.originalMessage?.sender?.displayName || message?.originalMessage?.sender?.username || "Unknown",
-                      senderAvatarStr: "U",
-                      text: message?.originalMessage?.text || message?.originalMessage?.content || rawText || "Forwarded Message"
-                   };
-                   if (fwData.senderName !== "Unknown") {
-                      fwData.senderAvatarStr = fwData.senderName.charAt(0).toUpperCase();
-                   }
+                  // Fallback for API forwarded message
+                  fwData = {
+                    senderName:
+                      message?.originalMessage?.senderName ||
+                      message?.originalMessage?.sender?.displayName ||
+                      message?.originalMessage?.sender?.username ||
+                      "Unknown",
+                    senderAvatarStr: "U",
+                    text:
+                      message?.originalMessage?.text ||
+                      message?.originalMessage?.content ||
+                      rawText ||
+                      "Forwarded Message",
+                  };
+                  if (fwData.senderName !== "Unknown") {
+                    fwData.senderAvatarStr = fwData.senderName
+                      .charAt(0)
+                      .toUpperCase();
+                  }
                 }
 
                 // Simple check for image vs file types
@@ -860,7 +896,10 @@ export const ActiveChatPane = ({
                     messageFiles[0]?.type?.startsWith("image/")) ||
                   (messageFiles &&
                     messageFiles[0]?.mimetype?.startsWith("image/")) ||
-                  (messageFiles && messageFiles[0]?.url?.match(/\\.(jpeg|jpg|gif|png|webp|webp|heic)$/i));
+                  (messageFiles &&
+                    messageFiles[0]?.url?.match(
+                      /\\.(jpeg|jpg|gif|png|webp|webp|heic)$/i,
+                    ));
 
                 let isDocument =
                   message?.type === "document" ||
@@ -890,10 +929,10 @@ export const ActiveChatPane = ({
                         </span>
                         <div className="flex items-center gap-1.5 opacity-90">
                           <div className="w-[18px] h-[18px] rounded-full bg-pink-500 flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-sm">
-                            {fwData.senderAvatarStr || 'U'}
+                            {fwData.senderAvatarStr || "U"}
                           </div>
                           <span className="font-semibold text-[14px] text-emerald-700 dark:text-emerald-300 tracking-tight">
-                            {fwData.senderName || 'Unknown'}
+                            {fwData.senderName || "Unknown"}
                           </span>
                         </div>
                       </div>
@@ -1127,24 +1166,37 @@ export const ActiveChatPane = ({
 
                       const augmentedMsg = { ...messageToForward };
                       if (!augmentedMsg.sender) augmentedMsg.sender = {};
-                      
+
                       const isMyMsg = Boolean(
-                        augmentedMsg.isMine || 
-                        augmentedMsg.sender?.isMe || 
-                        (currentUserId && augmentedMsg.senderId === currentUserId)
+                        augmentedMsg.isMine ||
+                        augmentedMsg.sender?.isMe ||
+                        (currentUserId &&
+                          augmentedMsg.senderId === currentUserId),
                       );
 
                       if (isMyMsg) {
-                         augmentedMsg.isMine = true;
-                      } else if (!augmentedMsg.sender.name && !augmentedMsg.sender.displayName) {
-                         const participant = selectedChat?.participants?.find(
-                           p => p.userId === augmentedMsg.senderId || p.id === augmentedMsg.senderId || p._id === augmentedMsg.senderId
-                         );
-                         if (participant) {
-                           augmentedMsg.sender.name = participant.displayName || participant.name || participant.username;
-                         } else if (selectedChat?.targetUserId === augmentedMsg.senderId) {
-                           augmentedMsg.sender.name = selectedChat?.displayName || selectedChat?.name;
-                         }
+                        augmentedMsg.isMine = true;
+                      } else if (
+                        !augmentedMsg.sender.name &&
+                        !augmentedMsg.sender.displayName
+                      ) {
+                        const participant = selectedChat?.participants?.find(
+                          (p) =>
+                            p.userId === augmentedMsg.senderId ||
+                            p.id === augmentedMsg.senderId ||
+                            p._id === augmentedMsg.senderId,
+                        );
+                        if (participant) {
+                          augmentedMsg.sender.name =
+                            participant.displayName ||
+                            participant.name ||
+                            participant.username;
+                        } else if (
+                          selectedChat?.targetUserId === augmentedMsg.senderId
+                        ) {
+                          augmentedMsg.sender.name =
+                            selectedChat?.displayName || selectedChat?.name;
+                        }
                       }
 
                       // Create a target chat object compatible with openChatByRow
@@ -1154,7 +1206,11 @@ export const ActiveChatPane = ({
                         isGroup: false,
                         participants: [friend],
                         type: "private",
-                        name: friend.displayName || friend.name || friend.phone || "Unknown",
+                        name:
+                          friend.displayName ||
+                          friend.name ||
+                          friend.phone ||
+                          "Unknown",
                         avatarUrl: friend.avatarUrl,
                       };
 

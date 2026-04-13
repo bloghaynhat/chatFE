@@ -17,7 +17,9 @@ class SocketService {
     const token = await authStorage.getItem("token");
     if (!token) return null;
 
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
 
     this.messagesSocket = io(`${serverUrl}/messages`, {
       auth: { token },
@@ -52,7 +54,9 @@ class SocketService {
     const token = await authStorage.getItem("token");
     if (!token) return null;
 
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
 
     this.friendsSocket = io(`${serverUrl}/friends`, {
       auth: { token },
@@ -194,7 +198,13 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("sendMessage", { conversationId, text, media }, (res) => {
+      const payload = { conversationId };
+      if (text) payload.text = text;
+      if (media && media.length > 0) payload.media = media;
+
+      console.log("SOCKET SEND_MESSAGE PAYLOAD:", payload);
+
+      this.messagesSocket.emit("sendMessage", payload, (res) => {
         if (res?.success) resolve(res.message);
         else reject(new Error(res?.error || "Send failed"));
       });
@@ -230,7 +240,9 @@ class SocketService {
   startTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 
-    const payload = isGroup ? { groupId: conversationId } : { toUserId: conversationId };
+    const payload = isGroup
+      ? { groupId: conversationId }
+      : { toUserId: conversationId };
 
     this.messagesSocket.emit("typing:start", payload);
   }
@@ -238,7 +250,9 @@ class SocketService {
   stopTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 
-    const payload = isGroup ? { groupId: conversationId } : { toUserId: conversationId };
+    const payload = isGroup
+      ? { groupId: conversationId }
+      : { toUserId: conversationId };
 
     this.messagesSocket.emit("typing:stop", payload);
   }
@@ -277,10 +291,13 @@ export const onTypingStart = (cb) => socketService.on("typing:start", cb);
 export const onTypingStop = (cb) => socketService.on("typing:stop", cb);
 
 // Friend
-export const onFriendRequest = (cb) => socketService.on("friend_request:received", cb);
+export const onFriendRequest = (cb) =>
+  socketService.on("friend_request:received", cb);
 
-export const onFriendRequestAccepted = (cb) => socketService.on("friend_request:accepted", cb);
+export const onFriendRequestAccepted = (cb) =>
+  socketService.on("friend_request:accepted", cb);
 
-export const onFriendRequestRejected = (cb) => socketService.on("friend_request:rejected", cb);
+export const onFriendRequestRejected = (cb) =>
+  socketService.on("friend_request:rejected", cb);
 
 export const onUnfriend = (cb) => socketService.on("friendship:unfriended", cb);

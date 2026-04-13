@@ -72,9 +72,10 @@ export const uploadToPresignedUrl = async (uploadUrl, file) => {
 /**
  * Confirm presigned upload
  * @param {string} fileId - The fileId from requestUploadUrl response
+ * @param {string} uploadedUrl - The URL of the uploaded file on S3 (without query params)
  * @returns {Promise<Object>} Response data containing: filename, url, originalName, size, mimetype
  */
-export const confirmUpload = async (fileId) => {
+export const confirmUpload = async (fileId, uploadedUrl) => {
   try {
     if (!fileId) {
       throw new Error("FileId is required");
@@ -82,12 +83,18 @@ export const confirmUpload = async (fileId) => {
 
     const response = await api.post("/media/confirm-upload", {
       fileId,
+      uploadedUrl,
     });
 
     return response;
   } catch (error) {
-    console.error("Confirm upload failed:", error);
-    throw new Error(error.message || "Failed to confirm upload");
+    console.error(
+      "Confirm upload failed:",
+      error,
+      error.payload,
+      error.details,
+    );
+    throw error;
   }
 };
 
