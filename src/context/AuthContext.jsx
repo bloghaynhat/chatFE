@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { authService } from "../services/authService";
+import { authStorage } from "../runtime/storage";
 
 export const AuthContext = createContext(null);
 
@@ -157,7 +158,21 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
 
-      const authPayload = await authService.login({ phone, password });
+      let deviceId = await authStorage.getItem("deviceId");
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        await authStorage.setItem("deviceId", deviceId);
+      }
+
+      const authPayload = await authService.login({
+        phone,
+        password,
+        deviceInfo: {
+          deviceId: deviceId,
+          userAgent: navigator.userAgent,
+          platform: "web",
+        },
+      });
       const currentToken =
         authPayload?.accessToken ||
         authPayload?.token ||
