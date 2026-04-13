@@ -39,6 +39,7 @@ import {
   FiCornerUpRight,
   FiBookmark,
   FiRotateCcw,
+  FiDownload,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
 import { PhotoProvider, PhotoView } from "react-photo-view";
@@ -939,6 +940,7 @@ export const ActiveChatPane = ({
                 const images = messageFiles.filter(
                   (f) =>
                     f?.type === "image" ||
+                    f?.type === "IMAGE" ||
                     f?.type?.startsWith("image/") ||
                     f?.mimetype?.startsWith("image/") ||
                     f?.url?.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i),
@@ -949,21 +951,39 @@ export const ActiveChatPane = ({
                   images.push({ url: message.imageUrl, type: "image/jpeg" });
                 }
 
+                // Extract all videos
+                const videos = messageFiles.filter(
+                  (f) =>
+                    f?.type === "video" ||
+                    f?.type === "VIDEO" ||
+                    f?.type?.startsWith("video/") ||
+                    f?.mimetype?.startsWith("video/") ||
+                    f?.url?.match(/\.(mp4|webm|ogg|mov)$/i),
+                );
+
                 const isImage = images.length > 0;
+                const isVideo = videos.length > 0;
 
                 const isDocument =
-                  message?.type === "document" ||
-                  message?.type === "file" ||
-                  (messageFiles &&
-                    messageFiles.length > 0 &&
-                    !images.includes(messageFiles[0]));
+                  !isImage &&
+                  !isVideo &&
+                  (message?.type === "document" ||
+                    message?.type === "DOCUMENT" ||
+                    message?.type === "file" ||
+                    (messageFiles &&
+                      messageFiles.length > 0 &&
+                      !images.includes(messageFiles[0]) &&
+                      !videos.includes(messageFiles[0])));
 
                 // If it's classified as an image, don't show it as a document block
                 const isFirst = index === 0;
 
                 const hasText = !!text && text.trim() !== "";
-                const onlyImages =
-                  isImage && !hasText && !isDocument && !isForwarded;
+                const onlyImagesOrVideos =
+                  (isImage || isVideo) &&
+                  !hasText &&
+                  !isDocument &&
+                  !isForwarded;
 
                 if (message.isRevoked || message.deletedAt) {
                   return (
@@ -1060,8 +1080,67 @@ export const ActiveChatPane = ({
                             ))}
                           </div>
                         )}
-                        {onlyImages && (
+                        {onlyImagesOrVideos && (
                           <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white">
+                            {message.isEdited && (
+                              <span className="italic font-semibold text-[10px]">
+                                edited
+                              </span>
+                            )}
+                            <span className="text-[11px] font-medium leading-none">
+                              {getMessageTime(message)}
+                            </span>
+                            {mine && (
+                              <span className="flex -space-x-[3px] ml-0.5">
+                                <FiCheck className="text-[12px]" />
+                                <FiCheck className="text-[12px]" />
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isVideo && (
+                      <div
+                        className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}
+                      >
+                        <div className="grid gap-0.5 rounded-lg overflow-hidden max-w-[340px] grid-cols-1">
+                          {videos.map((vid, i) => (
+                            <div
+                              key={i}
+                              className="relative w-full bg-black rounded-lg overflow-hidden group flex justify-center items-center"
+                            >
+                              <video
+                                src={
+                                  vid.url ||
+                                  vid.preview ||
+                                  (typeof vid === "string" ? vid : "")
+                                }
+                                controls
+                                className="w-full h-auto max-h-[400px] object-contain"
+                              />
+                              <a
+                                href={
+                                  vid.url ||
+                                  vid.preview ||
+                                  (typeof vid === "string" ? vid : "")
+                                }
+                                download={
+                                  vid.filename || vid.name || "video.mp4"
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <FiDownload className="text-sm" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                        {onlyImagesOrVideos && (
+                          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white pointer-events-none">
                             {message.isEdited && (
                               <span className="italic font-semibold text-[10px]">
                                 edited
@@ -1093,26 +1172,50 @@ export const ActiveChatPane = ({
                         const fileSize = file?.size
                           ? `${(file.size / 1024).toFixed(0)} KB`
                           : "";
+                        const fileUrl =
+                          file?.url ||
+                          file?.preview ||
+                          (typeof file === "string" ? file : "");
                         return (
-                          <div className="flex items-center gap-3 p-3 pb-0 bg-black/5 dark:bg-white/5 rounded-t-2xl">
-                            <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
-                            >
-                              <FiFile className="text-xl" />
+                          <div className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-t-2xl gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
+                              >
+                                <FiFile className="text-xl" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium truncate hover:underline cursor-pointer text-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {fileName}
+                                </a>
+                                <span className="text-xs opacity-70">
+                                  {fileSize}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-medium truncate underline hover:no-underline cursor-pointer">
-                                {fileName}
-                              </span>
-                              <span className="text-xs opacity-70">
-                                {fileSize}
-                              </span>
-                            </div>
+                            {fileUrl && (
+                              <a
+                                href={fileUrl}
+                                download={fileName}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <FiDownload className="text-lg" />
+                              </a>
+                            )}
                           </div>
                         );
                       })()}
 
-                    {!onlyImages && (
+                    {!onlyImagesOrVideos && (
                       <div className="px-3 pb-2 pt-2 cursor-default relative">
                         {!!text && (
                           <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">

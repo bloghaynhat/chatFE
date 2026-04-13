@@ -37,7 +37,10 @@ const MainLayout = ({ children }) => {
               return prev;
 
             // Only add if it belongs to currently open conversation
-            const msgConvId = message.conversationId || payload?.conversationId;
+            let msgConvId = message.conversationId || payload?.conversationId;
+            if (msgConvId && typeof msgConvId === "object") {
+              msgConvId = msgConvId._id || msgConvId.id;
+            }
             if (String(msgConvId) === String(selectedConversationId)) {
               return [...prev, message];
             }

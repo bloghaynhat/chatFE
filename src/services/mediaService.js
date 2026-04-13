@@ -15,7 +15,7 @@ export const requestUploadUrl = async (filename, mimeType, size) => {
       throw new Error("Filename, mimeType, and size are required");
     }
 
-    let fileType = "FILE";
+    let fileType = "DOCUMENT";
     if (mimeType.startsWith("image/")) fileType = "IMAGE";
     else if (mimeType.startsWith("video/")) fileType = "VIDEO";
     else if (mimeType.startsWith("audio/")) fileType = "AUDIO";
