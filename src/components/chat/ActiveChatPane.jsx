@@ -37,10 +37,13 @@ import {
   FiMapPin,
   FiCheck,
   FiCornerUpRight,
+  FiBookmark,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
 import { PhotoProvider, PhotoView } from "react-photo-view";
 import "react-photo-view/dist/react-photo-view.css";
+import { useFriendManagement } from "../../hooks";
+import { conversationService } from "../../services";
 
 const getMessageId = (message, index) =>
   message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
@@ -109,6 +112,22 @@ export const ActiveChatPane = ({
   const [compressImage, setCompressImage] = useState(true); // for split screen selection
 
   const [contextMenu, setContextMenu] = useState(null);
+
+  const [forwardModalVisible, setForwardModalVisible] = useState(false);
+  const [messageToForward, setMessageToForward] = useState(null);
+  const { friends, fetchFriends } = useFriendManagement();
+
+  useEffect(() => {
+    if (forwardModalVisible) {
+      fetchFriends();
+    }
+  }, [forwardModalVisible]);
+
+  const handleOpenForwardModal = (message) => {
+    setMessageToForward(message);
+    setForwardModalVisible(true);
+    setContextMenu(null);
+  };
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -979,9 +998,7 @@ export const ActiveChatPane = ({
             </button>
             <button
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
-              onClick={() => {
-                setContextMenu(null); /* Implement Forward */
-              }}
+              onClick={() => handleOpenForwardModal(contextMenu.message)}
             >
               <FiCornerUpRight className="text-gray-500 text-base" /> Forward
             </button>
@@ -1008,8 +1025,135 @@ export const ActiveChatPane = ({
         )}
       </div>
 
+      {/* Forward Modal */}
+      {forwardModalVisible && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-[360px] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-slate-700/50 gap-4">
+              <button
+                onClick={() => setForwardModalVisible(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                <FiX className="text-xl" />
+              </button>
+              <span className="font-semibold text-[17px] text-gray-800 dark:text-gray-100">
+                Forward to...
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+              <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors">
+                <div className="w-11 h-11 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+                  <FiBookmark className="text-xl" />
+                </div>
+                <div className="flex flex-col max-w-full overflow-hidden">
+                  <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
+                    Saved Messages
+                  </span>
+                  <span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium truncate">
+                    forward here to save
+                  </span>
+                </div>
+              </div>
+
+              {friends?.map((friend) => (
+                <div
+                  key={friend.id || friend._id}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    if (onSendMessage && messageToForward) {
+                      // Call logic send if needed, for UI purpose we just close
+                      console.log(
+                        "Forwarding message to",
+                        friend.displayName || friend.name,
+                      );
+                    }
+                    setForwardModalVisible(false);
+                  }}
+                >
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shrink-0">
+                    {friend.avatarUrl ? (
+                      <img
+                        src={friend.avatarUrl}
+                        alt={friend.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (friend.displayName || friend.name || friend.phone || "U")
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex flex-col max-w-full overflow-hidden">
+                    <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
+                      {friend.displayName || friend.name || friend.phone}
+                    </span>
+                    <span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium truncate">
+                      online
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {(!friends || friends.length < 3) && (
+                <>
+                  <div
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    onClick={() => setForwardModalVisible(false)}
+                  >
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                      K🔥
+                    </div>
+                    <div className="flex flex-col max-w-full overflow-hidden">
+                      <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
+                        Khóa học HTML CSS Master 🔥
+                      </span>
+                      <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">
+                        353 members
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    onClick={() => setForwardModalVisible(false)}
+                  >
+                    <div className="w-11 h-11 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                      N
+                    </div>
+                    <div className="flex flex-col max-w-full overflow-hidden">
+                      <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
+                        NextJs Super
+                      </span>
+                      <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">
+                        344 members
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors bg-gray-50/50 dark:bg-slate-800/50"
+                    onClick={() => setForwardModalVisible(false)}
+                  >
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white flex items-center justify-center text-xl shrink-0">
+                      ⚛️
+                    </div>
+                    <div className="flex flex-col max-w-full overflow-hidden">
+                      <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
+                        ReactJs Super - Thảo luận - chém gió
+                      </span>
+                      <span className="text-[13px] text-gray-500 dark:text-gray-400 font-medium truncate">
+                        773 members
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Attachment / Upload Overlays */}
-      {isAttachMenuOpen && (
+      {isDragActive && (
         <div
           className="absolute inset-0 z-40 flex items-center justify-center px-3 lg:px-4 py-5 bg-black/20 backdrop-blur-[1px]"
           onMouseDown={() => setIsAttachMenuOpen(false)}
