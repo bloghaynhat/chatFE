@@ -5,6 +5,8 @@ export const MainTaskbar = ({
   onSearchChange,
   onOpenMenu,
   onClearSearch,
+  onSearchFocus = () => {},
+  onSearchBlur = () => {},
   friendRequestCount = 0,
   isCollapsed = false,
   placeholder = "Search conversations...",
