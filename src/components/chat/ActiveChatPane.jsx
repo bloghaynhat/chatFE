@@ -91,7 +91,7 @@ export const ActiveChatPane = ({
   const isTypingRef = useRef(false);
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
-  
+
   const [displayCount, setDisplayCount] = useState(20);
 
   const scrollToBottom = () => {
@@ -104,7 +104,9 @@ export const ActiveChatPane = ({
   }, [messages.length, typingUsers]);
 
   const visibleMessages = useMemo(() => {
-    return messages.length > displayCount ? messages.slice(messages.length - displayCount) : messages;
+    return messages.length > displayCount
+      ? messages.slice(messages.length - displayCount)
+      : messages;
   }, [messages, displayCount]);
 
   useEffect(() => {
@@ -115,9 +117,9 @@ export const ActiveChatPane = ({
             setDisplayCount((prev) => Math.min(prev + 20, messages.length));
           }
         },
-        { rootMargin: "100px", threshold: 0.1 }
+        { rootMargin: "100px", threshold: 0.1 },
       );
-      
+
       const el = firstMessageRef.current;
       observer.observe(el);
       return () => observer.unobserve(el);
@@ -193,7 +195,7 @@ export const ActiveChatPane = ({
     "😅",
     "😚",
     "🙊",
-    "😌",
+    "🤤",
     "😃",
     "😋",
     "😆",
