@@ -87,6 +87,10 @@ class SocketService {
       this.emit("receiveMessage", data);
     });
 
+    this.messagesSocket.on("message:edited", (data) => {
+      this.emit("message:edited", data);
+    });
+
     this.messagesSocket.on("messageSeen", (data) => {
       this.emit("messageSeen", data);
     });
@@ -169,6 +173,14 @@ class SocketService {
 
   offNewMessage() {
     this.off("receiveMessage");
+  }
+
+  onMessageEdited(callback) {
+    return this.on("message:edited", callback);
+  }
+
+  offMessageEdited() {
+    this.off("message:edited");
   }
 
   onMessageStatusUpdate(callback) {

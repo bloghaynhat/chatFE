@@ -45,6 +45,19 @@ const MainLayout = ({ children }) => {
           });
         });
 
+        socketService.onMessageEdited((payload) => {
+          const editedMsg = payload?.message || payload;
+          if (!editedMsg || (!editedMsg._id && !editedMsg.id)) return;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m._id || m.id) === String(editedMsg._id || editedMsg.id)
+                ? { ...m, ...editedMsg, isEdited: true }
+                : m,
+            ),
+          );
+        });
+
         socketService.onMessageStatusUpdate((payload) => {
           // payload might contain { messageId, status }
           setMessages((prev) =>
@@ -244,6 +257,32 @@ const MainLayout = ({ children }) => {
     let payloadMedia = [];
 
     if (typeof payloadOrText === "object" && payloadOrText !== null) {
+      if (payloadOrText.type === "edit") {
+        try {
+          // Optimistically update UI
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === payloadOrText.id || msg._id === payloadOrText.id
+                ? {
+                    ...msg,
+                    text: payloadOrText.text,
+                    content: payloadOrText.text,
+                    isEdited: true,
+                  }
+                : msg,
+            ),
+          );
+
+          await conversationService.editMessage(payloadOrText.id, {
+            text: payloadOrText.text,
+          });
+        } catch (error) {
+          console.error("Failed to edit message", error);
+          // Ideally revert UI state here, but logging is minimum.
+        }
+        return;
+      }
+
       if (payloadOrText instanceof File || Array.isArray(payloadOrText)) {
         payloadText = "";
         payloadMedia = Array.isArray(payloadOrText)

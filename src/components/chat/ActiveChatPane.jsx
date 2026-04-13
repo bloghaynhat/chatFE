@@ -98,6 +98,7 @@ export const ActiveChatPane = ({
     () => new Date(),
   );
   const [draftMessage, setDraftMessage] = useState("");
+  const [editingMessage, setEditingMessage] = useState(null);
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
   const emojiMenuRef = useRef(null);
@@ -481,20 +482,27 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
-    if (!draftMessage.trim() && !forwardingMessage) return;
+    if (!draftMessage.trim() && !forwardingMessage && !editingMessage) return;
 
     if (onSendMessage) {
-      // If we are forwarding, we could either send them as two messages, or combine.
-      // Usually, we'd send the forwarded message first, then the user's typed message,
-      // or we pass a special payload. MainLayout's onSendMessage might need to handle array.
+      if (editingMessage) {
+        // Make the update API call or handle editing via parent
+        const payload = {
+          id: editingMessage.id || editingMessage._id,
+          text: draftMessage.trim(),
+          type: "edit",
+        };
+        onSendMessage(payload);
+        setEditingMessage(null);
+      } else {
+        const payload = {
+          text: draftMessage.trim(),
+          type: "text",
+          forwardingMessage: forwardingMessage,
+        };
+        onSendMessage(payload);
+      }
 
-      const payload = {
-        text: draftMessage.trim(),
-        type: "text",
-        forwardingMessage: forwardingMessage, // pass to MainLayout to handle
-      };
-
-      onSendMessage(payload);
       setDraftMessage("");
       if (onClearForwarding) onClearForwarding();
 
@@ -1008,9 +1016,20 @@ export const ActiveChatPane = ({
                         </p>
                       )}
                       <p
-                        className={`mt-1 text-[11px] text-right ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
+                        className={`mt-1 text-[11.5px] font-medium tracking-tight flex items-center justify-end gap-[5px] ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
                       >
-                        {getMessageTime(message)}
+                        {message.isEdited && (
+                          <span className="italic font-semibold opacity-75 text-[10.5px] tracking-normal">
+                            edited
+                          </span>
+                        )}
+                        <span>{getMessageTime(message)}</span>
+                        {mine && (
+                          <span className="flex -space-x-[4px] ml-0.5">
+                            <FiCheck className="text-[13px]" />
+                            <FiCheck className="text-[13px]" />
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1082,7 +1101,9 @@ export const ActiveChatPane = ({
               <button
                 className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
                 onClick={() => {
-                  setContextMenu(null); /* Implement Edit */
+                  setEditingMessage(contextMenu.message);
+                  setDraftMessage(getMessageText(contextMenu.message));
+                  setContextMenu(null);
                 }}
               >
                 <FiEdit2 className="text-[18px]" strokeWidth={2} />{" "}
@@ -1404,34 +1425,61 @@ export const ActiveChatPane = ({
       )}
 
       <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
-        {forwardingMessage && (
-          <div className="max-w-4xl mx-auto mb-2 flex bg-white/95 dark:bg-slate-800/95 rounded-2xl shadow-lg border border-white/90 dark:border-slate-700/90 overflow-hidden relative z-40 p-3">
-            <div className="w-1 h-full min-h-[36px] bg-blue-500 rounded-full mr-3 shrink-0"></div>
-            <div className="flex-1 flex flex-col justify-center min-w-0 pr-6">
-              <span className="text-[13px] font-semibold text-blue-500 flex items-center gap-1.5 leading-none">
-                <FiCornerUpRight className="text-[14px]" /> Forward Message
+        {(forwardingMessage || editingMessage) && (
+          <div className="max-w-4xl mx-auto mb-2 flex bg-[#edf4f1] dark:bg-slate-800/95 rounded-t-[10px] overflow-hidden relative z-40 p-[8px] pl-[14px] items-center">
+            <div className="flex-1 flex flex-col justify-center min-w-0 pr-6 gap-[5px]">
+              <span className="text-[14px] font-medium text-blue-500 flex items-center gap-1.5 leading-none">
+                {editingMessage ? (
+                  <FiEdit2 className="text-[17px]" strokeWidth={2} />
+                ) : (
+                  <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
+                )}
+                <span className="text-[14.5px] tracking-tight">
+                  {editingMessage ? "Editing" : "Forward Message"}
+                </span>
               </span>
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1 leading-none">
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {forwardingMessage.senderId === currentUserId
-                    ? "You"
-                    : forwardingMessage.sender?.name || "Someone"}
-                  :
-                </span>{" "}
-                {forwardingMessage.media?.length
-                  ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
-                  : forwardingMessage.text}
+              <p className="text-[13.5px] text-gray-500/90 dark:text-gray-400 truncate leading-none flex gap-1 items-center pb-0.5">
+                {editingMessage ? null : (
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {forwardingMessage?.senderId === currentUserId
+                      ? "You"
+                      : forwardingMessage?.sender?.name || "Someone"}
+                    :
+                  </span>
+                )}
+                {editingMessage
+                  ? editingMessage.media?.length
+                    ? `Photo${editingMessage.text ? `, ${editingMessage.text}` : ""}`
+                    : editingMessage.text
+                  : forwardingMessage?.media?.length
+                    ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
+                    : forwardingMessage?.text}
               </p>
             </div>
             <button
-              onClick={onClearForwarding}
-              className="absolute right-3 top-3 lg:top-[14px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              onClick={() => {
+                if (editingMessage) {
+                  setEditingMessage(null);
+                  setDraftMessage("");
+                }
+                if (forwardingMessage && onClearForwarding) {
+                  onClearForwarding();
+                }
+              }}
+              className="absolute right-3 text-gray-400 hover:text-blue-500 transition-colors p-[8px]"
             >
-              <FiX className="text-lg" />
+              <FiX
+                className="text-[#3e3e3e]"
+                strokeWidth={1}
+                style={{ fontSize: "22px" }}
+              />
             </button>
+            <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-blue-500 rounded-[5px]"></div>
           </div>
         )}
-        <div className="flex items-center gap-2 max-w-4xl mx-auto">
+        <div
+          className={`flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage ? "-mt-4 z-40 relative" : ""}`}
+        >
           <div
             ref={attachMenuRef}
             className="relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border border-white/90 dark:border-slate-700/90"
@@ -1560,14 +1608,14 @@ export const ActiveChatPane = ({
           </div>
 
           <button
-            className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition"
+            className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition cursor-pointer z-50 relative"
             onClick={
-              draftMessage.trim() || forwardingMessage
+              editingMessage || draftMessage.trim() || forwardingMessage
                 ? handleSendMessage
                 : undefined
             }
           >
-            {draftMessage.trim() || forwardingMessage ? (
+            {editingMessage || draftMessage.trim() || forwardingMessage ? (
               <FiSend className="text-[20px] lg:text-[22px]" />
             ) : (
               <FiMic className="text-[20px] lg:text-[22px]" />
