@@ -593,62 +593,81 @@ export const ActiveChatPane = ({
 
       {/* Preview Modal */}
       {previewFiles.length > 0 && (
-        <div className="absolute inset-0 z-[110] bg-white dark:bg-slate-900 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleCancelAttachment}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-              >
-                <FiX className="text-2xl text-gray-600 dark:text-gray-300" />
-              </button>
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-                Send {previewFiles.length}{" "}
-                {previewFiles.length === 1 ? "file" : "files"}
-              </h2>
-            </div>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto bg-gray-50 dark:bg-slate-950">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full">
-              {previewFiles[0].type.startsWith("image/") &&
-              previewFiles[0].isImageMode !== false ? (
-                <div className="relative aspect-video max-h-[60vh] bg-black">
-                  <img
-                    src={previewFiles[0].preview}
-                    alt="Preview"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
-                  <FiFile className="text-6xl text-blue-500 mb-4" />
-                  <p className="text-lg font-medium text-gray-800 dark:text-white truncate max-w-full px-4">
-                    {previewFiles[0].name}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    {(previewFiles[0].size / 1024).toFixed(0)} KB
-                  </p>
-                </div>
-              )}
-              <div className="p-4 flex items-center gap-4">
-                <input
-                  type="text"
-                  placeholder="Add a caption..."
-                  className="flex-1 bg-transparent text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none text-lg"
-                  value={draftMessage}
-                  onChange={(e) => setDraftMessage(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && handleSendAttachedFiles()
-                  }
-                  autoFocus
-                />
+        <div className="absolute inset-0 z-[110] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={handleSendAttachedFiles}
-                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-medium transition-colors"
+                  onClick={handleCancelAttachment}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
                 >
-                  SEND
+                  <FiX className="text-xl text-gray-500 dark:text-gray-400" />
                 </button>
+                <h3 className="font-medium text-lg text-gray-800 dark:text-white">
+                  Send {previewFiles.length}{" "}
+                  {previewFiles.length === 1 ? "Photo" : "Photos"}
+                </h3>
               </div>
+              <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-500 dark:text-gray-400">
+                <FiMoreVertical className="text-xl" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 gap-2">
+                {previewFiles.map((file, index) => {
+                  const isImage =
+                    file.type.startsWith("image/") &&
+                    file.isImageMode !== false;
+                  return (
+                    <div
+                      key={index}
+                      className={`relative rounded-lg overflow-hidden bg-gray-100 dark:bg-slate-700 ${
+                        previewFiles.length === 3 && index === 2
+                          ? "col-span-2 aspect-video"
+                          : previewFiles.length === 5 && index >= 2
+                            ? "col-span-1 aspect-square"
+                            : "aspect-square"
+                      }`}
+                    >
+                      {isImage ? (
+                        <img
+                          src={file.preview}
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full p-4">
+                          <FiFile className="text-4xl text-blue-500 mb-2" />
+                          <span className="text-xs text-center truncate w-full px-2 text-gray-700 dark:text-gray-300">
+                            {file.name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-slate-700">
+              <input
+                type="text"
+                placeholder="Add a caption..."
+                value={draftMessage}
+                onChange={(e) => setDraftMessage(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && handleSendAttachedFiles()
+                }
+                autoFocus
+                className="flex-1 bg-transparent border-none outline-none text-gray-700 dark:text-white placeholder-gray-400"
+              />
+              <button
+                onClick={handleSendAttachedFiles}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-medium transition-colors text-sm"
+              >
+                SEND
+              </button>
             </div>
           </div>
         </div>
@@ -912,40 +931,49 @@ export const ActiveChatPane = ({
                   }
                 }
 
-                // Simple check for image vs file types
-                const messageFiles = message?.files || message?.media;
-                let isImage =
-                  message?.type === "image" ||
-                  (messageFiles && messageFiles[0]?.type === "image") ||
-                  (messageFiles &&
-                    messageFiles[0]?.type?.startsWith("image/")) ||
-                  (messageFiles &&
-                    messageFiles[0]?.mimetype?.startsWith("image/")) ||
-                  (messageFiles &&
-                    messageFiles[0]?.url?.match(
-                      /\\.(jpeg|jpg|gif|png|webp|webp|heic)$/i,
-                    ));
+                // Simple check for attachments
+                const messageFiles = message?.files || message?.media || [];
 
-                let isDocument =
+                // Extract all images
+                const images = messageFiles.filter(
+                  (f) =>
+                    f?.type === "image" ||
+                    f?.type?.startsWith("image/") ||
+                    f?.mimetype?.startsWith("image/") ||
+                    f?.url?.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i),
+                );
+
+                // If there's a top-level imageUrl but it's not in the array, add it
+                if (message?.imageUrl && images.length === 0) {
+                  images.push({ url: message.imageUrl, type: "image/jpeg" });
+                }
+
+                const isImage = images.length > 0;
+
+                const isDocument =
                   message?.type === "document" ||
                   message?.type === "file" ||
                   (messageFiles &&
-                    messageFiles[0] &&
-                    !messageFiles[0].type?.startsWith("image/") &&
-                    !messageFiles[0].mimetype?.startsWith("image/"));
+                    messageFiles.length > 0 &&
+                    !images.includes(messageFiles[0]));
 
                 // If it's classified as an image, don't show it as a document block
-                if (isImage) {
-                  isDocument = false;
-                }
                 const isFirst = index === 0;
+
+                const hasText = !!text && text.trim() !== "";
+                const onlyImages =
+                  isImage && !hasText && !isDocument && !isForwarded;
 
                 return (
                   <div
                     ref={isFirst ? firstMessageRef : null}
                     key={getMessageId(message, index)}
                     onContextMenu={(e) => handleContextMenu(e, message)}
-                    className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
+                    className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col relative ${
+                      mine
+                        ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md"
+                        : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"
+                    }`}
                   >
                     {isForwarded && fwData && (
                       <div className="px-2.5 pt-2 pb-1 flex flex-col gap-0.5">
@@ -964,32 +992,77 @@ export const ActiveChatPane = ({
                     )}
 
                     {isImage && (
-                      <div className="p-1 pb-0 cursor-pointer">
-                        {message?.imageUrl ||
-                        (messageFiles && messageFiles[0]?.url) ||
-                        (messageFiles && messageFiles[0]?.preview) ? (
+                      <div
+                        className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}
+                      >
+                        {images.length === 1 ? (
                           <PhotoView
                             src={
-                              message?.imageUrl ||
-                              (messageFiles &&
-                                (messageFiles[0]?.url ||
-                                  messageFiles[0]?.preview))
+                              images[0].url || images[0].preview || images[0]
                             }
                           >
                             <img
                               src={
-                                message?.imageUrl ||
-                                (messageFiles &&
-                                  (messageFiles[0]?.url ||
-                                    messageFiles[0]?.preview))
+                                images[0].url || images[0].preview || images[0]
                               }
-                              alt={message.imageAlt || "Image message"}
-                              className="w-full max-w-[340px] h-auto rounded-xl object-cover"
+                              alt="Message image"
+                              className="w-full max-w-[340px] max-h-[400px] rounded-lg object-contain"
                             />
                           </PhotoView>
                         ) : (
-                          <div className="w-[320px] h-[220px] rounded-xl bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-gray-500 dark:text-gray-300">
-                            Image preview
+                          <div
+                            className={`grid gap-0.5 rounded-lg overflow-hidden max-w-[340px] ${
+                              images.length === 2 || images.length === 4
+                                ? "grid-cols-2"
+                                : images.length === 3
+                                  ? "grid-cols-2"
+                                  : images.length === 5
+                                    ? "grid-cols-6"
+                                    : "grid-cols-3"
+                            }`}
+                          >
+                            {images.map((img, i) => (
+                              <PhotoView
+                                key={i}
+                                src={img.url || img.preview || img}
+                              >
+                                <div
+                                  className={`relative ${
+                                    images.length === 3 && i === 0
+                                      ? "col-span-2 aspect-[2/1]"
+                                      : images.length === 5 && i < 2
+                                        ? "col-span-3 aspect-square"
+                                        : images.length === 5 && i >= 2
+                                          ? "col-span-2 aspect-square"
+                                          : "aspect-square"
+                                  }`}
+                                >
+                                  <img
+                                    src={img.url || img.preview || img}
+                                    alt={`Image ${i}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </PhotoView>
+                            ))}
+                          </div>
+                        )}
+                        {onlyImages && (
+                          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white">
+                            {message.isEdited && (
+                              <span className="italic font-semibold text-[10px]">
+                                edited
+                              </span>
+                            )}
+                            <span className="text-[11px] font-medium leading-none">
+                              {getMessageTime(message)}
+                            </span>
+                            {mine && (
+                              <span className="flex -space-x-[3px] ml-0.5">
+                                <FiCheck className="text-[12px]" />
+                                <FiCheck className="text-[12px]" />
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1026,29 +1099,31 @@ export const ActiveChatPane = ({
                         );
                       })()}
 
-                    <div className="px-3 pb-2 pt-2 cursor-default">
-                      {!!text && (
-                        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                          {text}
+                    {!onlyImages && (
+                      <div className="px-3 pb-2 pt-2 cursor-default relative">
+                        {!!text && (
+                          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                            {text}
+                          </p>
+                        )}
+                        <p
+                          className={`mt-1 text-[11.5px] font-medium tracking-tight flex items-center justify-end gap-[5px] ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
+                        >
+                          {message.isEdited && (
+                            <span className="italic font-semibold opacity-75 text-[10.5px] tracking-normal">
+                              edited
+                            </span>
+                          )}
+                          <span>{getMessageTime(message)}</span>
+                          {mine && (
+                            <span className="flex -space-x-[4px] ml-0.5">
+                              <FiCheck className="text-[13px]" />
+                              <FiCheck className="text-[13px]" />
+                            </span>
+                          )}
                         </p>
-                      )}
-                      <p
-                        className={`mt-1 text-[11.5px] font-medium tracking-tight flex items-center justify-end gap-[5px] ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
-                      >
-                        {message.isEdited && (
-                          <span className="italic font-semibold opacity-75 text-[10.5px] tracking-normal">
-                            edited
-                          </span>
-                        )}
-                        <span>{getMessageTime(message)}</span>
-                        {mine && (
-                          <span className="flex -space-x-[4px] ml-0.5">
-                            <FiCheck className="text-[13px]" />
-                            <FiCheck className="text-[13px]" />
-                          </span>
-                        )}
-                      </p>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
