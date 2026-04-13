@@ -1,11 +1,11 @@
 import { useCallback, useState, useEffect } from "react";
-import { conversationService } from "../../services";
+import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
 
-export const MainLayout = ({ children }) => {
+const MainLayout = ({ children }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
   const [darkMode, setDarkMode] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -15,6 +15,7 @@ export const MainLayout = ({ children }) => {
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
+  const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const { user } = useAuth();
 
   useEffect(() => {
@@ -42,6 +43,42 @@ export const MainLayout = ({ children }) => {
             }
             return prev;
           });
+        });
+
+        socketService.onMessageEdited((payload) => {
+          const editedMsg = payload?.message || payload;
+          if (!editedMsg || (!editedMsg._id && !editedMsg.id)) return;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m._id || m.id) === String(editedMsg._id || editedMsg.id)
+                ? { ...m, ...editedMsg, isEdited: true }
+                : m,
+            ),
+          );
+        });
+
+        socketService.onMessageRevoked((payload) => {
+          console.log("Socket message revoked payload:", payload);
+          const revokedId =
+            payload?.messageId ||
+            payload?.message?._id ||
+            payload?.message?.id ||
+            payload?.id ||
+            payload?._id;
+          if (!revokedId) return;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m._id || m.id) === String(revokedId)
+                ? {
+                    ...m,
+                    isRevoked: true,
+                    deletedAt: payload.deletedAt || new Date().toISOString(),
+                  }
+                : m,
+            ),
+          );
         });
 
         socketService.onMessageStatusUpdate((payload) => {
@@ -78,6 +115,8 @@ export const MainLayout = ({ children }) => {
     return () => {
       active = false;
       socketService.offNewMessage();
+      socketService.offMessageRevoked();
+      socketService.offMessageEdited();
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);
@@ -220,64 +259,261 @@ export const MainLayout = ({ children }) => {
     openChatByRow(selectedChat);
   }, [openChatByRow, selectedChat]);
 
-  const handleSendMessage = async (payload) => {
+  const handleForwardToTarget = useCallback(
+    (targetChat, msg) => {
+      // Navigate to user's chat
+      openChatByRow(targetChat);
+      // Set the forwarding message
+      setForwardingMessage(msg);
+    },
+    [openChatByRow],
+  );
+
+  const clearForwardingMessage = useCallback(() => {
+    setForwardingMessage(null);
+  }, []);
+
+  const handleSendMessage = async (payloadOrText, mediaFiles = []) => {
     let conversationId = selectedConversationId || selectedChat?.id;
 
     if (!conversationId) return;
 
-    // Optimistic UI update
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMessage = {
-      id: tempId,
-      ...payload,
-      createdAt: new Date().toISOString(),
-      isMine: true,
-      senderId: "me", // Normally this would be the current user's ID
-      status: "sending",
+    let payloadText = "";
+    let payloadMedia = [];
+
+    if (typeof payloadOrText === "object" && payloadOrText !== null) {
+      if (payloadOrText.type === "edit") {
+        try {
+          // Optimistically update UI
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === payloadOrText.id || msg._id === payloadOrText.id
+                ? {
+                    ...msg,
+                    text: payloadOrText.text,
+                    content: payloadOrText.text,
+                    isEdited: true,
+                  }
+                : msg,
+            ),
+          );
+
+          await conversationService.editMessage(payloadOrText.id, {
+            text: payloadOrText.text,
+          });
+        } catch (error) {
+          console.error("Failed to edit message", error);
+          // Ideally revert UI state here, but logging is minimum.
+        }
+        return;
+      }
+
+      if (payloadOrText instanceof File || Array.isArray(payloadOrText)) {
+        payloadText = "";
+        payloadMedia = Array.isArray(payloadOrText)
+          ? payloadOrText
+          : [payloadOrText];
+      } else {
+        payloadText = payloadOrText.text || "";
+        payloadMedia = payloadOrText.media || [];
+      }
+    } else {
+      payloadText = payloadOrText || "";
+      payloadMedia = mediaFiles || [];
+    }
+
+    if (
+      !payloadText.trim() &&
+      payloadMedia.length === 0 &&
+      !payloadOrText?.forwardingMessage
+    )
+      return;
+
+    const fwMsg = payloadOrText?.forwardingMessage;
+
+    const performSend = async (txt, medias, isForward = false) => {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const optimisticMessage = {
+        id: tempId,
+        text: txt,
+        media: medias,
+        createdAt: new Date().toISOString(),
+        isMine: true,
+        senderId: "me",
+        status: "sending",
+      };
+
+      setMessages((prev) => [...prev, optimisticMessage]);
+
+      try {
+        let finalMedia = [];
+        const filesToUpload = medias.filter((f) => !f.url);
+        const existingMedia = medias.filter((f) => f.url);
+
+        if (filesToUpload.length > 0) {
+          const uploadedMedia = await Promise.all(
+            filesToUpload.map(async (file) => {
+              // 1. Lấy Pre-signed URL
+              const reqResponse = await mediaService.requestUploadUrl(
+                file.name,
+                file.type,
+                file.size,
+              );
+              // Phụ thuộc vào dữ liệu trả về từ backend, fix triệt để các format có thể trả về:
+              const uploadUrl =
+                reqResponse?.uploadUrl ||
+                reqResponse?.presignedUrl ||
+                reqResponse?.url ||
+                reqResponse?.signedUrl ||
+                reqResponse?.data?.uploadUrl ||
+                reqResponse?.data?.url ||
+                reqResponse?.data?.presignedUrl;
+              const fileId =
+                reqResponse?.fileId ||
+                reqResponse?.id ||
+                reqResponse?.data?.fileId ||
+                reqResponse?.data?.id;
+
+              if (!uploadUrl) {
+                console.error("Missing uploadUrl in response:", reqResponse);
+                throw new Error(
+                  "Không lấy được pre-signed upload URL từ server",
+                );
+              }
+
+              // 2. Upload file trực tiếp lên S3 qua Pre-signed URL
+              await mediaService.uploadToPresignedUrl(uploadUrl, file);
+
+              // URL upload file cần gọi confirm: bỏ phần query
+              const uploadedUrlClean = uploadUrl.split("?")[0];
+
+              // 3. Confirm quá trình upload với backend
+              const confirmResponse = await mediaService.confirmUpload(
+                fileId,
+                uploadedUrlClean,
+              );
+
+              // Lấy URL cuối cùng từ confirm hoặc cắt URL upload bỏ đi phần query
+              const finalUrl =
+                confirmResponse?.url ||
+                confirmResponse?.fileUrl ||
+                confirmResponse?.data?.url ||
+                uploadedUrlClean;
+
+              return {
+                fileId:
+                  confirmResponse?.fileId || confirmResponse?._id || fileId,
+                type: file.type?.startsWith("image/")
+                  ? "IMAGE"
+                  : file.type?.startsWith("video/")
+                    ? "VIDEO"
+                    : file.type?.startsWith("audio/")
+                      ? "AUDIO"
+                      : "DOCUMENT",
+                url: finalUrl,
+                thumbnailUrl: finalUrl,
+                filename: file.name || "unknown",
+                size: file.size || 0,
+                mimetype: file.type,
+              };
+            }),
+          );
+          finalMedia = [...existingMedia, ...uploadedMedia];
+        } else if (existingMedia.length > 0) {
+          finalMedia = existingMedia;
+        }
+
+        const sentMessage = await socketService.sendMessage(
+          conversationId,
+          txt,
+          finalMedia,
+        );
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempId
+              ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
+              : msg,
+          ),
+        );
+      } catch (error) {
+        console.error("Failed to send message via socket", error);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempId ? { ...msg, status: "failed" } : msg,
+          ),
+        );
+      }
     };
 
-    setMessages((prev) => [...prev, optimisticMessage]);
+    // Nếu gửi forward kèm message trước khi gửi thì gửi message trước rồi forward sau
+    if (payloadText.trim() || payloadMedia.length > 0) {
+      await performSend(payloadText, payloadMedia, false);
+    }
 
-    try {
-      // Gọi socketService.sendMessage thay vì conversationService REST
-      const sentMessage = await socketService.sendMessage(
-        conversationId,
-        payload.text || "",
-        payload.media || [],
-      );
+    if (fwMsg) {
+      try {
+        const msgId = fwMsg.id || fwMsg._id;
+        if (msgId) {
+          const res = await conversationService.forwardMessages({
+            messageIds: [msgId],
+            targetConversationIds: [conversationId],
+          });
 
-      // Replace optimistic message with actual server message
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempId
-            ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
-            : msg,
-        ),
-      );
-    } catch (error) {
-      console.error("Failed to send message via socket", error);
-      // Update status to failed
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempId ? { ...msg, status: "failed" } : msg,
-        ),
-      );
+          // Normalize res to an array of messages
+          let newMessages = [];
+          if (Array.isArray(res)) {
+            newMessages = res;
+          } else if (res && typeof res === "object") {
+            if (Array.isArray(res.data)) {
+              newMessages = res.data;
+            } else if (res.data) {
+              newMessages = [res.data];
+            } else if (res._id || res.id) {
+              newMessages = [res];
+            }
+          }
+
+          if (newMessages.length > 0) {
+            setMessages((prev) => {
+              const newMsgs = [...prev];
+              newMessages.forEach((newMsg) => {
+                if (
+                  !newMsgs.some(
+                    (m) =>
+                      String(m._id || m.id) === String(newMsg._id || newMsg.id),
+                  )
+                ) {
+                  newMsgs.push(newMsg);
+                }
+              });
+              return newMsgs;
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to forward message via API", error);
+      }
     }
   };
-
-  const handleRevokeMessage = async (messageId) => {
+  const handleRevokeMessage = async (message) => {
     try {
-      await conversationService.revokeMessage(messageId);
-      // Optimistically remove or mark message as revoked
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId
-            ? { ...msg, isRevoked: true, content: "Message revoked" }
-            : msg,
-        ),
-      );
+      const messageId = message?.id || message?._id;
+      if (!messageId) return;
+
+      const res = await socketService.revokeMessage(messageId);
+
+      if (res && res.success) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId || msg._id === messageId
+              ? { ...msg, isRevoked: true, deletedAt: new Date().toISOString() }
+              : msg,
+          ),
+        );
+      }
     } catch (error) {
-      console.error("Failed to revoke message", error);
+      console.error("Failed to revoke message:", error);
     }
   };
 
@@ -307,6 +543,9 @@ export const MainLayout = ({ children }) => {
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
               onRevokeMessage={handleRevokeMessage}
+              onForwardToTarget={handleForwardToTarget}
+              forwardingMessage={forwardingMessage}
+              onClearForwarding={clearForwardingMessage}
             />
           )}
         </div>
@@ -314,3 +553,5 @@ export const MainLayout = ({ children }) => {
     </div>
   );
 };
+
+export { MainLayout };

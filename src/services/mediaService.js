@@ -1,5 +1,102 @@
 import { getApiBaseUrl } from "../runtime/config";
 import { authStorage } from "../runtime/storage";
+import { api } from "./api";
+
+/**
+ * Request a presigned upload URL
+ * @param {string} filename - The original filename
+ * @param {string} mimeType - The MIME type of the file
+ * @param {number} size - The file size in bytes
+ * @returns {Promise<Object>} Response data containing: uploadUrl, key, fileId
+ */
+export const requestUploadUrl = async (filename, mimeType, size) => {
+  try {
+    if (!filename || !mimeType || !size) {
+      throw new Error("Filename, mimeType, and size are required");
+    }
+
+    let fileType = "FILE";
+    if (mimeType.startsWith("image/")) fileType = "IMAGE";
+    else if (mimeType.startsWith("video/")) fileType = "VIDEO";
+    else if (mimeType.startsWith("audio/")) fileType = "AUDIO";
+
+    const response = await api.post("/media/request-upload-url", {
+      fileType, // from MediaFileType enum
+      mimeType: mimeType, // required
+      fileSize: size, // required
+      originalName: filename, // optional
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Request upload URL failed:", error);
+    throw new Error(error.message || "Failed to request upload URL");
+  }
+};
+
+/**
+ * Upload file to presigned URL
+ * @param {string} uploadUrl - The presigned URL from requestUploadUrl
+ * @param {File} file - The file to upload
+ * @returns {Promise<void>}
+ */
+export const uploadToPresignedUrl = async (uploadUrl, file) => {
+  try {
+    if (!uploadUrl || !file) {
+      throw new Error("Upload URL and file are required");
+    }
+
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      mode: "cors", // Thêm mode "cors"
+      body: file,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Upload to presigned URL failed: ${response.status} - ${errorText}`,
+      );
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Upload to presigned URL failed:", error);
+    throw error; // Quăng ngược lỗi nguyên gốc ra ngoài để báo chi tiết
+  }
+};
+
+/**
+ * Confirm presigned upload
+ * @param {string} fileId - The fileId from requestUploadUrl response
+ * @param {string} uploadedUrl - The URL of the uploaded file on S3 (without query params)
+ * @returns {Promise<Object>} Response data containing: filename, url, originalName, size, mimetype
+ */
+export const confirmUpload = async (fileId, uploadedUrl) => {
+  try {
+    if (!fileId) {
+      throw new Error("FileId is required");
+    }
+
+    const response = await api.post("/media/confirm-upload", {
+      fileId,
+      uploadedUrl,
+    });
+
+    return response;
+  } catch (error) {
+    console.error(
+      "Confirm upload failed:",
+      error,
+      error.payload,
+      error.details,
+    );
+    throw error;
+  }
+};
 
 /**
  * Upload a single file to the media endpoint
@@ -26,7 +123,9 @@ export const uploadMedia = async (file) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      throw new Error(
+        errorData.message || `Upload failed with status ${response.status}`,
+      );
     }
 
     const data = await response.json();
@@ -64,7 +163,9 @@ export const uploadMultipleMedia = async (files) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      throw new Error(
+        errorData.message || `Upload failed with status ${response.status}`,
+      );
     }
 
     const data = await response.json();
@@ -93,7 +194,9 @@ export const deleteMedia = async (filename) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Delete failed with status ${response.status}`);
+      throw new Error(
+        errorData.message || `Delete failed with status ${response.status}`,
+      );
     }
   } catch (error) {
     console.error("Media delete failed:", error);
@@ -105,6 +208,9 @@ export const mediaService = {
   uploadMedia,
   uploadMultipleMedia,
   deleteMedia,
+  requestUploadUrl,
+  uploadToPresignedUrl,
+  confirmUpload,
 };
 
 export default mediaService;

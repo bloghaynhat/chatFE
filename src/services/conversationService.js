@@ -25,13 +25,6 @@ const normalizeMessages = (payload) => {
 };
 
 export const conversationService = {
-  async openPrivateConversation(targetUserId) {
-    const payload = await api.get("/conversations/private", {
-      params: { targetUserId },
-    });
-    return normalizeConversation(payload);
-  },
-
   async createPrivateConversation(targetUserId) {
     const payload = await api.post("/conversations/private", { targetUserId });
     return normalizeConversation(payload);
@@ -58,8 +51,27 @@ export const conversationService = {
     return api.post(`/conversations/${conversationId}/messages`, data);
   },
 
+  /**
+   * Send message with media attachments
+   * @param {string} conversationId - The conversation ID
+   * @param {string} content - Optional text content
+   * @param {Array} attachments - Array of media objects with {filename, url, size, mimetype}
+   * @param {string} type - Message type: 'text', 'media', 'mixed'
+   * @returns {Promise<Object>} Message response
+   */
+  async sendMediaMessage(
+    conversationId,
+    { content, attachments, type = "media" },
+  ) {
+    return api.post(`/conversations/${conversationId}/messages`, {
+      content,
+      attachments,
+      type,
+    });
+  },
+
   async revokeMessage(messageId) {
-    return api.post(`/messages/${messageId}/revoke`);
+    return api.post(`/messages/${messageId}/revoke`, {});
   },
 
   async reactMessage(messageId, reaction) {
