@@ -100,19 +100,27 @@ export const ActiveChatPane = ({
   const [previewFiles, setPreviewFiles] = useState([]);
   const [compressImage, setCompressImage] = useState(true); // for split screen selection
 
-  const onDrop = useCallback((acceptedFiles) => {
+  const onDrop = useCallback((acceptedFiles, fileRejections, event) => {
     if (acceptedFiles?.length === 0) return;
+
+    let isImageDrop = true;
+    if (event && event.clientY) {
+      // Assuming split is roughly vertical half-half when dragType === "image"
+      isImageDrop = event.clientY < window.innerHeight / 2;
+    }
 
     // Determine the type: if any file is not an image, treat it as a 'file'
     const hasNonImage = acceptedFiles.some((f) => !f.type.startsWith("image/"));
-    const isImageDrop = !hasNonImage;
+    if (hasNonImage) isImageDrop = false;
 
     const filesWithPreview = acceptedFiles.map((file) =>
       Object.assign(file, {
         preview: URL.createObjectURL(file),
+        isImageMode: isImageDrop,
       }),
     );
 
+    setCompressImage(isImageDrop);
     setPreviewFiles(filesWithPreview);
     setDragType(null); // close drag overlay upon drop
     // Compress is defaulted to true, user can toggle in overlay if they hovered over "uncompressed" option if we had one
@@ -500,7 +508,8 @@ export const ActiveChatPane = ({
           </div>
           <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto bg-gray-50 dark:bg-slate-950">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full">
-              {previewFiles[0].type.startsWith("image/") ? (
+              {previewFiles[0].type.startsWith("image/") &&
+              previewFiles[0].isImageMode !== false ? (
                 <div className="relative aspect-video max-h-[60vh] bg-black">
                   <img
                     src={previewFiles[0].preview}
@@ -740,18 +749,23 @@ export const ActiveChatPane = ({
               );
               // Simple check for image vs file types
               const messageFiles = message?.files || message?.media;
-              const isImage =
+              let isImage =
                 message?.type === "image" ||
                 (messageFiles && messageFiles[0]?.type?.startsWith("image/")) ||
                 (messageFiles &&
                   messageFiles[0]?.mimetype?.startsWith("image/"));
-              const isDocument =
+              let isDocument =
                 message?.type === "document" ||
                 message?.type === "file" ||
                 (messageFiles &&
                   messageFiles[0] &&
                   !messageFiles[0].type?.startsWith("image/") &&
                   !messageFiles[0].mimetype?.startsWith("image/"));
+
+              // If it's classified as an image, don't show it as a document block
+              if (isImage) {
+                isDocument = false;
+              }
               const isFirst = index === 0;
 
               return (
