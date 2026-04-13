@@ -38,6 +38,7 @@ import {
   FiCheck,
   FiCornerUpRight,
   FiBookmark,
+  FiRotateCcw,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
 import { PhotoProvider, PhotoView } from "react-photo-view";
@@ -1016,9 +1017,7 @@ export const ActiveChatPane = ({
                                 ? "grid-cols-2"
                                 : images.length === 3
                                   ? "grid-cols-2"
-                                  : images.length === 5
-                                    ? "grid-cols-6"
-                                    : "grid-cols-3"
+                                  : "grid-cols-3"
                             }`}
                           >
                             {images.map((img, i) => (
@@ -1030,11 +1029,7 @@ export const ActiveChatPane = ({
                                   className={`relative ${
                                     images.length === 3 && i === 0
                                       ? "col-span-2 aspect-[2/1]"
-                                      : images.length === 5 && i < 2
-                                        ? "col-span-3 aspect-square"
-                                        : images.length === 5 && i >= 2
-                                          ? "col-span-2 aspect-square"
-                                          : "aspect-square"
+                                      : "aspect-square"
                                   }`}
                                 >
                                   <img
@@ -1157,7 +1152,7 @@ export const ActiveChatPane = ({
 
         {contextMenu && (
           <div
-            className="fixed z-[9999] w-[180px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]"
+            className="fixed z-[9999] w-[200px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1253,17 +1248,33 @@ export const ActiveChatPane = ({
               <FiCheckCircle className="text-[18px]" strokeWidth={2} />{" "}
               <span className="font-medium">Select</span>
             </button>
+
+            {(contextMenu.message?.senderId === currentUserId ||
+              contextMenu.message?.sender?.id === currentUserId ||
+              contextMenu.message?.id_sender === currentUserId) && (
+              <button
+                className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
+                onClick={() => {
+                  setContextMenu(null);
+                  if (onRevokeMessage && contextMenu.message) {
+                    onRevokeMessage(contextMenu.message);
+                  }
+                }}
+              >
+                <FiRotateCcw className="text-[18px]" strokeWidth={2} />{" "}
+                <span className="font-medium">Revoke</span>
+              </button>
+            )}
+
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
               onClick={() => {
                 setContextMenu(null);
-                if (onRevokeMessage && contextMenu.message) {
-                  onRevokeMessage(contextMenu.message);
-                }
+                /* Implement Delete for me */
               }}
             >
               <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
-              <span className="font-medium">Delete</span>
+              <span className="font-medium">Delete for me only</span>
             </button>
           </div>
         )}
