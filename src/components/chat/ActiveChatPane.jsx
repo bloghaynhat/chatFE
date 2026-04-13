@@ -117,6 +117,8 @@ export const ActiveChatPane = ({
   const [previewFiles, setPreviewFiles] = useState([]);
   const [compressImage, setCompressImage] = useState(true); // for split screen selection
 
+  const [previewVideoUrl, setPreviewVideoUrl] = useState(null);
+
   const [contextMenu, setContextMenu] = useState(null);
 
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
@@ -1106,38 +1108,52 @@ export const ActiveChatPane = ({
                         className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}
                       >
                         <div className="grid gap-0.5 rounded-lg overflow-hidden max-w-[340px] grid-cols-1">
-                          {videos.map((vid, i) => (
-                            <div
-                              key={i}
-                              className="relative w-full bg-black rounded-lg overflow-hidden group flex justify-center items-center"
-                            >
-                              <video
-                                src={
-                                  vid.url ||
-                                  vid.preview ||
-                                  (typeof vid === "string" ? vid : "")
-                                }
-                                controls
-                                className="w-full h-auto max-h-[400px] object-contain"
-                              />
-                              <a
-                                href={
-                                  vid.url ||
-                                  vid.preview ||
-                                  (typeof vid === "string" ? vid : "")
-                                }
-                                download={
-                                  vid.filename || vid.name || "video.mp4"
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => e.stopPropagation()}
+                          {videos.map((vid, i) => {
+                            const vidUrl =
+                              vid.url ||
+                              vid.preview ||
+                              (typeof vid === "string" ? vid : "");
+                            return (
+                              <div
+                                key={i}
+                                className="relative w-full bg-black rounded-lg overflow-hidden group flex justify-center items-center cursor-pointer"
+                                onClick={() => setPreviewVideoUrl(vidUrl)}
                               >
-                                <FiDownload className="text-sm" />
-                              </a>
-                            </div>
-                          ))}
+                                <video
+                                  src={vidUrl}
+                                  className="w-full h-auto max-h-[400px] object-contain pointer-events-none"
+                                />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                                  <div className="w-14 h-14 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm shadow-xl hover:scale-110 transition-transform">
+                                    <svg
+                                      className="w-6 h-6 ml-1"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <a
+                                  href={vidUrl}
+                                  download={
+                                    vid.filename || vid.name || "video.mp4"
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <FiDownload className="text-sm" />
+                                </a>
+                              </div>
+                            );
+                          })}
                         </div>
                         {onlyImagesOrVideos && (
                           <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white pointer-events-none">
@@ -1847,6 +1863,46 @@ export const ActiveChatPane = ({
           </button>
         </div>
       </div>
+
+      {previewVideoUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setPreviewVideoUrl(null)}
+        >
+          <button
+            className="absolute top-6 right-6 text-white hover:text-gray-300 hover:bg-white/10 p-3 rounded-full z-[10000] transition-colors shadow-lg"
+            onClick={() => setPreviewVideoUrl(null)}
+          >
+            <FiX className="text-3xl" />
+          </button>
+
+          <div
+            className="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-12 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full max-w-[1200px] aspect-video max-h-[85vh] rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black ring-1 ring-white/10 relative group">
+              <video
+                src={previewVideoUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-contain outline-none"
+                controlsList="nodownload"
+              />
+
+              <a
+                href={previewVideoUrl}
+                download="video.mp4"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 backdrop-blur-md border border-white/20 shadow-lg"
+                title="Download video"
+              >
+                <FiDownload className="text-xl" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
