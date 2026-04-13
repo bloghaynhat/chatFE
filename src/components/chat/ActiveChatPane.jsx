@@ -563,7 +563,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
-        accept="image/*,video/*"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime"
         ref={photoVideoInputRef}
         style={{ display: "none" }}
         onChange={(e) => {
@@ -576,6 +576,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
+        accept=".pdf,application/pdf"
         ref={documentInputRef}
         style={{ display: "none" }}
         onChange={(e) => {
