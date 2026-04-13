@@ -32,6 +32,7 @@ import {
   FiCalendar,
   FiSend,
 } from "react-icons/fi";
+import { useDropzone } from "react-dropzone";
 
 const getMessageId = (message, index) =>
   message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
@@ -93,6 +94,73 @@ export const ActiveChatPane = ({
   const firstMessageRef = useRef(null);
 
   const [displayCount, setDisplayCount] = useState(20);
+
+  // File upload state for UI/UX
+  const [dragType, setDragType] = useState(null); // 'image' or 'file'
+  const [previewFiles, setPreviewFiles] = useState([]);
+  const [compressImage, setCompressImage] = useState(true); // for split screen selection
+
+  const onDrop = useCallback((acceptedFiles) => {
+    if (acceptedFiles?.length === 0) return;
+
+    // Determine the type: if any file is not an image, treat it as a 'file'
+    const hasNonImage = acceptedFiles.some((f) => !f.type.startsWith("image/"));
+    const isImageDrop = !hasNonImage;
+
+    const filesWithPreview = acceptedFiles.map((file) =>
+      Object.assign(file, {
+        preview: URL.createObjectURL(file),
+      }),
+    );
+
+    setPreviewFiles(filesWithPreview);
+    setDragType(null); // close drag overlay upon drop
+    // Compress is defaulted to true, user can toggle in overlay if they hovered over "uncompressed" option if we had one
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive, isDragAccept } =
+    useDropzone({
+      onDrop,
+      noClick: true,
+      noKeyboard: true,
+      onDragEnter: (e) => {
+        // Basic check, dropzone doesn't give us item types reliably until drop.
+        // We will default drag overlay but can't fully know if it's image or file until drop or reading datatransfer items.
+        const items = e.dataTransfer?.items;
+        let hasImage = false;
+        let hasFile = false;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith("image/")) hasImage = true;
+            else hasFile = true;
+          }
+        }
+        setDragType(hasFile ? "file" : "image");
+      },
+      onDragLeave: () => {
+        setDragType(null);
+      },
+    });
+
+  const handleSendAttachedFiles = () => {
+    // Here we'd map over previewFiles and send them along with draftMessage
+    // This assumes onSendMessage deals with file attachments
+    if (previewFiles.length === 0) return;
+
+    // Call the parent handler
+    onSendMessage(draftMessage, previewFiles, { compress: compressImage });
+
+    // Clear state
+    previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
+    setPreviewFiles([]);
+    setDraftMessage("");
+  };
+
+  const handleCancelAttachment = () => {
+    previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
+    setPreviewFiles([]);
+    setDragType(null);
+  };
 
   const scrollToBottom = () => {
     // Only scroll if we are near the bottom to avoid snapping when loading older messages
@@ -367,7 +435,114 @@ export const ActiveChatPane = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative">
+    <div
+      {...getRootProps()}
+      className={`flex-1 flex flex-col min-h-0 relative ${isDragActive ? "bg-slate-50 dark:bg-slate-800/50" : ""}`}
+    >
+      <input {...getInputProps()} />
+
+      {/* Drag Overlay */}
+      {isDragActive && (
+        <div className="absolute inset-0 z-[100] flex flex-col pointer-events-none">
+          {dragType === "image" ? (
+            <div className="flex-1 flex flex-col justify-center items-center backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 p-6 md:p-12">
+              <div className="flex flex-col gap-6 w-full max-w-3xl h-full pb-16">
+                <div className="flex-1 flex flex-col items-center justify-center border-[5px] border-dashed border-blue-500 rounded-[2.5rem] bg-white/95 dark:bg-slate-800/95 shadow-2xl transition-transform hover:scale-[1.01]">
+                  <FiImage className="text-7xl md:text-8xl text-blue-500 mb-6" />
+                  <p className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
+                    Drop as Image
+                  </p>
+                  <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 mt-4">
+                    Compresses image
+                  </p>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center border-[5px] border-dashed border-purple-500 rounded-[2.5rem] bg-white/95 dark:bg-slate-800/95 shadow-2xl transition-transform hover:scale-[1.01]">
+                  <FiFile className="text-7xl md:text-8xl text-purple-500 mb-6" />
+                  <p className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
+                    Drop as File
+                  </p>
+                  <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 mt-4">
+                    Original quality
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="absolute inset-4 border-4 border-dashed border-blue-500 rounded-3xl backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 flex flex-col items-center justify-center shadow-2xl z-50">
+              <FiFile className="text-8xl text-blue-500 mb-6" />
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
+                Drop files here to send them
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-4 text-xl">
+                without compression
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewFiles.length > 0 && (
+        <div className="absolute inset-0 z-[110] bg-white dark:bg-slate-900 flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleCancelAttachment}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <FiX className="text-2xl text-gray-600 dark:text-gray-300" />
+              </button>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                Send {previewFiles.length}{" "}
+                {previewFiles.length === 1 ? "file" : "files"}
+              </h2>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto bg-gray-50 dark:bg-slate-950">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full">
+              {previewFiles[0].type.startsWith("image/") ? (
+                <div className="relative aspect-video max-h-[60vh] bg-black">
+                  <img
+                    src={previewFiles[0].preview}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+                  <FiFile className="text-6xl text-blue-500 mb-4" />
+                  <p className="text-lg font-medium text-gray-800 dark:text-white truncate max-w-full px-4">
+                    {previewFiles[0].name}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    {(previewFiles[0].size / 1024).toFixed(0)} KB
+                  </p>
+                </div>
+              )}
+              <div className="p-4 flex items-center gap-4">
+                <input
+                  type="text"
+                  placeholder="Add a caption..."
+                  className="flex-1 bg-transparent text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none text-lg"
+                  value={draftMessage}
+                  onChange={(e) => setDraftMessage(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && handleSendAttachedFiles()
+                  }
+                  autoFocus
+                />
+                <button
+                  onClick={handleSendAttachedFiles}
+                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-medium transition-colors"
+                >
+                  SEND
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         {!isHeaderSearchOpen ? (
           <div className="flex items-center justify-between">
@@ -563,20 +738,37 @@ export const ActiveChatPane = ({
                 message?.sender?.isMe ||
                 (currentUserId && message?.senderId === currentUserId),
               );
-              const isImage = message?.type === "image";
+              // Simple check for image vs file types
+              const isImage =
+                message?.type === "image" ||
+                (message?.files &&
+                  message.files[0]?.type?.startsWith("image/"));
+              const isDocument =
+                message?.type === "document" ||
+                message?.type === "file" ||
+                (message?.files &&
+                  message.files[0] &&
+                  !message.files[0].type?.startsWith("image/"));
               const isFirst = index === 0;
 
               return (
                 <div
                   ref={isFirst ? firstMessageRef : null}
                   key={getMessageId(message, index)}
-                  className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
+                  className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
                 >
                   {isImage && (
-                    <div className="p-1">
-                      {message?.imageUrl ? (
+                    <div className="p-1 pb-0">
+                      {message?.imageUrl ||
+                      (message?.files && message.files[0]?.url) ||
+                      (message?.files && message.files[0]?.preview) ? (
                         <img
-                          src={message.imageUrl}
+                          src={
+                            message?.imageUrl ||
+                            (message?.files &&
+                              (message.files[0]?.url ||
+                                message.files[0]?.preview))
+                          }
                           alt={message.imageAlt || "Image message"}
                           className="w-full max-w-[340px] h-auto rounded-xl object-cover"
                         />
@@ -587,6 +779,33 @@ export const ActiveChatPane = ({
                       )}
                     </div>
                   )}
+
+                  {isDocument &&
+                    (() => {
+                      const file =
+                        message?.file || (message?.files && message.files[0]);
+                      const fileName = file?.name || "Document";
+                      const fileSize = file?.size
+                        ? `${(file.size / 1024).toFixed(0)} KB`
+                        : "";
+                      return (
+                        <div className="flex items-center gap-3 p-3 pb-0 bg-black/5 dark:bg-white/5 rounded-t-2xl">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${mine ? "bg-emerald-600" : "bg-blue-500"}`}
+                          >
+                            <FiFile className="text-xl" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium truncate underline hover:no-underline cursor-pointer">
+                              {fileName}
+                            </span>
+                            <span className="text-xs opacity-70">
+                              {fileSize}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                   <div className="px-3 pb-2 pt-2">
                     {!!text && (
