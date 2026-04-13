@@ -739,16 +739,19 @@ export const ActiveChatPane = ({
                 (currentUserId && message?.senderId === currentUserId),
               );
               // Simple check for image vs file types
+              const messageFiles = message?.files || message?.media;
               const isImage =
                 message?.type === "image" ||
-                (message?.files &&
-                  message.files[0]?.type?.startsWith("image/"));
+                (messageFiles && messageFiles[0]?.type?.startsWith("image/")) ||
+                (messageFiles &&
+                  messageFiles[0]?.mimetype?.startsWith("image/"));
               const isDocument =
                 message?.type === "document" ||
                 message?.type === "file" ||
-                (message?.files &&
-                  message.files[0] &&
-                  !message.files[0].type?.startsWith("image/"));
+                (messageFiles &&
+                  messageFiles[0] &&
+                  !messageFiles[0].type?.startsWith("image/") &&
+                  !messageFiles[0].mimetype?.startsWith("image/"));
               const isFirst = index === 0;
 
               return (
@@ -760,14 +763,14 @@ export const ActiveChatPane = ({
                   {isImage && (
                     <div className="p-1 pb-0">
                       {message?.imageUrl ||
-                      (message?.files && message.files[0]?.url) ||
-                      (message?.files && message.files[0]?.preview) ? (
+                      (messageFiles && messageFiles[0]?.url) ||
+                      (messageFiles && messageFiles[0]?.preview) ? (
                         <img
                           src={
                             message?.imageUrl ||
-                            (message?.files &&
-                              (message.files[0]?.url ||
-                                message.files[0]?.preview))
+                            (messageFiles &&
+                              (messageFiles[0]?.url ||
+                                messageFiles[0]?.preview))
                           }
                           alt={message.imageAlt || "Image message"}
                           className="w-full max-w-[340px] h-auto rounded-xl object-cover"
@@ -783,8 +786,12 @@ export const ActiveChatPane = ({
                   {isDocument &&
                     (() => {
                       const file =
-                        message?.file || (message?.files && message.files[0]);
-                      const fileName = file?.name || "Document";
+                        message?.file || (messageFiles && messageFiles[0]);
+                      const fileName =
+                        file?.name ||
+                        file?.filename ||
+                        file?.originalName ||
+                        "Document";
                       const fileSize = file?.size
                         ? `${(file.size / 1024).toFixed(0)} KB`
                         : "";

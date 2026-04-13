@@ -1,5 +1,95 @@
 import { getApiBaseUrl } from "../runtime/config";
 import { authStorage } from "../runtime/storage";
+import { api } from "./api";
+
+/**
+ * Request a presigned upload URL
+ * @param {string} filename - The original filename
+ * @param {string} mimeType - The MIME type of the file
+ * @param {number} size - The file size in bytes
+ * @returns {Promise<Object>} Response data containing: uploadUrl, key, fileId
+ */
+export const requestUploadUrl = async (filename, mimeType, size) => {
+  try {
+    if (!filename || !mimeType || !size) {
+      throw new Error("Filename, mimeType, and size are required");
+    }
+
+    let fileType = "FILE";
+    if (mimeType.startsWith("image/")) fileType = "IMAGE";
+    else if (mimeType.startsWith("video/")) fileType = "VIDEO";
+    else if (mimeType.startsWith("audio/")) fileType = "AUDIO";
+
+    const response = await api.post("/media/request-upload-url", {
+      fileType, // from MediaFileType enum
+      mimeType: mimeType, // required
+      fileSize: size, // required
+      originalName: filename, // optional
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Request upload URL failed:", error);
+    throw new Error(error.message || "Failed to request upload URL");
+  }
+};
+
+/**
+ * Upload file to presigned URL
+ * @param {string} uploadUrl - The presigned URL from requestUploadUrl
+ * @param {File} file - The file to upload
+ * @returns {Promise<void>}
+ */
+export const uploadToPresignedUrl = async (uploadUrl, file) => {
+  try {
+    if (!uploadUrl || !file) {
+      throw new Error("Upload URL and file are required");
+    }
+
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      mode: "cors", // Thêm mode "cors"
+      body: file,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Upload to presigned URL failed: ${response.status} - ${errorText}`,
+      );
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Upload to presigned URL failed:", error);
+    throw error; // Quăng ngược lỗi nguyên gốc ra ngoài để báo chi tiết
+  }
+};
+
+/**
+ * Confirm presigned upload
+ * @param {string} fileId - The fileId from requestUploadUrl response
+ * @returns {Promise<Object>} Response data containing: filename, url, originalName, size, mimetype
+ */
+export const confirmUpload = async (fileId) => {
+  try {
+    if (!fileId) {
+      throw new Error("FileId is required");
+    }
+
+    const response = await api.post("/media/confirm-upload", {
+      fileId,
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Confirm upload failed:", error);
+    throw new Error(error.message || "Failed to confirm upload");
+  }
+};
 
 /**
  * Upload a single file to the media endpoint
@@ -26,7 +116,9 @@ export const uploadMedia = async (file) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      throw new Error(
+        errorData.message || `Upload failed with status ${response.status}`,
+      );
     }
 
     const data = await response.json();
@@ -64,7 +156,9 @@ export const uploadMultipleMedia = async (files) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      throw new Error(
+        errorData.message || `Upload failed with status ${response.status}`,
+      );
     }
 
     const data = await response.json();
@@ -72,134 +166,6 @@ export const uploadMultipleMedia = async (files) => {
   } catch (error) {
     console.error("Media upload failed:", error);
     throw new Error(error.message || "Failed to upload files");
-  }
-};
-
-/**
- * Request presigned upload URL from backend
- * @param {string} fileName - The filename
- * @param {string} contentType - The MIME type
- * @returns {Promise<Object>} Response data containing: uploadUrl, fileUrl
- */
-export const requestUploadUrl = async (fileName, contentType) => {
-  try {
-    if (!fileName || !contentType) {
-      throw new Error("fileName and contentType are required");
-    }
-
-    const token = await authStorage.getItem("token");
-    const response = await fetch(`${getApiBaseUrl()}/media/request-upload-url`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        fileName,
-        contentType,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to request upload URL with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error("Request upload URL failed:", error);
-    throw new Error(error.message || "Failed to request upload URL");
-  }
-};
-
-/**
- * Upload file directly to S3 using presigned URL
- * @param {string} uploadUrl - The presigned upload URL
- * @param {File} file - The file to upload
- * @param {Function} onProgress - Callback for upload progress (optional)
- * @returns {Promise<void>}
- */
-export const uploadToPresignedUrl = async (uploadUrl, file, onProgress) => {
-  try {
-    if (!uploadUrl || !file) {
-      throw new Error("uploadUrl and file are required");
-    }
-
-    const xhr = new XMLHttpRequest();
-
-    // Track upload progress
-    if (onProgress) {
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = (event.loaded / event.total) * 100;
-          onProgress(percentComplete);
-        }
-      });
-    }
-
-    return new Promise((resolve, reject) => {
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
-
-      xhr.addEventListener("error", () => {
-        reject(new Error("Upload failed due to network error"));
-      });
-
-      xhr.addEventListener("abort", () => {
-        reject(new Error("Upload was aborted"));
-      });
-
-      xhr.open("PUT", uploadUrl);
-      xhr.setRequestHeader("Content-Type", file.type);
-      xhr.send(file);
-    });
-  } catch (error) {
-    console.error("Upload to presigned URL failed:", error);
-    throw new Error(error.message || "Failed to upload file to S3");
-  }
-};
-
-/**
- * Confirm upload with backend after successful S3 upload
- * @param {string} fileName - The filename
- * @param {string} fileUrl - The public file URL from S3
- * @returns {Promise<Object>} Confirmation response
- */
-export const confirmUpload = async (fileName, fileUrl) => {
-  try {
-    if (!fileName || !fileUrl) {
-      throw new Error("fileName and fileUrl are required");
-    }
-
-    const token = await authStorage.getItem("token");
-    const response = await fetch(`${getApiBaseUrl()}/media/confirm-upload`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        fileName,
-        fileUrl,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to confirm upload with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error("Confirm upload failed:", error);
-    throw new Error(error.message || "Failed to confirm upload");
   }
 };
 
@@ -221,7 +187,9 @@ export const deleteMedia = async (filename) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Delete failed with status ${response.status}`);
+      throw new Error(
+        errorData.message || `Delete failed with status ${response.status}`,
+      );
     }
   } catch (error) {
     console.error("Media delete failed:", error);
@@ -232,10 +200,10 @@ export const deleteMedia = async (filename) => {
 export const mediaService = {
   uploadMedia,
   uploadMultipleMedia,
+  deleteMedia,
   requestUploadUrl,
   uploadToPresignedUrl,
   confirmUpload,
-  deleteMedia,
 };
 
 export default mediaService;
