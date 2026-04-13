@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { socketService } from "../../services/socketService";
 import {
   FiMessageCircle,
   FiRefreshCw,
@@ -61,9 +62,11 @@ const CALENDAR_WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export const ActiveChatPane = ({
   selectedChat,
+  selectedConversationId,
   isLoading,
   error,
   messages,
+  typingUsers = new Set(),
   currentUserId,
   onRetry,
   onSendMessage,
@@ -84,6 +87,17 @@ export const ActiveChatPane = ({
   const moreMenuRef = useRef(null);
   const emojiMenuRef = useRef(null);
   const headerSearchInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, typingUsers]);
 
   const attachActions = [
     {
@@ -267,6 +281,33 @@ export const ActiveChatPane = ({
     setDraftMessage("");
   }, [selectedChat?.id]);
 
+  const handleInputChange = (event) => {
+    setDraftMessage(event.target.value);
+
+    // Xác định đang chat nhóm hay cá nhân
+    const isGroup =
+      selectedChat?.type === "GROUP" || !selectedChat?.targetUserId;
+    const targetId = isGroup
+      ? selectedConversationId
+      : selectedChat?.targetUserId;
+
+    if (targetId) {
+      if (!isTypingRef.current) {
+        socketService.startTyping(targetId, isGroup);
+        isTypingRef.current = true;
+      }
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+        socketService.stopTyping(targetId, isGroup);
+      }, 3000);
+    }
+  };
+
   const handleSendMessage = () => {
     if (!draftMessage.trim()) return;
     if (onSendMessage) {
@@ -275,6 +316,17 @@ export const ActiveChatPane = ({
         type: "text",
       });
       setDraftMessage("");
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        const isGroup =
+          selectedChat?.type === "GROUP" || !selectedChat?.targetUserId;
+        const targetId = isGroup
+          ? selectedConversationId
+          : selectedChat?.targetUserId;
+        socketService.stopTyping(targetId, isGroup);
+      }
     }
   };
 
@@ -514,6 +566,30 @@ export const ActiveChatPane = ({
                 </div>
               );
             })}
+
+            {/* Typing Indicator */}
+            {typingUsers.size > 0 &&
+              (selectedChat?.targetUserId
+                ? typingUsers.has(selectedChat.targetUserId)
+                : true) && (
+                <div className="w-fit self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex flex-col gap-1 mt-2">
+                  <div className="flex items-center gap-1.5 h-4">
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    ></div>
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    ></div>
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -744,7 +820,7 @@ export const ActiveChatPane = ({
             <input
               type="text"
               value={draftMessage}
-              onChange={(event) => setDraftMessage(event.target.value)}
+              onChange={handleInputChange}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSendMessage();
               }}

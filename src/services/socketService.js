@@ -99,4 +99,36 @@ export const socketService = {
       });
     });
   },
+
+  startTyping: (conversationId, isGroup = false) => {
+    if (socket?.connected && conversationId) {
+      const payload = isGroup
+        ? { groupId: conversationId }
+        : { toUserId: conversationId };
+      socket.emit("typing:start", payload);
+    }
+  },
+
+  stopTyping: (conversationId, isGroup = false) => {
+    if (socket?.connected && conversationId) {
+      const payload = isGroup
+        ? { groupId: conversationId }
+        : { toUserId: conversationId };
+      socket.emit("typing:stop", payload);
+    }
+  },
+
+  onTypingStart: (callback) => {
+    if (socket) {
+      socket.off("typing:start");
+      socket.on("typing:start", callback);
+    }
+  },
+
+  onTypingStop: (callback) => {
+    if (socket) {
+      socket.off("typing:stop");
+      socket.on("typing:stop", callback);
+    }
+  },
 };

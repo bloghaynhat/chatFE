@@ -11,6 +11,7 @@ export const MainLayout = ({ children }) => {
   const [selectedChat, setSelectedChat] = useState(null);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [typingUsers, setTypingUsers] = useState(new Set());
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
@@ -51,6 +52,26 @@ export const MainLayout = ({ children }) => {
             ),
           );
         });
+
+        socketService.onTypingStart((payload) => {
+          if (payload?.userId) {
+            setTypingUsers((prev) => {
+              const newSet = new Set(prev);
+              newSet.add(payload.userId);
+              return newSet;
+            });
+          }
+        });
+
+        socketService.onTypingStop((payload) => {
+          if (payload?.userId) {
+            setTypingUsers((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(payload.userId);
+              return newSet;
+            });
+          }
+        });
       }
     });
 
@@ -62,6 +83,7 @@ export const MainLayout = ({ children }) => {
   }, [selectedConversationId]);
 
   useEffect(() => {
+    setTypingUsers(new Set());
     if (selectedConversationId) {
       socketService.joinRoom(selectedConversationId);
     }
@@ -272,6 +294,7 @@ export const MainLayout = ({ children }) => {
               isLoading={isOpeningConversation}
               error={chatError}
               messages={messages}
+              typingUsers={typingUsers}
               currentUserId={user?.id || user?._id}
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
