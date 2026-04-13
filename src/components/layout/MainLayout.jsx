@@ -180,7 +180,15 @@ export const MainLayout = ({ children }) => {
 
         const messageResult =
           await conversationService.getConversationMessages(conversationId);
-        setMessages(messageResult.messages || []);
+
+        // Sort messages by createdAt in ascending order (oldest first)
+        const sortedMessages = (messageResult.messages || []).sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+          const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+          return dateA - dateB;
+        });
+
+        setMessages(sortedMessages);
 
         // fire-and-forget status sync
         conversationService.markDelivered(conversationId).catch(() => {});

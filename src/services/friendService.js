@@ -80,8 +80,22 @@ export const cancelFriendRequest = async (requestId) => {
  * @returns {Promise<Object>} List of friends
  */
 export const getFriends = async () => {
-  const response = await api.get("/friendships");
-  return response;
+  try {
+    const response = await api.get("/friendships");
+    return response;
+  } catch (error) {
+    // Log chi tiết error nếu là lỗi backend method
+    if (error?.payload?.msg?.includes("findFriendshipsWithCursor")) {
+      console.error(
+        "[friendService] Backend error - method not implemented:",
+        error.payload.msg,
+      );
+      throw new Error(
+        "Backend error: Friends list method not available. Please contact support.",
+      );
+    }
+    throw error;
+  }
 };
 
 /**

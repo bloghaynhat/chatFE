@@ -42,7 +42,11 @@ export const useFriendManagement = () => {
     try {
       const response = await getFriends();
 
-      const friendships = response?.items || response?.data?.items || response?.data?.data?.items || [];
+      const friendships =
+        response?.items ||
+        response?.data?.items ||
+        response?.data?.data?.items ||
+        [];
 
       // Resolve user info cho mỗi friendship
       const currentUserId = getCurrentUserId();
@@ -55,7 +59,10 @@ export const useFriendManagement = () => {
         friendships.map(async (friendship) => {
           try {
             // Xác định friendUserId (là user còn lại không phải current user)
-            const friendUserId = friendship.userA === currentUserId ? friendship.userB : friendship.userA;
+            const friendUserId =
+              friendship.userA === currentUserId
+                ? friendship.userB
+                : friendship.userA;
             const userResponse = await searchUserById(friendUserId);
             const userInfo = userResponse?.data || userResponse;
 
@@ -70,11 +77,18 @@ export const useFriendManagement = () => {
               avatarUrl: userInfo?.avatarUrl,
             };
           } catch (err) {
-            console.error("[useFriendManagement] Failed to fetch user info for friendship:", friendship.id, err);
+            console.error(
+              "[useFriendManagement] Failed to fetch user info for friendship:",
+              friendship.id,
+              err,
+            );
             // Fallback: return friendship with raw IDs
             return {
               ...friendship,
-              friendUserId: friendship.userA === currentUserId ? friendship.userB : friendship.userA,
+              friendUserId:
+                friendship.userA === currentUserId
+                  ? friendship.userB
+                  : friendship.userA,
               displayName: "Unknown",
             };
           }
@@ -83,8 +97,24 @@ export const useFriendManagement = () => {
 
       setFriends(enrichedFriends);
     } catch (err) {
-      setError(err.message || "Failed to load friends");
-      console.error("[useFriendManagement] Failed to load friends:", err);
+      const errorMsg = err?.message || "Failed to load friends";
+      setError(errorMsg);
+
+      // Log chi tiết error để debug
+      console.error("[useFriendManagement] Failed to load friends:", {
+        message: errorMsg,
+        code: err?.code,
+        status: err?.status,
+        payload: err?.payload,
+        fullError: err,
+      });
+
+      // Xử lý các error cụ thể từ backend
+      if (err?.payload?.msg?.includes("findFriendshipsWithCursor")) {
+        console.warn(
+          "[useFriendManagement] Backend method not implemented: findFriendshipsWithCursor",
+        );
+      }
     } finally {
       setLoading(false);
     }

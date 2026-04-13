@@ -38,8 +38,14 @@ export const conversationService = {
   },
 
   async getConversationMessages(conversationId, params = {}) {
+    // Limit tối đa backend cho phép là 100
+    const limit = Math.min(params.limit || 100, 100);
+
     const payload = await api.get(`/conversations/${conversationId}/messages`, {
-      params,
+      params: {
+        limit,
+        ...params,
+      },
     });
 
     return {
