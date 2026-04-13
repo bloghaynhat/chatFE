@@ -340,8 +340,9 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     const targetId = user.friendUserId || user.id || user._id;
 
     // Map data sang format giống ChatList/openChatByRow mong đợi
+    // Use "temp-" prefix để openChatByRow biết cần tạo conversation mới
     onSelectChat({
-      id: targetId,
+      id: `temp-${targetId}`,
       targetUserId: targetId,
       name: user.displayName || user.username || user.name || "Unknown",
       avatarUrl: user.avatarUrl,
