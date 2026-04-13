@@ -31,6 +31,12 @@ import {
   FiX,
   FiCalendar,
   FiSend,
+  FiCornerUpLeft,
+  FiEdit2,
+  FiCopy,
+  FiMapPin,
+  FiCheck,
+  FiCornerUpRight,
 } from "react-icons/fi";
 import { useDropzone } from "react-dropzone";
 import { PhotoProvider, PhotoView } from "react-photo-view";
@@ -101,6 +107,44 @@ export const ActiveChatPane = ({
   const [dragType, setDragType] = useState(null); // 'image' or 'file'
   const [previewFiles, setPreviewFiles] = useState([]);
   const [compressImage, setCompressImage] = useState(true); // for split screen selection
+
+  const [contextMenu, setContextMenu] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(null);
+    };
+    document.addEventListener("click", handleClickOutside);
+    // document.addEventListener("contextmenu", handleClickOutside); // if we listen here, it closes immediately if propagation isn't stopped
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      // document.removeEventListener("contextmenu", handleClickOutside);
+    };
+  }, []);
+
+  const handleContextMenu = (e, message) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // adjust menu position assuming fixed width/height
+    const menuWidth = 200;
+    const menuHeight = 310;
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (x + menuWidth > window.innerWidth) {
+      x -= menuWidth;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      y -= menuHeight;
+    }
+
+    setContextMenu({
+      x,
+      y,
+      message,
+    });
+  };
 
   const onDrop = useCallback((acceptedFiles, fileRejections, event) => {
     if (acceptedFiles?.length === 0) return;
@@ -776,10 +820,11 @@ export const ActiveChatPane = ({
                   <div
                     ref={isFirst ? firstMessageRef : null}
                     key={getMessageId(message, index)}
+                    onContextMenu={(e) => handleContextMenu(e, message)}
                     className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col ${mine ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md" : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md"}`}
                   >
                     {isImage && (
-                      <div className="p-1 pb-0 cursor-zoom-in">
+                      <div className="p-1 pb-0 cursor-pointer">
                         {message?.imageUrl ||
                         (messageFiles && messageFiles[0]?.url) ||
                         (messageFiles && messageFiles[0]?.preview) ? (
@@ -841,7 +886,7 @@ export const ActiveChatPane = ({
                         );
                       })()}
 
-                    <div className="px-3 pb-2 pt-2">
+                    <div className="px-3 pb-2 pt-2 cursor-default">
                       {!!text && (
                         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
                           {text}
@@ -883,12 +928,91 @@ export const ActiveChatPane = ({
             </div>
           </PhotoProvider>
         )}
+
+        {contextMenu && (
+          <div
+            className="fixed z-[9999] w-48 bg-white dark:bg-slate-800 rounded-xl shadow-2xl py-2 flex flex-col text-gray-800 dark:text-white border border-gray-200 dark:border-slate-700"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700/50 mb-1 flex items-center justify-between text-xs font-semibold text-gray-500">
+              <FiCheck className="text-gray-400" />
+              <span>
+                {getDateLabel(
+                  contextMenu.message?.createdAt ||
+                    contextMenu.message?.updatedAt,
+                )}{" "}
+                at {getMessageTime(contextMenu.message)}
+              </span>
+            </div>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Reply */
+              }}
+            >
+              <FiCornerUpLeft className="text-gray-500 text-base" /> Reply
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Edit */
+              }}
+            >
+              <FiEdit2 className="text-gray-500 text-base" /> Edit
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Copy */
+              }}
+            >
+              <FiCopy className="text-gray-500 text-base" /> Copy
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Pin */
+              }}
+            >
+              <FiMapPin className="text-gray-500 text-base" /> Pin
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Forward */
+              }}
+            >
+              <FiCornerUpRight className="text-gray-500 text-base" /> Forward
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700/50 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null); /* Implement Select */
+              }}
+            >
+              <FiCheckCircle className="text-gray-500 text-base" /> Select
+            </button>
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 flex items-center gap-3 transition-colors"
+              onClick={() => {
+                setContextMenu(null);
+                if (onRevokeMessage && contextMenu.message) {
+                  onRevokeMessage(contextMenu.message);
+                }
+              }}
+            >
+              <FiTrash2 className="text-red-500 text-base" /> Delete
+            </button>
+          </div>
+        )}
       </div>
 
-      {isCalendarModalOpen && (
+      {/* Attachment / Upload Overlays */}
+      {isAttachMenuOpen && (
         <div
           className="absolute inset-0 z-40 flex items-center justify-center px-3 lg:px-4 py-5 bg-black/20 backdrop-blur-[1px]"
-          onMouseDown={() => setIsCalendarModalOpen(false)}
+          onMouseDown={() => setIsAttachMenuOpen(false)}
         >
           <div
             onMouseDown={(event) => event.stopPropagation()}
