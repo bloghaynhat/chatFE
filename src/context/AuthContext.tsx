@@ -1,39 +1,72 @@
-import React, {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useEffect, useMemo, useState, ReactNode } from "react";
 import { authService } from "../services/authService";
 import { authStorage } from "../runtime/storage";
+import { User } from "../types/user";
 
-export const AuthContext = createContext<any>(null);
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  error: string | null;
+  isAuthenticated: boolean;
+  login: (phone: string, password: string) => Promise<User>;
+  register: (userData: RegisterData) => Promise<any>;
+  sendVerification: (payload: { email: string }) => Promise<any>;
+  verifyEmail: (payload: { email: string; otp: string }) => Promise<any>;
+  resendVerification: (payload: { email: string }) => Promise<any>;
+  logout: () => Promise<void>;
+  updateProfile: () => Promise<User>;
+  updateUserProfile: (partialProfile: Partial<User>) => Promise<void>;
+}
 
-const resolveUserProfile = async (authPayload, fallbackPhone) => {
+interface RegisterData {
+  phone: string;
+  password: string;
+  email?: string;
+  displayName?: string;
+  bio?: string;
+}
+
+// Helper to generate UUID with fallback
+const generateDeviceId = (): string => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+const resolveUserProfile = async (authPayload: any, fallbackPhone?: string): Promise<User> => {
   const payloadUser = authPayload?.user || authPayload?.profile;
   if (payloadUser) {
-    return payloadUser;
+    return payloadUser as User;
   }
 
   try {
     return await authService.getProfile();
   } catch {
     return {
+      id: authPayload?.id || "",
       phone: fallbackPhone || "",
       displayName: authPayload?.displayName || "",
       email: authPayload?.email || "",
       bio: authPayload?.bio || "",
-      id: authPayload?.id,
+      avatar: authPayload?.avatar,
     };
   }
 };
 
-export const AuthProvider = ({ children }: any) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -88,7 +121,7 @@ export const AuthProvider = ({ children }: any) => {
     };
   }, []);
 
-  const register = useCallback(async (userData) => {
+  const register = useCallback(async (userData: RegisterData): Promise<any> => {
     try {
       setError(null);
       setLoading(true);
@@ -102,7 +135,7 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, []);
 
-  const sendVerification = useCallback(async (payload, options) => {
+  const sendVerification = useCallback(async (payload: { email: string }, options?: any): Promise<any> => {
     try {
       setError(null);
       return await authService.sendVerification(payload, options);
@@ -113,7 +146,7 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, []);
 
-  const verifyEmail = useCallback(async (payload) => {
+  const verifyEmail = useCallback(async (payload: { email: string; otp: string }): Promise<any> => {
     try {
       setError(null);
       setLoading(true);
@@ -142,7 +175,7 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, []);
 
-  const resendVerification = useCallback(async (payload, options) => {
+  const resendVerification = useCallback(async (payload: { email: string }, options?: any): Promise<any> => {
     try {
       setError(null);
       return await authService.resendVerification(payload, options);
@@ -153,14 +186,14 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, []);
 
-  const login = useCallback(async (phone, password) => {
+  const login = useCallback(async (phone: string, password: string): Promise<User> => {
     try {
       setError(null);
       setLoading(true);
 
       let deviceId = await authStorage.getItem("deviceId");
       if (!deviceId) {
-        deviceId = crypto.randomUUID();
+        deviceId = generateDeviceId();
         await authStorage.setItem("deviceId", deviceId);
       }
 
@@ -206,12 +239,12 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, []);
 
-  const updateUserProfile = useCallback(async (partialProfile) => {
+  const updateUserProfile = useCallback(async (partialProfile: Partial<User>): Promise<void> => {
     setUser((prevUser) => {
-      const nextUser = {
-        ...(prevUser || {}),
-        ...(partialProfile || {}),
-      };
+      const nextUser: User = {
+        ...(prevUser || ({} as User)),
+        ...partialProfile,
+      } as User;
 
       authService.saveUser(nextUser).catch(() => {
         // Keep UI responsive even if storage write fails.

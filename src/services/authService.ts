@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { authStorage } from "../runtime/storage";
+import { User } from "../types";
 
 const readAccessToken = (payload) => {
   return payload?.accessToken || payload?.token || "";
@@ -109,16 +110,14 @@ export const authService = {
     return payload;
   },
 
-  getProfile: async (token) => {
-    if (token) {
-      return api.get("/users/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    }
-
-    return api.get("/users/profile");
+  getProfile: async (token?: string): Promise<User> => {
+    return token
+      ? await api.get<User>("/users/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      : await api.get<User>("/users/profile");
   },
 
   saveToken: async (token) => {

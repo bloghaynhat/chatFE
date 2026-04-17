@@ -1,15 +1,15 @@
-import axios from "axios";
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { authStorage } from "../runtime/storage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/v1";
 
 const getAccessToken = async () => authStorage.getItem("token");
 const getRefreshToken = async () => authStorage.getItem("refreshToken");
-const setAccessToken = async (token) => authStorage.setItem("token", token);
-const setRefreshToken = async (token) =>
+const setAccessToken = async (token: string) => authStorage.setItem("token", token);
+const setRefreshToken = async (token: string) =>
   authStorage.setItem("refreshToken", token);
 
-export const setAuthTokens = async ({ accessToken, refreshToken }) => {
+export const setAuthTokens = async ({ accessToken, refreshToken }: { accessToken?: string; refreshToken?: string }) => {
   if (accessToken) {
     await setAccessToken(accessToken);
   }
@@ -39,7 +39,7 @@ const handleUnauthorized = async () => {
   notifySessionExpired();
 };
 
-const extractTokens = (response) => {
+const extractTokens = (response: AxiosResponse) => {
   const responseData = response.data;
   const accessToken =
     responseData?.data?.accessToken ||
@@ -61,7 +61,7 @@ export const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-});
+}) as any;
 
 let isRefreshing = false;
 let failedQueue = [];

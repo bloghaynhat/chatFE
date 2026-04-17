@@ -114,7 +114,7 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
     try {
       await verifyEmail({
         email: email.trim(),
-        code: otp.trim(),
+        otp: otp.trim(),
       });
 
       setSuccessMessage("Xác thực email thành công. Bạn có thể đăng nhập ngay.");
