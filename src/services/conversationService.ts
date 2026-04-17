@@ -26,15 +26,15 @@ const normalizeMessages = (payload) => {
 
 export const conversationService = {
   async createPrivateConversation(targetUserId) {
-    const payload = await api.post("/conversations/private", { targetUserId });
-    return normalizeConversation(payload);
+    const response = await api.post("/conversations/private", { targetUserId });
+    return normalizeConversation(response.data);
   },
 
-  async getConversationMessages(conversationId, params = {}) {
+  async getConversationMessages(conversationId, params: { limit?: number; [key: string]: any } = {}) {
     // Limit tối đa backend cho phép là 100
     const limit = Math.min(params.limit || 100, 100);
 
-    const payload = await api.get(`/conversations/${conversationId}/messages`, {
+    const response = await api.get(`/conversations/${conversationId}/messages`, {
       params: {
         limit,
         ...params,
@@ -42,8 +42,8 @@ export const conversationService = {
     });
 
     return {
-      raw: payload,
-      messages: normalizeMessages(payload),
+      raw: response,
+      messages: normalizeMessages(response.data),
     };
   },
 
@@ -115,6 +115,7 @@ export const conversationService = {
   },
 
   async forwardMessages(data) {
-    return api.post(`/messages/forward`, data);
+    const response = await api.post(`/messages/forward`, data);
+    return response.data;
   },
 };

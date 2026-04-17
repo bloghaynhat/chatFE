@@ -468,13 +468,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           if (Array.isArray(res)) {
             newMessages = res;
           } else if (res && typeof res === "object") {
-            if (Array.isArray(res.data)) {
-              newMessages = res.data;
-            } else if (res.data) {
-              newMessages = [res.data];
-            } else if (res._id || res.id) {
-              newMessages = [res];
-            }
+            newMessages = [res];
           }
 
           if (newMessages.length > 0) {
