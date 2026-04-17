@@ -8,7 +8,7 @@ import React, {
 import { authService } from "../services/authService";
 import { authStorage } from "../runtime/storage";
 
-export const AuthContext = createContext(null);
+export const AuthContext = createContext<any>(null);
 
 const resolveUserProfile = async (authPayload, fallbackPhone) => {
   const payloadUser = authPayload?.user || authPayload?.profile;
@@ -29,7 +29,7 @@ const resolveUserProfile = async (authPayload, fallbackPhone) => {
   }
 };
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children }: any) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);

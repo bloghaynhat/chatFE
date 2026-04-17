@@ -41,7 +41,7 @@ export const ActiveChatPane = ({
   onForwardToTarget,
   forwardingMessage,
   onClearForwarding,
-}) => {
+}: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -400,10 +400,10 @@ export const ActiveChatPane = ({
         accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime"
         ref={photoVideoInputRef}
         style={{ display: "none" }}
-        onChange={(e) => {
+        onChange={(e: any) => {
           if (e.target.files && e.target.files.length > 0) {
-            onDrop(Array.from(e.target.files));
-            e.target.value = null;
+            onDrop(Array.from(e.target.files) as any[], [], e);
+            e.target.value = "";
           }
         }}
       />
@@ -413,10 +413,10 @@ export const ActiveChatPane = ({
         accept=".pdf,application/pdf"
         ref={documentInputRef}
         style={{ display: "none" }}
-        onChange={(e) => {
+        onChange={(e: any) => {
           if (e.target.files && e.target.files.length > 0) {
-            onDrop(Array.from(e.target.files));
-            e.target.value = null;
+            onDrop(Array.from(e.target.files) as any[], [], e);
+            e.target.value = "";
           }
         }}
       />

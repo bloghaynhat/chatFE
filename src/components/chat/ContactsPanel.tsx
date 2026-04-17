@@ -17,7 +17,7 @@ import { FriendRequestsSection } from "./ContactsPanel/FriendRequestsSection";
 import { SearchResultSection } from "./ContactsPanel/SearchResultSection";
 import { FriendsListSection } from "./ContactsPanel/FriendsListSection";
 
-export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
+export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any) => {
   const { user: currentUser } = useAuth();
   const { friends, loading, error, fetchFriends, getUserId } = useFriendManagement();
   const { friendRequests, fetchFriendRequests } = useFriendRequestsContext();

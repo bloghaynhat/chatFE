@@ -13,7 +13,7 @@ export const ForgotPasswordPage = () => {
           Nhập email để nhận hướng dẫn đặt lại mật khẩu.
         </p>
 
-        <ForgotPasswordForm />
+        <ForgotPasswordForm onSuccess={() => {}} />
 
         <p className="text-center text-sm sm:text-base text-gray-600 mt-6">
           Nhớ mật khẩu?{" "}

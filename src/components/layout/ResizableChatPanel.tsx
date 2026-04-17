@@ -20,7 +20,7 @@ import { FiPlus,
   FiArrowLeft, } from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
-export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, openingChatId, onSelectChat }) => {
+export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, openingChatId, onSelectChat }: any) => {
   const [width, setWidth] = useState(320); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);

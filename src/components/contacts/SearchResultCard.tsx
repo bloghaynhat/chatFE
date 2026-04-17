@@ -1,5 +1,23 @@
+import React from "react";
 import { Avatar, UserInfo } from "./shared";
 
+interface RequestStatus {
+  status: "NONE" | "PENDING" | "REJECTED" | "ACCEPTED" | string;
+  direction?: "OUTGOING" | "INCOMING" | string;
+  requestId?: string;
+}
+
+interface SearchResultCardProps {
+  user: any;
+  requestStatus?: RequestStatus;
+  isProcessing?: boolean;
+  onSendRequest?: () => void;
+  onAcceptRequest?: () => void;
+  onRejectRequest?: () => void;
+  onUnfriend?: () => void;
+  onClick?: (e?: any) => void;
+  style?: React.CSSProperties;
+}
 /**
  * SearchResultCard Component
  * Hiển thị user tìm được từ search với:
@@ -28,7 +46,7 @@ export const SearchResultCard = ({
   onUnfriend,
   onClick,
   style,
-}) => {
+}: SearchResultCardProps) => {
   const displayName = user?.displayName || user?.name || "Unknown";
   const phone = user?.phone || "";
   const avatarUrl = user?.avatarUrl || null;

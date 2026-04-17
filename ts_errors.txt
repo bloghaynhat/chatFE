@@ -1,0 +1,131 @@
+src/api/axios-instance.ts(90,23): error TS2339: Property 'skipAuth' does not exist on type 'InternalAxiosRequestConfig<any>'.
+src/components/auth/EmailVerificationForm.tsx(147,25): error TS2339: Property 'email' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(149,27): error TS2339: Property 'email' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(157,22): error TS2339: Property 'email' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(157,85): error TS2339: Property 'email' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(171,25): error TS2339: Property 'otp' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(171,38): error TS2339: Property 'code' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(173,27): error TS2339: Property 'otp' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(174,27): error TS2339: Property 'code' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(182,22): error TS2339: Property 'otp' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(182,83): error TS2339: Property 'otp' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(183,22): error TS2339: Property 'code' does not exist on type '{}'.
+src/components/auth/EmailVerificationForm.tsx(183,84): error TS2339: Property 'code' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(142,24): error TS2339: Property 'displayName' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(142,93): error TS2339: Property 'displayName' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(156,24): error TS2339: Property 'email' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(156,87): error TS2339: Property 'email' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(170,24): error TS2339: Property 'phone' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(170,87): error TS2339: Property 'phone' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(184,24): error TS2339: Property 'password' does not exist on type '{}'.
+src/components/auth/RegisterForm.tsx(184,90): error TS2339: Property 'password' does not exist on type '{}'.
+src/components/chat/ActiveChatPane.tsx(405,13): error TS2554: Expected 3 arguments, but got 1.
+src/components/chat/ActiveChatPane.tsx(418,13): error TS2554: Expected 3 arguments, but got 1.
+src/components/chat/ChatList.tsx(58,35): error TS2339: Property 'users' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/chat/ContactsPanel.tsx(23,11): error TS2339: Property 'friendRequests' does not exist on type '{}'.
+src/components/chat/ContactsPanel.tsx(23,27): error TS2339: Property 'fetchFriendRequests' does not exist on type '{}'.
+src/components/common/UserProfileModal.tsx(338,19): error TS2322: Type 'string' is not assignable to type 'number'.
+src/components/contacts/SearchResultCard.tsx(37,79): error TS2339: Property 'direction' does not exist on type '{ status: string; }'.
+src/components/contacts/SearchResultCard.tsx(38,76): error TS2339: Property 'direction' does not exist on type '{ status: string; }'.
+src/components/layout/MainLayout.tsx(367,30): error TS2339: Property 'uploadUrl' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(368,30): error TS2339: Property 'presignedUrl' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(369,30): error TS2339: Property 'url' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(370,30): error TS2339: Property 'signedUrl' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(375,30): error TS2339: Property 'fileId' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(376,30): error TS2339: Property 'id' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(401,34): error TS2339: Property 'url' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(402,34): error TS2339: Property 'fileUrl' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(408,36): error TS2339: Property 'fileId' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(408,63): error TS2339: Property '_id' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(438,19): error TS2698: Spread types may only be created from object types.
+src/components/layout/MainLayout.tsx(438,51): error TS2339: Property '_id' does not exist on type 'unknown'.
+src/components/layout/MainLayout.tsx(438,70): error TS2339: Property 'id' does not exist on type 'unknown'.
+src/components/layout/MainLayout.tsx(475,28): error TS2339: Property '_id' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(475,39): error TS2339: Property 'id' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/components/layout/MainLayout.tsx(509,22): error TS2339: Property 'success' does not exist on type 'unknown'.
+src/components/layout/ResizableChatPanel.tsx(36,11): error TS2339: Property 'friendRequests' does not exist on type '{}'.
+src/components/layout/ResizableChatPanel.tsx(36,27): error TS2339: Property 'fetchFriendRequests' does not exist on type '{}'.
+src/components/layout/SettingsPanel.tsx(89,13): error TS2739: Type '{ icon: Element; label: string; }' is missing the following properties from type '{ icon: any; label: any; rightText: any; onClick: any; }': rightText, onClick
+src/components/layout/SettingsPanel.tsx(90,13): error TS2739: Type '{ icon: Element; label: string; }' is missing the following properties from type '{ icon: any; label: any; rightText: any; onClick: any; }': rightText, onClick
+src/components/layout/SettingsPanel.tsx(91,13): error TS2739: Type '{ icon: Element; label: string; }' is missing the following properties from type '{ icon: any; label: any; rightText: any; onClick: any; }': rightText, onClick
+src/components/layout/SettingsPanel.tsx(92,13): error TS2739: Type '{ icon: Element; label: string; }' is missing the following properties from type '{ icon: any; label: any; rightText: any; onClick: any; }': rightText, onClick
+src/components/layout/SettingsPanel.tsx(93,13): error TS2739: Type '{ icon: Element; label: string; }' is missing the following properties from type '{ icon: any; label: any; rightText: any; onClick: any; }': rightText, onClick
+src/components/layout/SettingsPanel.tsx(94,13): error TS2739: Type '{ icon: Element; label: string; }' is missing the following properties from type '{ icon: any; label: any; rightText: any; onClick: any; }': rightText, onClick
+src/components/layout/SettingsPanel.tsx(96,13): error TS2741: Property 'onClick' is missing in type '{ icon: Element; label: string; rightText: string; }' but required in type '{ icon: any; label: any; rightText: any; onClick: any; }'.
+src/context/AppContext.tsx(4,27): error TS2554: Expected 1 arguments, but got 0.
+src/context/AuthContext.tsx(20,30): error TS2554: Expected 1 arguments, but got 0.
+src/context/AuthContext.tsx(131,33): error TS2554: Expected 2 arguments, but got 1.
+src/context/AuthContext.tsx(229,41): error TS2554: Expected 1 arguments, but got 0.
+src/context/FriendContext.tsx(10,23): error TS2554: Expected 1 arguments, but got 0.
+src/context/FriendContext.tsx(23,31): error TS2339: Property 'items' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/hooks/useFriendManagement.ts(46,19): error TS2339: Property 'items' does not exist on type 'AxiosResponse<any, any, {}>'.
+src/pages/ForgotPasswordPage.tsx(16,10): error TS2741: Property 'onSuccess' is missing in type '{}' but required in type '{ onSuccess: any; }'.
+src/pages/HomePage.tsx(4,11): error TS2741: Property 'children' is missing in type '{}' but required in type '{ children: any; }'.
+src/services/api.ts(24,14): error TS2339: Property 'code' does not exist on type 'Error'.
+src/services/api.ts(25,14): error TS2339: Property 'details' does not exist on type 'Error'.
+src/services/api.ts(26,14): error TS2339: Property 'status' does not exist on type 'Error'.
+src/services/api.ts(27,14): error TS2339: Property 'payload' does not exist on type 'Error'.
+src/services/api.ts(33,13): error TS2339: Property 'params' does not exist on type '{}'.
+src/services/conversationService.ts(35,35): error TS2339: Property 'limit' does not exist on type '{}'.
+src/services/socketService.ts(6,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(7,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(8,10): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(13,14): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(14,19): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(24,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(32,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(33,49): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(36,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(40,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(46,17): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(50,14): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(51,19): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(61,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(69,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(70,48): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(73,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(79,17): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(84,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(86,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(90,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(94,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(98,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(102,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(106,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(110,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(116,15): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(118,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(122,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(126,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(130,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(134,10): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(141,15): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(143,10): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(147,15): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(148,12): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(151,10): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(155,24): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(162,14): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(163,12): error TS2339: Property 'listeners' does not exist on type 'SocketService'.
+src/services/socketService.ts(171,17): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(220,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(226,25): error TS2339: Property 'text' does not exist on type '{ conversationId: any; }'.
+src/services/socketService.ts(227,46): error TS2339: Property 'media' does not exist on type '{ conversationId: any; }'.
+src/services/socketService.ts(231,12): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(239,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(244,12): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(252,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(257,12): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(265,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(271,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(275,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(281,10): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(285,15): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(290,12): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(302,14): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(303,12): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(304,12): error TS2551: Property 'messagesSocket' does not exist on type 'SocketService'. Did you mean 'initMessagesSocket'?
+src/services/socketService.ts(307,14): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(308,12): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(309,12): error TS2551: Property 'friendsSocket' does not exist on type 'SocketService'. Did you mean 'initFriendsSocket'?
+src/services/socketService.ts(312,10): error TS2339: Property 'listeners' does not exist on type 'SocketService'.

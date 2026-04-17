@@ -26,7 +26,7 @@ const resolveFieldErrors = (error) => {
   return {};
 };
 
-export const RegisterForm = ({ onSuccess }) => {
+export const RegisterForm = ({ onSuccess }: any) => {
   const [formData, setFormData] = useState({
     phone: "",
     password: "",
@@ -37,7 +37,7 @@ export const RegisterForm = ({ onSuccess }) => {
   });
 
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 

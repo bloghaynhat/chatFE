@@ -12,7 +12,7 @@ export const ChatList = ({
   openingChatId = null,
   isGlobalSearchEnabled = false,
   onSelectChat,
-}) => {
+}: any) => {
   const [chats] = useState([
     {
       id: "00000000-0000-0000-0000-000000000001",
@@ -54,7 +54,7 @@ export const ChatList = ({
     const fetchGlobalSearch = async () => {
       setIsSearchingGlobal(true);
       try {
-        const response = await userService.searchUsers(normalizedQuery);
+        const response: any = await userService.searchUsers(normalizedQuery);
         const results = response?.users || response || [];
         setGlobalUsers(
           Array.isArray(results)

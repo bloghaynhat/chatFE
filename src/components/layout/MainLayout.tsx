@@ -5,7 +5,7 @@ import { ActiveChatPane } from "../chat";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
 
-const MainLayout = ({ children }) => {
+const MainLayout = ({ children }: { children?: any }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
   const [darkMode, setDarkMode] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -357,7 +357,7 @@ const MainLayout = ({ children }) => {
           const uploadedMedia = await Promise.all(
             filesToUpload.map(async (file) => {
               // 1. Lấy Pre-signed URL
-              const reqResponse = await mediaService.requestUploadUrl(
+              const reqResponse: any = await mediaService.requestUploadUrl(
                 file.name,
                 file.type,
                 file.size,
@@ -391,7 +391,7 @@ const MainLayout = ({ children }) => {
               const uploadedUrlClean = uploadUrl.split("?")[0];
 
               // 3. Confirm quá trình upload với backend
-              const confirmResponse = await mediaService.confirmUpload(
+              const confirmResponse: any = await mediaService.confirmUpload(
                 fileId,
                 uploadedUrlClean,
               );
@@ -426,7 +426,7 @@ const MainLayout = ({ children }) => {
           finalMedia = existingMedia;
         }
 
-        const sentMessage = await socketService.sendMessage(
+        const sentMessage: any = await socketService.sendMessage(
           conversationId,
           txt,
           finalMedia,
@@ -504,7 +504,7 @@ const MainLayout = ({ children }) => {
       const messageId = message?.id || message?._id;
       if (!messageId) return;
 
-      const res = await socketService.revokeMessage(messageId);
+      const res: any = await socketService.revokeMessage(messageId);
 
       if (res && res.success) {
         setMessages((prev) =>

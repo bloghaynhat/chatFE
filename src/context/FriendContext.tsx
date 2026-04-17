@@ -7,9 +7,9 @@ import { socketService } from "../services";
  * Giải quyết vấn đề state mismatch giữa components
  * Setup global socket listeners để listening bất kể user ở view nào
  */
-const FriendContext = createContext();
+const FriendContext = createContext<any>(null);
 
-export const FriendProvider = ({ children }) => {
+export const FriendProvider = ({ children }: any) => {
   const [friendRequests, setFriendRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -20,7 +20,7 @@ export const FriendProvider = ({ children }) => {
     setError("");
     try {
       const response = await getReceivedFriendRequests();
-      const items = response?.items || response?.data?.data?.items || [];
+      const items = (response as any)?.items || (response as any)?.data?.data?.items || [];
       setFriendRequests(items);
     } catch (err) {
       setError(err.message || "Failed to load friend requests");

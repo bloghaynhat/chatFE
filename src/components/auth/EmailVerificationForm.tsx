@@ -26,7 +26,7 @@ const resolveFieldErrors = (error) => {
   return {};
 };
 
-export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false, fromLogin = false }) => {
+export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false, fromLogin = false }: any) => {
   const navigate = useNavigate();
   const { verifyEmail, resendVerification } = useAuth();
 
@@ -34,7 +34,7 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState("");
   const [countdown, setCountdown] = useState(fromRegister || fromLogin ? 60 : -1);
   const autoSentRef = useRef(false);

@@ -1,9 +1,9 @@
 import { createContext, useState, useEffect } from "react";
 import { initSocket } from "../services";
 
-export const AppContext = createContext();
+export const AppContext = createContext<any>(null);
 
-export const AppProvider = ({ children }) => {
+export const AppProvider = ({ children }: any) => {
   const [user, setUser] = useState(null);
   const [theme, setTheme] = useState("light");
 

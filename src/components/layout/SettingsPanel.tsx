@@ -2,7 +2,7 @@ import { FiArrowLeft, FiEdit2, FiMoreVertical, FiPhone, FiAtSign, FiGift, FiBell
 import { MdTranslate } from "react-icons/md";
 import { useAuth } from "../../hooks";
 
-export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }) => {
+export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
   const { user } = useAuth();
   
   const displayPhone = user?.phone || "+84 971484472";
@@ -111,7 +111,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }) => {
   );
 };
 
-const SettingsMenuItem = ({ icon, label, rightText, onClick }) => {
+const SettingsMenuItem = ({ icon, label, rightText, onClick }: any) => {
   return (
     <div 
       onClick={onClick}

@@ -1,7 +1,11 @@
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import { authStorage } from "../runtime/storage";
 
 class SocketService {
+  messagesSocket: Socket | null = null;
+  friendsSocket: Socket | null = null;
+  listeners: Map<string, Function[]> = new Map();
+
   constructor() {
     this.messagesSocket = null;
     this.friendsSocket = null;
@@ -222,7 +226,7 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      const payload = { conversationId };
+      const payload: any = { conversationId };
       if (text) payload.text = text;
       if (media && media.length > 0) payload.media = media;
 
