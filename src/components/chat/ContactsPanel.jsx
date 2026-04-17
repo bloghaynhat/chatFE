@@ -11,33 +11,23 @@ import {
 } from "../../services";
 import { useAuth, useFriendManagement, useContactsSocketListeners } from "../../hooks";
 import { useFriendRequestsContext } from "../../context/FriendContext";
-import { ContactsHeader, FriendRequestCard, SearchResultCard, FriendCard } from "../contacts";
+import { ContactsHeader } from "../contacts";
 
-/**
- * ContactsPanel Component
- * Component chính để quản lý contacts và friend requests
- * - Hiển thị danh sách bạn bè
- * - Xử lý friend requests (received/sent)
- * - Cung cấp search functionality để tìm người dùng mới
- * - Quản lý add/cancel friend request actions
- */
+import { FriendRequestsSection } from "./ContactsPanel/FriendRequestsSection";
+import { SearchResultSection } from "./ContactsPanel/SearchResultSection";
+import { FriendsListSection } from "./ContactsPanel/FriendsListSection";
+
 export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
   const { user: currentUser } = useAuth();
   const { friends, loading, error, fetchFriends, getUserId } = useFriendManagement();
-
-  // Sync badge state with context
   const { friendRequests, fetchFriendRequests } = useFriendRequestsContext();
 
-  // Local state for UI
   const [filteredFriends, setFilteredFriends] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [searchResultRequestStatus, setSearchResultRequestStatus] = useState(null);
   const [processingRequestId, setProcessingRequestId] = useState(null);
 
-  /**
-   * Helper function reresh trạng thái của kết quả tìm kiếm sau mỗi action liên quan đến Socket hoặc API
-   */
   const refreshSearchResultStatus = async () => {
     if (searchResult) {
       const userId = getUserId(searchResult);
@@ -57,13 +47,11 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  // Initialize data on mount
   useEffect(() => {
     fetchFriends();
     fetchFriendRequests();
   }, []);
 
-  // Setup socket listeners (badge updates handled by FriendContext globally)
   useContactsSocketListeners({
     onFriendRequestReceived: () => {
       fetchFriendRequests();
@@ -79,21 +67,17 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
       refreshSearchResultStatus();
     },
     onFriendRequestCanceled: () => {
-      // Refetch friend requests để xóa request bị cancel
       fetchFriendRequests();
-      // Cập nhật lại status khi request bị hủy từ người khác
       if (searchResult) {
         setSearchResultRequestStatus({ status: "NONE" });
       }
     },
     onFriendshipRemoved: () => {
-      // Refetch friends khi bạn bị xóa từ phía khác
       fetchFriends();
       refreshSearchResultStatus();
     },
   });
 
-  // Handle search filtering
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredFriends(friends);
@@ -113,7 +97,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
 
     setFilteredFriends(filtered);
 
-    // Tìm kiếm bằng phone nếu định dạng hợp lệ
     if (/^0\d{9}$/.test(searchQuery)) {
       const timer = setTimeout(() => searchNewFriend(), 300);
       return () => clearTimeout(timer);
@@ -122,9 +105,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   }, [searchQuery, friends]);
 
-  /**
-   * Tìm kiếm friend mới bằng số điện thoại
-   */
   const searchNewFriend = async () => {
     if (!searchQuery.trim()) return;
 
@@ -132,20 +112,12 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
       const result = await searchUserByPhone(searchQuery);
       const userData = result?.data || result;
 
-      if (!userData) {
+      if (!userData || userData.phone === currentUser?.phone) {
         setSearchResult(null);
         setSearchResultRequestStatus(null);
         return;
       }
 
-      // Ngăn chặn việc thêm chính mình
-      if (userData.phone === currentUser?.phone) {
-        setSearchResult(null);
-        setSearchResultRequestStatus(null);
-        return;
-      }
-
-      // Check if already a friend
       const isFriend = friends.some((f) => f.id === userData.id || f.id === userData._id || f.phone === userData.phone);
 
       if (isFriend) {
@@ -154,19 +126,15 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
         return;
       }
 
-      // Check friend request status
       const statusResponse = await checkFriendRequestStatus(userData.id || userData._id);
       const { status, direction, requestId } = statusResponse?.data || statusResponse || {};
 
-      // Xử lý các case không thể hiển thị
       if (status === "SELF" || status === "ACCEPTED") {
         setSearchResult(null);
         setSearchResultRequestStatus(null);
         return;
       }
 
-      // Cho phép show INCOMING (nhận được request)
-      // Lưu trữ full status info { status, direction, requestId }
       setSearchResult(userData);
       setSearchResultRequestStatus({ status, direction, requestId });
     } catch (err) {
@@ -176,9 +144,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý gửi hoặc hủy friend request
-   */
   const handleSendOrCancelRequest = async () => {
     if (!searchResult) return;
 
@@ -191,19 +156,15 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
 
       setProcessingRequestId(userId);
 
-      // Xử lý hủy request (PENDING + OUTGOING)
       if (searchResultRequestStatus?.status === "PENDING" && searchResultRequestStatus?.direction === "OUTGOING") {
         if (searchResultRequestStatus?.requestId) {
           await cancelFriendRequest(searchResultRequestStatus.requestId);
         }
-      }
-      // Xử lý gửi request (REJECTED hoặc NONE)
-      else {
+      } else {
         await sendFriendRequest(userId);
       }
 
       await refreshSearchResultStatus();
-
       await fetchFriends();
     } catch (err) {
       console.error("[ContactsPanel] Error processing friend request:", err);
@@ -213,9 +174,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý accept search result request (INCOMING)
-   */
   const handleAcceptSearchRequest = async () => {
     if (!searchResult || !searchResultRequestStatus?.requestId) return;
 
@@ -224,7 +182,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
       await acceptFriendRequest(searchResultRequestStatus.requestId);
       await fetchFriendRequests();
       await fetchFriends();
-      // Cập nhật status về ACCEPTED thay vì xóa search result, để user vẫn thấy tìm kiếm
       setSearchResultRequestStatus({ status: "ACCEPTED" });
     } catch (err) {
       console.error("[ContactsPanel] Failed to accept search result request:", err);
@@ -234,9 +191,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý reject search result request (INCOMING)
-   */
   const handleRejectSearchRequest = async () => {
     if (!searchResult || !searchResultRequestStatus?.requestId) return;
 
@@ -244,7 +198,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
       setProcessingRequestId(searchResultRequestStatus.requestId);
       await rejectFriendRequest(searchResultRequestStatus.requestId);
       await fetchFriendRequests();
-      // Cập nhật status về NONE thay vì xóa search result, để user vẫn thấy tìm kiếm
       setSearchResultRequestStatus({ status: "NONE" });
     } catch (err) {
       console.error("[ContactsPanel] Failed to reject search result request:", err);
@@ -254,16 +207,12 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý accept friend request
-   */
   const handleAcceptRequest = async (requestId) => {
     try {
       setProcessingRequestId(requestId);
       await acceptFriendRequest(requestId);
       await fetchFriendRequests();
       await fetchFriends();
-
       await refreshSearchResultStatus();
     } catch (err) {
       console.error("[ContactsPanel] Failed to accept friend request:", requestId, err);
@@ -273,15 +222,11 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý reject friend request
-   */
   const handleRejectRequest = async (requestId) => {
     try {
       setProcessingRequestId(requestId);
       await rejectFriendRequest(requestId);
       await fetchFriendRequests();
-
       await refreshSearchResultStatus();
     } catch (err) {
       console.error("[ContactsPanel] Failed to reject friend request:", requestId, err);
@@ -291,9 +236,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý xóa friend bằng friend user ID
-   */
   const handleUnfriend = async (friendUserId) => {
     if (!window.confirm("Are you sure you want to unfriend this person?")) {
       return;
@@ -301,11 +243,8 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
 
     try {
       await removeFriend(friendUserId);
-
-      // Refetch immediately sau khi unfriend
       await fetchFriends();
 
-      // Fallback: nếu socket event không emit từ backend, refetch sau 2 giây
       const fallbackTimer = setTimeout(() => {
         fetchFriends().catch((err) => console.error("Failed to refetch after unfriend:", err));
       }, 2000);
@@ -319,9 +258,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Xử lý unfriend từ search result
-   */
   const handleUnfriendSearchResult = async () => {
     if (!searchResult) return;
     const userId = getUserId(searchResult);
@@ -330,17 +266,11 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     }
   };
 
-  /**
-   * Mở chat khi click vào user
-   */
   const handleOpenChat = (user) => {
     if (!onSelectChat) return;
 
-    // Nếu là friend item thì target là friendUserId, nếu là searchResult thì là id/_id
     const targetId = user.friendUserId || user.id || user._id;
 
-    // Map data sang format giống ChatList/openChatByRow mong đợi
-    // Use "temp-" prefix để openChatByRow biết cần tạo conversation mới
     onSelectChat({
       id: `temp-${targetId}`,
       targetUserId: targetId,
@@ -349,7 +279,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
     });
   };
 
-  // Collapsed state
   if (isCollapsed) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -366,86 +295,36 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }) => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <ContactsHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} onBack={onBackToChats} />
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Friend Requests Section */}
-        {friendRequests.length > 0 && (
-          <div>
-            <div className="px-3 pt-3 pb-2">
-              <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                Friend Requests ({friendRequests.length})
-              </h3>
-            </div>
-            {friendRequests.map((request, index) => (
-              <FriendRequestCard
-                key={request._id || request.id}
-                request={request}
-                isProcessing={processingRequestId === (request._id || request.id)}
-                onAccept={() => handleAcceptRequest(request._id || request.id)}
-                onReject={() => handleRejectRequest(request._id || request.id)}
-                style={{ animationDelay: `${index * 0.05}s` }}
-                onClick={() => handleOpenChat(request)}
-              />
-            ))}
-            <div className="h-px bg-gray-200 dark:bg-slate-700 mt-2" />
-          </div>
-        )}
+        <FriendRequestsSection
+          friendRequests={friendRequests}
+          processingRequestId={processingRequestId}
+          handleAcceptRequest={handleAcceptRequest}
+          handleRejectRequest={handleRejectRequest}
+          handleOpenChat={handleOpenChat}
+        />
 
-        {/* Search Result */}
-        {searchResult && (
-          <SearchResultCard
-            user={searchResult}
-            requestStatus={searchResultRequestStatus}
-            isProcessing={processingRequestId === getUserId(searchResult)}
-            onSendRequest={handleSendOrCancelRequest}
-            onAcceptRequest={handleAcceptSearchRequest}
-            onRejectRequest={handleRejectSearchRequest}
-            onUnfriend={handleUnfriendSearchResult}
-            onClick={() => handleOpenChat(searchResult)}
-            style={{ animationDelay: "0s" }}
-          />
-        )}
+        <SearchResultSection
+          searchResult={searchResult}
+          searchResultRequestStatus={searchResultRequestStatus}
+          processingRequestId={processingRequestId}
+          handleSendOrCancelRequest={handleSendOrCancelRequest}
+          handleAcceptSearchRequest={handleAcceptSearchRequest}
+          handleRejectSearchRequest={handleRejectSearchRequest}
+          handleUnfriendSearchResult={handleUnfriendSearchResult}
+          handleOpenChat={handleOpenChat}
+        />
 
-        {/* Friends List */}
-        <div className="px-3 pt-3">
-          {error && <div className="text-xs text-red-600 dark:text-red-400 mb-2">{error}</div>}
-
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin inline-block w-5 h-5 border-3 border-blue-500 border-t-transparent rounded-full" />
-            </div>
-          ) : filteredFriends.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {searchQuery ? "No contacts found" : "No contacts yet"}
-              </p>
-              {!searchQuery && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Search to add friends</p>}
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                  Contacts
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">({filteredFriends.length})</span>
-              </div>
-              <div className="space-y-0 pb-3">
-                {filteredFriends.map((friend, index) => (
-                  <FriendCard
-                    key={friend.id}
-                    friend={friend}
-                    onRemove={() => handleUnfriend(friend.friendUserId)}
-                    onClick={() => handleOpenChat(friend)}
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <FriendsListSection
+          error={error}
+          loading={loading}
+          filteredFriends={filteredFriends}
+          searchQuery={searchQuery}
+          handleUnfriend={handleUnfriend}
+          handleOpenChat={handleOpenChat}
+        />
       </div>
     </div>
   );

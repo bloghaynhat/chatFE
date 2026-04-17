@@ -25,6 +25,7 @@ dist-ssr
 .github
 contexts
 docs
+CLAUDE.md
 # Environment variables
 # .env
 # .env.local
