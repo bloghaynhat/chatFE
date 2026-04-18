@@ -183,6 +183,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       await fetchFriendRequests();
       await fetchFriends();
       setSearchResultRequestStatus({ status: "ACCEPTED" });
+      window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err) {
       console.error("[ContactsPanel] Failed to accept search result request:", err);
       alert(err.message || "Failed to accept friend request");
@@ -214,6 +215,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       await fetchFriendRequests();
       await fetchFriends();
       await refreshSearchResultStatus();
+      window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err) {
       console.error("[ContactsPanel] Failed to accept friend request:", requestId, err);
       alert(err.message || "Failed to accept friend request");
