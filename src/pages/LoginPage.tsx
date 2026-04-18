@@ -6,12 +6,12 @@ export const LoginPage = () => {
   const navigate = useNavigate();
 
   const handleLoginSuccess = (userProfile) => {
-    // if (userProfile?.verified?.email === false && userProfile?.email) {
-    //   navigate("/verify-email", {
-    //     state: { email: userProfile.email, fromLogin: true },
-    //   });
-    //   return;
-    // }
+    if (userProfile?.verified?.email === false && userProfile?.email) {
+      navigate("/verify-email", {
+        state: { email: userProfile.email, fromLogin: true },
+      });
+      return;
+    }
     navigate("/");
   };
 
