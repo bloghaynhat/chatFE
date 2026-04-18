@@ -30,21 +30,25 @@ const MainLayout = ({ children }: { children?: any }) => {
           const message = payload?.message || payload;
 
           setTypingUsers((prev) => {
-             const sender = message?.senderId || message?.sender?.id || message?.sender?._id || message?.id_sender || (typeof message?.sender === 'string' ? message.sender : null);
-             if (sender && prev.has(sender)) {
-                const ns = new Set(prev);
-                ns.delete(sender);
-                return ns;
-             }
-             return prev;
+            const sender =
+              message?.senderId ||
+              message?.sender?.id ||
+              message?.sender?._id ||
+              message?.id_sender ||
+              (typeof message?.sender === "string" ? message.sender : null);
+            if (sender && prev.has(sender)) {
+              const ns = new Set(prev);
+              ns.delete(sender);
+              return ns;
+            }
+            return prev;
           });
 
           setMessages((prev) => {
             if (!message || (!message._id && !message.id)) return prev;
             // Prevent duplicate messages
             const msgId = message._id || message.id;
-            if (prev.some((m) => String(m._id || m.id) === String(msgId)))
-              return prev;
+            if (prev.some((m) => String(m._id || m.id) === String(msgId))) return prev;
 
             // Only add if it belongs to currently open conversation
             let msgConvId = message.conversationId || payload?.conversationId;
@@ -52,6 +56,12 @@ const MainLayout = ({ children }: { children?: any }) => {
               msgConvId = msgConvId._id || msgConvId.id;
             }
             if (String(msgConvId) === String(selectedConversationId)) {
+              // Auto mark as seen when message is received in current conversation
+              const senderId = message?.senderId || message?.sender?.id || message?.sender?._id || message?.id_sender;
+              if (senderId && senderId !== user?.id) {
+                // Only mark seen if message is from someone else, not from current user
+                conversationService.markSeen(selectedConversationId, msgId).catch(() => {});
+              }
               return [...prev, message];
             }
             return prev;
@@ -74,11 +84,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         socketService.onMessageRevoked((payload) => {
           console.log("Socket message revoked payload:", payload);
           const revokedId =
-            payload?.messageId ||
-            payload?.message?._id ||
-            payload?.message?.id ||
-            payload?.id ||
-            payload?._id;
+            payload?.messageId || payload?.message?._id || payload?.message?.id || payload?.id || payload?._id;
           if (!revokedId) return;
 
           setMessages((prev) =>
@@ -95,12 +101,41 @@ const MainLayout = ({ children }: { children?: any }) => {
         });
 
         socketService.onMessageStatusUpdate((payload) => {
-          // payload might contain { messageId, status }
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === payload.messageId ? { ...m, status: payload.status } : m,
-            ),
-          );
+          // payload might contain { messageId, status } or { id, conversationId }
+          // Mark all messages up to lastSeenMessageId as seen
+          const lastSeenMessageId = payload?.lastSeenMessageId;
+
+          if (!lastSeenMessageId) return;
+
+          setMessages((prev) => {
+            let foundIndex = -1;
+
+            // Find the index of the lastSeenMessageId
+            for (let i = 0; i < prev.length; i++) {
+              const msgId = prev[i].id || prev[i]._id;
+              if (String(msgId) === String(lastSeenMessageId)) {
+                foundIndex = i;
+                break;
+              }
+            }
+
+            // If found, mark all messages up to and including this index as seen
+            if (foundIndex !== -1) {
+              return prev.map((m, idx) => {
+                if (idx <= foundIndex) {
+                  return {
+                    ...m,
+                    status: "seen",
+                    isSeen: true,
+                    readAt: new Date().toISOString(),
+                  };
+                }
+                return m;
+              });
+            }
+
+            return prev;
+          });
         });
 
         socketService.onTypingStart((payload) => {
@@ -216,10 +251,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         let conversationId = chat.id;
 
         if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
-          const conversation =
-            await conversationService.createPrivateConversation(
-              chat.targetUserId,
-            );
+          const conversation = await conversationService.createPrivateConversation(chat.targetUserId);
           conversationId = resolveConversationId(conversation);
         }
 
@@ -232,8 +264,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         setSelectedConversationId(conversationId);
 
-        const messageResult =
-          await conversationService.getConversationMessages(conversationId);
+        const messageResult = await conversationService.getConversationMessages(conversationId);
 
         // Sort messages by createdAt in ascending order (oldest first)
         const sortedMessages = (messageResult.messages || []).sort((a, b) => {
@@ -244,9 +275,13 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         setMessages(sortedMessages);
 
-        // fire-and-forget status sync
-        conversationService.markDelivered(conversationId).catch(() => {});
-        conversationService.markSeen(conversationId).catch(() => {});
+        // fire-and-forget status sync with last message ID
+        const lastMessage = sortedMessages[sortedMessages.length - 1];
+        if (lastMessage) {
+          const lastMessageId = lastMessage.id || lastMessage._id;
+          conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
+          conversationService.markSeen(conversationId, lastMessageId).catch(() => {});
+        }
       } catch (error) {
         setMessages([]);
         if (
@@ -325,9 +360,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       if (payloadOrText instanceof File || Array.isArray(payloadOrText)) {
         payloadText = "";
-        payloadMedia = Array.isArray(payloadOrText)
-          ? payloadOrText
-          : [payloadOrText];
+        payloadMedia = Array.isArray(payloadOrText) ? payloadOrText : [payloadOrText];
       } else {
         payloadText = payloadOrText.text || "";
         payloadMedia = payloadOrText.media || [];
@@ -337,30 +370,25 @@ const MainLayout = ({ children }: { children?: any }) => {
       payloadMedia = mediaFiles || [];
     }
 
-    if (
-      !payloadText.trim() &&
-      payloadMedia.length === 0 &&
-      !payloadOrText?.forwardingMessage
-    )
-      return;
+    if (!payloadText.trim() && payloadMedia.length === 0 && !payloadOrText?.forwardingMessage) return;
 
     const fwMsg = payloadOrText?.forwardingMessage;
 
     const performSend = async (txt, medias, isForward = false) => {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      
+
       const previewMedias = medias.map((f) => {
         if (f instanceof File) {
-           const objUrl = URL.createObjectURL(f);
-           return {
-             name: f.name,
-             filename: f.name,
-             size: f.size,
-             type: f.type,
-             mimetype: f.type,
-             url: objUrl,
-             preview: objUrl
-           };
+          const objUrl = URL.createObjectURL(f);
+          return {
+            name: f.name,
+            filename: f.name,
+            size: f.size,
+            type: f.type,
+            mimetype: f.type,
+            url: objUrl,
+            preview: objUrl,
+          };
         }
         return f;
       });
@@ -386,11 +414,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           const uploadedMedia = await Promise.all(
             filesToUpload.map(async (file) => {
               // 1. Lấy Pre-signed URL
-              const reqResponse: any = await mediaService.requestUploadUrl(
-                file.name,
-                file.type,
-                file.size,
-              );
+              const reqResponse: any = await mediaService.requestUploadUrl(file.name, file.type, file.size);
               // Phụ thuộc vào dữ liệu trả về từ backend, fix triệt để các format có thể trả về:
               const uploadUrl =
                 reqResponse?.uploadUrl ||
@@ -401,16 +425,11 @@ const MainLayout = ({ children }: { children?: any }) => {
                 reqResponse?.data?.url ||
                 reqResponse?.data?.presignedUrl;
               const fileId =
-                reqResponse?.fileId ||
-                reqResponse?.id ||
-                reqResponse?.data?.fileId ||
-                reqResponse?.data?.id;
+                reqResponse?.fileId || reqResponse?.id || reqResponse?.data?.fileId || reqResponse?.data?.id;
 
               if (!uploadUrl) {
                 console.error("Missing uploadUrl in response:", reqResponse);
-                throw new Error(
-                  "Không lấy được pre-signed upload URL từ server",
-                );
+                throw new Error("Không lấy được pre-signed upload URL từ server");
               }
 
               // 2. Upload file trực tiếp lên S3 qua Pre-signed URL
@@ -420,16 +439,10 @@ const MainLayout = ({ children }: { children?: any }) => {
               const uploadedUrlClean = uploadUrl.split("?")[0];
 
               // 3. Confirm quá trình upload với backend
-              const confirmResponse: any = await mediaService.confirmUpload(
-                fileId,
-                uploadedUrlClean,
-              );
+              const confirmResponse: any = await mediaService.confirmUpload(fileId, uploadedUrlClean);
 
               const finalUrl =
-                confirmResponse?.url ||
-                confirmResponse?.fileUrl ||
-                confirmResponse?.data?.url ||
-                uploadedUrlClean;
+                confirmResponse?.url || confirmResponse?.fileUrl || confirmResponse?.data?.url || uploadedUrlClean;
 
               return {
                 fileId: confirmResponse?.fileId || confirmResponse?._id || fileId,
@@ -449,7 +462,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               };
             }),
           );
-          
+
           finalMedia = [...existingMedia, ...uploadedMedia];
         } else if (existingMedia.length > 0) {
           finalMedia = existingMedia;
@@ -458,7 +471,13 @@ const MainLayout = ({ children }: { children?: any }) => {
         // Strict normalization for API compliance
         const validMedia = finalMedia.map((m: any) => {
           const rawType = (m.type || m.mimeType || m.mimetype || "").toLowerCase();
-          const pType = rawType.startsWith("image") ? "image" : rawType.startsWith("video") ? "video" : rawType.startsWith("audio") ? "audio" : "file";
+          const pType = rawType.startsWith("image")
+            ? "image"
+            : rawType.startsWith("video")
+              ? "video"
+              : rawType.startsWith("audio")
+                ? "audio"
+                : "file";
           return {
             fileId: m.fileId || m.id || m._id || undefined,
             type: pType,
@@ -467,14 +486,14 @@ const MainLayout = ({ children }: { children?: any }) => {
             filename: m.filename || m.name || "unknown",
             size: Number(m.size) || 0,
             mimetype: m.mimeType || m.mimetype || rawType || "application/octet-stream",
-            mimeType: m.mimeType || m.mimetype || rawType || "application/octet-stream"
+            mimeType: m.mimeType || m.mimetype || rawType || "application/octet-stream",
           };
         });
 
-        const apiResponse: any = await conversationService.sendMessage(
-          conversationId,
-          { text: txt || " ", media: validMedia }
-        );
+        const apiResponse: any = await conversationService.sendMessage(conversationId, {
+          text: txt || " ",
+          media: validMedia,
+        });
 
         const responseData = apiResponse?.data || apiResponse;
         const sentMessagesArray = Array.isArray(responseData)
@@ -485,7 +504,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         setMessages((prev) => {
           let newMessages = [...prev];
-          
+
           // Remove the optimistic 'tempId' message
           newMessages = newMessages.filter((m) => m.id !== tempId);
 
@@ -493,7 +512,8 @@ const MainLayout = ({ children }: { children?: any }) => {
           for (const sMsg of sentMessagesArray) {
             if (sMsg && (sMsg._id || sMsg.id)) {
               const alreadyExists = newMessages.some(
-                (m) => String(m.id || m._id) === String(sMsg._id || sMsg.id) && !String(m.id || m._id).startsWith("temp-")
+                (m) =>
+                  String(m.id || m._id) === String(sMsg._id || sMsg.id) && !String(m.id || m._id).startsWith("temp-"),
               );
               if (!alreadyExists) {
                 newMessages.push({
@@ -505,7 +525,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                 newMessages = newMessages.map((m) =>
                   String(m.id || m._id) === String(sMsg._id || sMsg.id)
                     ? { ...m, status: "sent", id: sMsg._id || sMsg.id }
-                    : m
+                    : m,
                 );
               }
             }
@@ -513,13 +533,19 @@ const MainLayout = ({ children }: { children?: any }) => {
 
           return newMessages;
         });
+
+        // Mark delivered and seen after sending message
+        if (sentMessagesArray.length > 0) {
+          const lastSentMessage = sentMessagesArray[sentMessagesArray.length - 1];
+          const lastMessageId = lastSentMessage.id || lastSentMessage._id;
+          if (lastMessageId) {
+            // Only mark own messages as delivered (not seen)
+            conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
+          }
+        }
       } catch (error) {
         console.error("Failed to send message via socket", error);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempId ? { ...msg, status: "failed" } : msg,
-          ),
-        );
+        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? { ...msg, status: "failed" } : msg)));
       }
     };
 
@@ -549,17 +575,20 @@ const MainLayout = ({ children }: { children?: any }) => {
             setMessages((prev) => {
               const newMsgs = [...prev];
               newMessages.forEach((newMsg) => {
-                if (
-                  !newMsgs.some(
-                    (m) =>
-                      String(m._id || m.id) === String(newMsg._id || newMsg.id),
-                  )
-                ) {
+                if (!newMsgs.some((m) => String(m._id || m.id) === String(newMsg._id || newMsg.id))) {
                   newMsgs.push(newMsg);
                 }
               });
               return newMsgs;
             });
+
+            // Mark delivered and seen after forwarding message
+            const lastForwardedMessage = newMessages[newMessages.length - 1];
+            const lastMessageId = lastForwardedMessage.id || lastForwardedMessage._id;
+            if (lastMessageId) {
+              // Only mark own messages as delivered (not seen)
+              conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
+            }
           }
         }
       } catch (error) {

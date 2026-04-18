@@ -78,12 +78,12 @@ export const conversationService = {
     return api.post(`/messages/${messageId}/react`, { reaction });
   },
 
-  async markDelivered(conversationId) {
-    return api.post(`/conversations/${conversationId}/delivered`);
+  async markDelivered(conversationId, lastDeliveredMessageId: string) {
+    return api.post(`/conversations/${conversationId}/delivered`, { lastDeliveredMessageId });
   },
 
-  async markSeen(conversationId) {
-    return api.post(`/conversations/${conversationId}/seen`);
+  async markSeen(conversationId, lastSeenMessageId: string) {
+    return api.post(`/conversations/${conversationId}/seen`, { lastSeenMessageId });
   },
 
   async getPinnedMessages(conversationId) {

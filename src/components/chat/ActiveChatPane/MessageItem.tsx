@@ -1,7 +1,4 @@
-import {
-  FiCheck,
-  FiDownload,
-} from "react-icons/fi";
+import { FiCheck, FiDownload, FiEye } from "react-icons/fi";
 import { PhotoView } from "react-photo-view";
 import { getMessageId, getMessageText, getMessageTime } from "../../../utils/chatUtils";
 
@@ -15,6 +12,9 @@ export const MessageItem = ({
   setPreviewVideoUrl,
 }) => {
   const rawText = getMessageText(message);
+
+  // Determine if message is seen by recipient
+  const isSeen = message?.status === "seen" || message?.isSeen === true || message?.readAt !== undefined;
 
   // Parse forwarded message
   let isForwarded = Boolean(message?.originalMessageId);
@@ -38,11 +38,7 @@ export const MessageItem = ({
         message?.originalMessage?.sender?.username ||
         "Unknown",
       senderAvatarStr: "U",
-      text:
-        message?.originalMessage?.text ||
-        message?.originalMessage?.content ||
-        rawText ||
-        "Forwarded Message",
+      text: message?.originalMessage?.text || message?.originalMessage?.content || rawText || "Forwarded Message",
     };
     if (fwData.senderName !== "Unknown") {
       fwData.senderAvatarStr = fwData.senderName.charAt(0).toUpperCase();
@@ -105,8 +101,7 @@ export const MessageItem = ({
         !audios.includes(messageFiles[0])));
 
   const hasText = !!text && text.trim() !== "";
-  const onlyImagesOrVideos =
-    isMedia && !hasText && !isDocument && !isAudio && !isForwarded;
+  const onlyImagesOrVideos = isMedia && !hasText && !isDocument && !isAudio && !isForwarded;
 
   if (message.isRevoked || message.deletedAt) {
     return (
@@ -117,9 +112,7 @@ export const MessageItem = ({
           mine ? "self-end rounded-br-md" : "self-start rounded-bl-md"
         }`}
       >
-        <span className="text-gray-500 dark:text-gray-400 italic font-medium">
-          Message recalled
-        </span>
+        <span className="text-gray-500 dark:text-gray-400 italic font-medium">Message recalled</span>
       </div>
     );
   }
@@ -137,9 +130,7 @@ export const MessageItem = ({
     >
       {isForwarded && fwData && (
         <div className="px-2.5 pt-2 pb-1 flex flex-col gap-0.5">
-          <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400">
-            Forwarded from
-          </span>
+          <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400">Forwarded from</span>
           <div className="flex items-center gap-1.5 opacity-90">
             <div className="w-[18px] h-[18px] rounded-full bg-pink-500 flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-sm">
               {fwData.senderAvatarStr || "U"}
@@ -152,9 +143,7 @@ export const MessageItem = ({
       )}
 
       {isMedia && (
-        <div
-          className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}
-        >
+        <div className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}>
           {mediaItems.length === 1 ? (
             images.includes(mediaItems[0]) ? (
               <PhotoView src={mediaItems[0].url || mediaItems[0].preview || mediaItems[0]}>
@@ -167,10 +156,20 @@ export const MessageItem = ({
             ) : (
               <div
                 className="relative w-full rounded-lg bg-black overflow-hidden group flex justify-center items-center cursor-pointer"
-                onClick={() => setPreviewVideoUrl(mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : ""))}
+                onClick={() =>
+                  setPreviewVideoUrl(
+                    mediaItems[0].url ||
+                      mediaItems[0].preview ||
+                      (typeof mediaItems[0] === "string" ? mediaItems[0] : ""),
+                  )
+                }
               >
                 <video
-                  src={mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : "")}
+                  src={
+                    mediaItems[0].url ||
+                    mediaItems[0].preview ||
+                    (typeof mediaItems[0] === "string" ? mediaItems[0] : "")
+                  }
                   className="w-full h-auto max-h-[400px] object-contain pointer-events-none"
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
@@ -190,7 +189,11 @@ export const MessageItem = ({
                   </div>
                 </div>
                 <a
-                  href={mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : "")}
+                  href={
+                    mediaItems[0].url ||
+                    mediaItems[0].preview ||
+                    (typeof mediaItems[0] === "string" ? mediaItems[0] : "")
+                  }
                   download={mediaItems[0].filename || mediaItems[0].name || "video.mp4"}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -214,22 +217,16 @@ export const MessageItem = ({
               {mediaItems.map((media, i) => {
                 const isImg = images.includes(media);
                 const mediaUrl = media.url || media.preview || (typeof media === "string" ? media : "");
-                
+
                 if (isImg) {
                   return (
                     <PhotoView key={i} src={mediaUrl}>
                       <div
                         className={`relative ${
-                          mediaItems.length === 3 && i === 0
-                            ? "col-span-2 aspect-[2/1]"
-                            : "aspect-square"
+                          mediaItems.length === 3 && i === 0 ? "col-span-2 aspect-[2/1]" : "aspect-square"
                         }`}
                       >
-                        <img
-                          src={mediaUrl}
-                          alt={`Image ${i}`}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={mediaUrl} alt={`Image ${i}`} className="w-full h-full object-cover" />
                       </div>
                     </PhotoView>
                   );
@@ -238,16 +235,11 @@ export const MessageItem = ({
                     <div
                       key={i}
                       className={`relative w-full bg-black group flex justify-center items-center cursor-pointer ${
-                          mediaItems.length === 3 && i === 0
-                            ? "col-span-2 aspect-[2/1]"
-                            : "aspect-square"
+                        mediaItems.length === 3 && i === 0 ? "col-span-2 aspect-[2/1]" : "aspect-square"
                       }`}
                       onClick={() => setPreviewVideoUrl(mediaUrl)}
                     >
-                      <video
-                        src={mediaUrl}
-                        className="w-full h-full object-cover pointer-events-none"
-                      />
+                      <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" />
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
                         <div className="w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm shadow-xl hover:scale-110 transition-transform">
                           <svg
@@ -282,18 +274,9 @@ export const MessageItem = ({
           )}
           {onlyImagesOrVideos && (
             <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white pointer-events-none">
-              {message.isEdited && (
-                <span className="italic font-semibold text-[10px]">edited</span>
-              )}
-              <span className="text-[11px] font-medium leading-none">
-                {getMessageTime(message)}
-              </span>
-              {mine && (
-                <span className="flex -space-x-[3px] ml-0.5">
-                  <FiCheck className="text-[12px]" />
-                  <FiCheck className="text-[12px]" />
-                </span>
-              )}
+              {message.isEdited && <span className="italic font-semibold text-[10px]">edited</span>}
+              <span className="text-[11px] font-medium leading-none">{getMessageTime(message)}</span>
+              {mine && <>{isSeen ? <FiEye className="text-[13px]" /> : <FiCheck className="text-[13px]" />}</>}
             </div>
           )}
         </div>
@@ -305,10 +288,10 @@ export const MessageItem = ({
             const audUrl = aud.url || aud.preview || (typeof aud === "string" ? aud : "");
             return (
               <div key={i} className="flex flex-col gap-1 w-full max-w-[240px] md:max-w-[280px]">
-                <audio 
-                  controls 
-                  src={audUrl} 
-                  className={`w-full h-10 outline-none ${mine ? "" : "filter brightness-90 dark:brightness-100"}`} 
+                <audio
+                  controls
+                  src={audUrl}
+                  className={`w-full h-10 outline-none ${mine ? "" : "filter brightness-90 dark:brightness-100"}`}
                 />
               </div>
             );
@@ -319,13 +302,9 @@ export const MessageItem = ({
       {isDocument &&
         (() => {
           const file = message?.file || (messageFiles && messageFiles[0]);
-          const fileName =
-            file?.name || file?.filename || file?.originalName || "Document";
-          const fileSize = file?.size
-            ? `${(file.size / 1024).toFixed(0)} KB`
-            : "";
-          const fileUrl =
-            file?.url || file?.preview || (typeof file === "string" ? file : "");
+          const fileName = file?.name || file?.filename || file?.originalName || "Document";
+          const fileSize = file?.size ? `${(file.size / 1024).toFixed(0)} KB` : "";
+          const fileUrl = file?.url || file?.preview || (typeof file === "string" ? file : "");
           return (
             <div className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-t-2xl gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -379,26 +358,15 @@ export const MessageItem = ({
 
       {!onlyImagesOrVideos && (
         <div className="px-3 pb-2 pt-2 cursor-default relative">
-          {!!text && (
-            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-              {text}
-            </p>
-          )}
+          {!!text && <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">{text}</p>}
           <p
             className={`mt-1 text-[11.5px] font-medium tracking-tight flex items-center justify-end gap-[5px] ${mine ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-gray-400 dark:text-gray-500"}`}
           >
             {message.isEdited && (
-              <span className="italic font-semibold opacity-75 text-[10.5px] tracking-normal">
-                edited
-              </span>
+              <span className="italic font-semibold opacity-75 text-[10.5px] tracking-normal">edited</span>
             )}
             <span>{getMessageTime(message)}</span>
-            {mine && (
-              <span className="flex -space-x-[4px] ml-0.5">
-                <FiCheck className="text-[13px]" />
-                <FiCheck className="text-[13px]" />
-              </span>
-            )}
+            {mine && <>{isSeen ? <FiEye className="text-[13px]" /> : <FiCheck className="text-[13px]" />}</>}
           </p>
         </div>
       )}
