@@ -434,7 +434,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === tempId
+            msg.id === tempId && sentMessage
               ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
               : msg,
           ),

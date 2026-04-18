@@ -232,9 +232,12 @@ class SocketService {
 
       console.log("SOCKET SEND_MESSAGE PAYLOAD:", payload);
 
-      this.messagesSocket.emit("sendMessage", payload, (res) => {
-        if (res?.success) resolve(res.message);
-        else reject(new Error(res?.error || "Send failed"));
+      this.messagesSocket.emit("sendMessage", payload, (res: any) => {
+        if (res?.success || res?.status === "success") {
+          resolve(res.message || res.data || res);
+        } else {
+          reject(new Error(res?.error || res?.msg || "Send failed"));
+        }
       });
     });
   }
