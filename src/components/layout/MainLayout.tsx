@@ -503,43 +503,34 @@ const MainLayout = ({ children }: { children?: any }) => {
             : [responseData];
 
         setMessages((prev) => {
-          let newMessages = [...prev];
-
           // Remove the optimistic 'tempId' message
-          newMessages = newMessages.filter((m) => m.id !== tempId);
+          const updatedMessages = prev.filter((m) => m.id !== tempId);
 
-          // Append all messages from the API response that don't already exist via socket
+          // Append or update messages from the API response
           for (const sMsg of sentMessagesArray) {
-            if (sMsg && (sMsg._id || sMsg.id)) {
-              const alreadyExists = newMessages.some(
-                (m) =>
-                  String(m.id || m._id) === String(sMsg._id || sMsg.id) && !String(m.id || m._id).startsWith("temp-"),
-              );
-              if (!alreadyExists) {
-                newMessages.push({
-                  ...sMsg,
-                  id: sMsg._id || sMsg.id,
-                  status: "sent",
-                });
-              } else {
-                newMessages = newMessages.map((m) =>
-                  String(m.id || m._id) === String(sMsg._id || sMsg.id)
-                    ? { ...m, status: "sent", id: sMsg._id || sMsg.id }
-                    : m,
-                );
-              }
+            if (!sMsg || (!sMsg._id && !sMsg.id)) continue;
+
+            const msgId = sMsg._id || sMsg.id;
+            const existingIndex = updatedMessages.findIndex((m) => String(m.id || m._id) === String(msgId));
+
+            if (existingIndex !== -1) {
+              updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], status: "sent", id: msgId };
+            } else {
+              updatedMessages.push({ ...sMsg, id: msgId, status: "sent" });
             }
           }
 
-          return newMessages;
+          return updatedMessages;
         });
 
-        // Mark delivered and seen after sending message
+        // Update Chat sidebar and mark message as delivered
         if (sentMessagesArray.length > 0) {
-          const lastSentMessage = sentMessagesArray[sentMessagesArray.length - 1];
-          const lastMessageId = lastSentMessage.id || lastSentMessage._id;
+          const lastSent = sentMessagesArray[sentMessagesArray.length - 1];
+          const lastMessageId = lastSent.id || lastSent._id;
+
+          socketService.emit("receiveMessage", { message: lastSent, conversationId });
+
           if (lastMessageId) {
-            // Only mark own messages as delivered (not seen)
             conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
           }
         }

@@ -1,6 +1,7 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { FiArchive, FiUser, FiSearch } from "react-icons/fi";
 import { userService, conversationService } from "../../services";
+import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
 
@@ -16,23 +17,84 @@ export const ChatList = ({
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchChats = async () => {
-      setIsLoading(true);
-      try {
-        const response: any = await conversationService.getConversations();
-        // Giả sử API trả về { status: "success", data: [...] } hoặc chỉ là mảng data
-        const data = response?.data || response || [];
-        setChats(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Fetch conversations error:", err);
-        setChats([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchChats();
+  const fetchChats = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    try {
+      const response: any = await conversationService.getConversations();
+      const data = response?.data || response || [];
+      setChats(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch conversations error:", err);
+      setChats([]);
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchChats();
+  }, [fetchChats]);
+
+  // Reset unread count when chat is opened
+  useEffect(() => {
+    if (activeChatId) {
+      setChats((prevChats) => prevChats.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c)));
+    }
+  }, [activeChatId]);
+
+  useEffect(() => {
+    const unsubscribe = socketService.onNewMessage((payload) => {
+      const message = payload?.message || payload;
+      let msgConvId = message.conversationId || payload?.conversationId;
+      if (msgConvId && typeof msgConvId === "object") {
+        msgConvId = msgConvId._id || msgConvId.id;
+      }
+
+      if (!msgConvId) return;
+
+      setChats((prevChats) => {
+        const idx = prevChats.findIndex((c) => c.id === msgConvId);
+
+        const newLastMessage = {
+          messageId: message.id || message._id,
+          createdAt: message.createdAt || new Date().toISOString(),
+          senderId: message.senderId || message.sender?.id || message.sender?._id || message.id_sender,
+          textPreview:
+            message.textPreview ||
+            message.text ||
+            message.content ||
+            (message.type === "media" ? "Sent a media file" : "No messages"),
+          type: message.type || "text",
+        };
+
+        if (idx !== -1) {
+          const chat = prevChats[idx];
+          const isCurrentlyActive = activeChatId === msgConvId || openingChatId === msgConvId;
+
+          const updatedChat = {
+            ...chat,
+            lastMessage: newLastMessage,
+            lastMessageTimeFormatted: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            unreadCount: isCurrentlyActive ? 0 : (chat.unreadCount || 0) + 1,
+            lastMessageAt: newLastMessage.createdAt,
+          };
+
+          // Filter out the old chat and put the updated one at the top
+          const filteredChats = prevChats.filter((c) => c.id !== msgConvId);
+          return [updatedChat, ...filteredChats];
+        } else {
+          // If the chat doesn't exist in the list, fetch the updated list from the server silently
+          fetchChats(false);
+          return prevChats;
+        }
+      });
+    });
+
+    return () => {
+      // Call the unsubscribe function returned by our event manager
+      unsubscribe();
+    };
+  }, [activeChatId, openingChatId, fetchChats]);
 
   const [globalUsers, setGlobalUsers] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
