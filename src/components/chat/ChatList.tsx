@@ -35,6 +35,22 @@ export const ChatList = ({
     fetchChats();
   }, [fetchChats]);
 
+  // Listen for local trigger to refresh the chat list (e.g. when accepting friend request)
+  useEffect(() => {
+    const handleRefresh = () => fetchChats(false);
+    window.addEventListener("chatList:refresh", handleRefresh);
+
+    // Also listen to socket event if the other party accepted our request
+    const unsubFriendAccepted = socketService.on("friend_request:accepted", () => {
+      fetchChats(false);
+    });
+
+    return () => {
+      window.removeEventListener("chatList:refresh", handleRefresh);
+      if (unsubFriendAccepted) unsubFriendAccepted();
+    };
+  }, [fetchChats]);
+
   // Reset unread count when chat is opened
   useEffect(() => {
     if (activeChatId) {
