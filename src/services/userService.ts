@@ -176,6 +176,19 @@ export const searchUsers = async (query) => {
 };
 
 /**
+ * Lấy thông tin user theo ID
+ * @param {string} id - ID người dùng
+ * @returns {Promise<Object>} Thông tin người dùng
+ */
+export const getUserById = async (id: string) => {
+  try {
+    return await api.get(`/users/${id}`);
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch user");
+  }
+};
+
+/**
  * Export tất cả các hàm như một object để dễ sử dụng
  */
 export const userService = {
@@ -188,6 +201,7 @@ export const userService = {
   updatePassword,
   updatePrivacy,
   searchUsers,
+  getUserById,
 };
 
 export default userService;

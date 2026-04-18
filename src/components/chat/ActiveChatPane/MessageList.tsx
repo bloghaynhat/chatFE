@@ -1,7 +1,7 @@
 import { FiRefreshCw } from "react-icons/fi";
 import { PhotoProvider } from "react-photo-view";
 import { MessageItem } from "./MessageItem";
-import { getDateLabel, groupMediaMessages } from "../../../utils/chatUtils";
+import { getDateLabel, groupMediaMessages, getMessageTime } from "../../../utils/chatUtils";
 
 export const MessageList = ({
   isLoading,
@@ -96,6 +96,19 @@ export const MessageList = ({
                   )),
               );
 
+              const groupedMessages = groupMediaMessages(visibleMessages);
+              
+              const prevMessage = index > 0 ? groupedMessages[index - 1] : null;
+              const nextMessage = index < groupedMessages.length - 1 ? groupedMessages[index + 1] : null;
+              
+              const getSenderId = (m) => m?.senderId || m?.sender?.id || m?.id_sender || (m?.isMine ? "me" : null);
+              
+              const currentSenderId = getSenderId(message);
+              const isFirstInSequence = !prevMessage || getSenderId(prevMessage) !== currentSenderId || (getMessageTime(prevMessage) !== getMessageTime(message) && Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 300000);
+              const isLastInSequence = !nextMessage || getSenderId(nextMessage) !== currentSenderId || (getMessageTime(nextMessage) !== getMessageTime(message) && Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 300000);
+
+              const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP" || selectedChat?.isGroup === true || !selectedChat?.targetUserId;
+
               return (
                 <MessageItem
                   key={message.id || message._id || index}
@@ -104,6 +117,9 @@ export const MessageList = ({
                   isFirst={index === 0}
                   firstMessageRef={firstMessageRef}
                   mine={mine}
+                  isGroup={isGroup}
+                  isFirstInSequence={isFirstInSequence}
+                  isLastInSequence={isLastInSequence}
                   handleContextMenu={handleContextMenu}
                   setPreviewVideoUrl={setPreviewVideoUrl}
                 />
