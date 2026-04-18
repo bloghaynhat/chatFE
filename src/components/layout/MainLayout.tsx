@@ -29,6 +29,16 @@ const MainLayout = ({ children }: { children?: any }) => {
           // Payload từ receiveMessage: { message: {...}, conversationId: "..." }
           const message = payload?.message || payload;
 
+          setTypingUsers((prev) => {
+             const sender = message?.senderId || message?.sender?.id || message?.sender?._id || message?.id_sender || (typeof message?.sender === 'string' ? message.sender : null);
+             if (sender && prev.has(sender)) {
+                const ns = new Set(prev);
+                ns.delete(sender);
+                return ns;
+             }
+             return prev;
+          });
+
           setMessages((prev) => {
             if (!message || (!message._id && !message.id)) return prev;
             // Prevent duplicate messages
@@ -94,20 +104,22 @@ const MainLayout = ({ children }: { children?: any }) => {
         });
 
         socketService.onTypingStart((payload) => {
-          if (payload?.userId) {
+          const uId = payload?.userId || payload?.senderId || payload?.id_sender;
+          if (uId) {
             setTypingUsers((prev) => {
               const newSet = new Set(prev);
-              newSet.add(payload.userId);
+              newSet.add(uId);
               return newSet;
             });
           }
         });
 
         socketService.onTypingStop((payload) => {
-          if (payload?.userId) {
+          const uId = payload?.userId || payload?.senderId || payload?.id_sender;
+          if (uId) {
             setTypingUsers((prev) => {
               const newSet = new Set(prev);
-              newSet.delete(payload.userId);
+              newSet.delete(uId);
               return newSet;
             });
           }
@@ -336,10 +348,27 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     const performSend = async (txt, medias, isForward = false) => {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      
+      const previewMedias = medias.map((f) => {
+        if (f instanceof File) {
+           const objUrl = URL.createObjectURL(f);
+           return {
+             name: f.name,
+             filename: f.name,
+             size: f.size,
+             type: f.type,
+             mimetype: f.type,
+             url: objUrl,
+             preview: objUrl
+           };
+        }
+        return f;
+      });
+
       const optimisticMessage = {
         id: tempId,
         text: txt,
-        media: medias,
+        media: previewMedias,
         createdAt: new Date().toISOString(),
         isMine: true,
         senderId: "me",
@@ -396,7 +425,6 @@ const MainLayout = ({ children }: { children?: any }) => {
                 uploadedUrlClean,
               );
 
-              // Lấy URL cuối cùng từ confirm hoặc cắt URL upload bỏ đi phần query
               const finalUrl =
                 confirmResponse?.url ||
                 confirmResponse?.fileUrl ||
@@ -404,41 +432,87 @@ const MainLayout = ({ children }: { children?: any }) => {
                 uploadedUrlClean;
 
               return {
-                fileId:
-                  confirmResponse?.fileId || confirmResponse?._id || fileId,
+                fileId: confirmResponse?.fileId || confirmResponse?._id || fileId,
                 type: file.type?.startsWith("image/")
-                  ? "IMAGE"
+                  ? "image"
                   : file.type?.startsWith("video/")
-                    ? "VIDEO"
+                    ? "video"
                     : file.type?.startsWith("audio/")
-                      ? "AUDIO"
-                      : "DOCUMENT",
+                      ? "audio"
+                      : "file",
                 url: finalUrl,
                 thumbnailUrl: finalUrl,
                 filename: file.name || "unknown",
                 size: file.size || 0,
-                mimetype: file.type,
+                mimetype: file.type || "application/octet-stream",
+                mimeType: file.type || "application/octet-stream",
               };
             }),
           );
+          
           finalMedia = [...existingMedia, ...uploadedMedia];
         } else if (existingMedia.length > 0) {
           finalMedia = existingMedia;
         }
 
-        const sentMessage: any = await socketService.sendMessage(
+        // Strict normalization for API compliance
+        const validMedia = finalMedia.map((m: any) => {
+          const rawType = (m.type || m.mimeType || m.mimetype || "").toLowerCase();
+          const pType = rawType.startsWith("image") ? "image" : rawType.startsWith("video") ? "video" : rawType.startsWith("audio") ? "audio" : "file";
+          return {
+            fileId: m.fileId || m.id || m._id || undefined,
+            type: pType,
+            url: m.url || m.preview || "",
+            thumbnailUrl: m.thumbnailUrl || m.preview || m.url || "",
+            filename: m.filename || m.name || "unknown",
+            size: Number(m.size) || 0,
+            mimetype: m.mimeType || m.mimetype || rawType || "application/octet-stream",
+            mimeType: m.mimeType || m.mimetype || rawType || "application/octet-stream"
+          };
+        });
+
+        const apiResponse: any = await conversationService.sendMessage(
           conversationId,
-          txt,
-          finalMedia,
+          { text: txt || " ", media: validMedia }
         );
 
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempId
-              ? { ...sentMessage, id: sentMessage._id || sentMessage.id }
-              : msg,
-          ),
-        );
+        const responseData = apiResponse?.data || apiResponse;
+        const sentMessagesArray = Array.isArray(responseData)
+          ? responseData
+          : responseData?.data && Array.isArray(responseData.data)
+            ? responseData.data
+            : [responseData];
+
+        setMessages((prev) => {
+          let newMessages = [...prev];
+          
+          // Remove the optimistic 'tempId' message
+          newMessages = newMessages.filter((m) => m.id !== tempId);
+
+          // Append all messages from the API response that don't already exist via socket
+          for (const sMsg of sentMessagesArray) {
+            if (sMsg && (sMsg._id || sMsg.id)) {
+              const alreadyExists = newMessages.some(
+                (m) => String(m.id || m._id) === String(sMsg._id || sMsg.id) && !String(m.id || m._id).startsWith("temp-")
+              );
+              if (!alreadyExists) {
+                newMessages.push({
+                  ...sMsg,
+                  id: sMsg._id || sMsg.id,
+                  status: "sent",
+                });
+              } else {
+                newMessages = newMessages.map((m) =>
+                  String(m.id || m._id) === String(sMsg._id || sMsg.id)
+                    ? { ...m, status: "sent", id: sMsg._id || sMsg.id }
+                    : m
+                );
+              }
+            }
+          }
+
+          return newMessages;
+        });
       } catch (error) {
         console.error("Failed to send message via socket", error);
         setMessages((prev) =>

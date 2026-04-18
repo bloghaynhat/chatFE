@@ -397,7 +397,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,audio/mpeg,audio/wav,audio/aac,audio/ogg,audio/flac,audio/mp3"
         ref={photoVideoInputRef}
         style={{ display: "none" }}
         onChange={(e: any) => {

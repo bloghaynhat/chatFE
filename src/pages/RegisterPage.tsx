@@ -1,11 +1,11 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { RegisterForm } from "../components/auth/RegisterForm";
+import { RegisterForm, RegistrationContext } from "../components/auth/RegisterForm";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
 
-  const handleRegisterSuccess = (registrationContext) => {
+  const handleRegisterSuccess = (registrationContext: RegistrationContext) => {
     navigate("/verify-email", {
       state: registrationContext,
     });

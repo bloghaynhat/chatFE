@@ -26,8 +26,8 @@ const normalizeMessages = (payload) => {
 
 export const conversationService = {
   async createPrivateConversation(targetUserId) {
-    const response = await api.post("/conversations/private", { targetUserId });
-    return normalizeConversation(response.data);
+    const response: any = await api.post("/conversations/private", { targetUserId });
+    return normalizeConversation(response.data || response);
   },
 
   async getConversationMessages(conversationId, params: { limit?: number; [key: string]: any } = {}) {
@@ -43,7 +43,7 @@ export const conversationService = {
 
     return {
       raw: response,
-      messages: normalizeMessages(response.data),
+      messages: normalizeMessages((response as any).data || response),
     };
   },
 
@@ -114,8 +114,8 @@ export const conversationService = {
     return api.post(`/messages/${messageId}/quote`, data);
   },
 
-  async forwardMessages(data) {
-    const response = await api.post(`/messages/forward`, data);
-    return response.data;
+  async forwardMessages(data: any) {
+    const response: any = await api.post(`/messages/forward`, data);
+    return response.data || response;
   },
 };

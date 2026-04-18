@@ -26,7 +26,18 @@ const resolveFieldErrors = (error) => {
   return {};
 };
 
-export const RegisterForm = ({ onSuccess }: any) => {
+export interface RegistrationContext {
+  email: string;
+  phone: string;
+  displayName: string;
+  registerResponse: any;
+}
+
+interface RegisterFormProps {
+  onSuccess?: (context: RegistrationContext) => void;
+}
+
+export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   const [formData, setFormData] = useState({
     phone: "",
     password: "",
@@ -41,7 +52,7 @@ export const RegisterForm = ({ onSuccess }: any) => {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
 
     setFieldErrors((prev) => {
@@ -93,7 +104,7 @@ export const RegisterForm = ({ onSuccess }: any) => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setFieldErrors({});
