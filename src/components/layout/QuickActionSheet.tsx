@@ -4,10 +4,10 @@ import { MdOutlineCampaign } from "react-icons/md";
 
 // mapping to image 2 text but using image 1 style icons:
 // action 1 (bottom): "New message" -> using person icon like Img 1 "New Private Chat"
-// action 2 (middle): "Create group" -> using people icon like Img 1 "New Group"
+// action 2 (middle): "New group" -> using people icon like Img 1 "New Group"
 // action 3 (top): "Add contact" -> using megaphone/channel icon like Img 1 "New Channel" (or user plus to make more sense)
 // In Hình 1, it's Megaphone -> New Channel, People -> New Group, Person -> New Private Chat.
-// Since you wanted actions from Hình 2 ("New message", "Create group", "Add contact") with icons from Hình 1:
+// Since you wanted actions from Hình 2 ("New message", "New group", "Add contact") with icons from Hình 1:
 const quickActions = [
   {
     id: "add-contact",
@@ -15,8 +15,8 @@ const quickActions = [
     icon: <MdOutlineCampaign className="text-2xl" />,
   },
   {
-    id: "create-group",
-    label: "Create group",
+    id: "new-group",
+    label: "New group",
     icon: <FiUsers className="text-xl" />,
   },
   {

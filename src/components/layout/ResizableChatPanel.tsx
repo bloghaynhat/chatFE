@@ -4,7 +4,7 @@ import { ChatList } from "../chat/ChatList";
 import { ContactsPanel } from "../chat/ContactsPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { DevicesPanel } from "./DevicesPanel";
-import { UserProfileModal } from "../common";
+import { UserProfileModal, CreateGroupModal } from "../common";
 import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
@@ -24,6 +24,7 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
   const [width, setWidth] = useState(320); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -83,7 +84,7 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
     }
 
     if (actionId === "new-group") {
-      setIsQuickActionOpen(true);
+      setShowCreateGroupModal(true);
       setIsNavigationOpen(false);
       return;
     }
@@ -352,8 +353,8 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
                     return;
                   }
 
-                  if (actionId === "create-group") {
-                    onViewChange("contacts");
+                  if (actionId === "new-group" || actionId === "create-group") {
+                    setShowCreateGroupModal(true);
                     return;
                   }
                 }}
@@ -411,6 +412,12 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
         onSuccess={() => {
           // Optional: Handle success callback
         }}
+      />
+      
+      {/* Create Group Modal */}
+      <CreateGroupModal 
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
       />
     </div>
   );
