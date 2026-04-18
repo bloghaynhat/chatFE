@@ -32,6 +32,13 @@ const normalizeError = (error: any): ApiError => {
   normalized.details = payload?.details;
   normalized.status = error?.response?.status;
   normalized.payload = payload;
+
+  if (payload?.details) {
+    console.error("DEBUG_VALIDATION_DETAILS =>", JSON.stringify(payload.details, null, 2));
+  } else {
+    console.error("DEBUG_VALIDATION_ERROR =>", JSON.stringify(payload, null, 2));
+  }
+
   return normalized;
 };
 

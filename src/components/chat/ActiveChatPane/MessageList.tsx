@@ -1,7 +1,7 @@
 import { FiRefreshCw } from "react-icons/fi";
 import { PhotoProvider } from "react-photo-view";
 import { MessageItem } from "./MessageItem";
-import { getDateLabel } from "../../../utils/chatUtils";
+import { getDateLabel, groupMediaMessages } from "../../../utils/chatUtils";
 
 export const MessageList = ({
   isLoading,
@@ -83,11 +83,17 @@ export const MessageList = ({
               )}
             </div>
 
-            {visibleMessages.map((message, index) => {
+            {groupMediaMessages(visibleMessages).map((message, index) => {
               const mine = Boolean(
                 message?.isMine ||
                   message?.sender?.isMe ||
-                  (currentUserId && message?.senderId === currentUserId),
+                  (currentUserId && (
+                    message?.senderId === currentUserId ||
+                    message?.sender === currentUserId ||
+                    message?.sender?.id === currentUserId ||
+                    message?.sender?._id === currentUserId ||
+                    message?.id_sender === currentUserId
+                  )),
               );
 
               return (
