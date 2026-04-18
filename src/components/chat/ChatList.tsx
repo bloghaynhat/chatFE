@@ -96,6 +96,72 @@ export const ChatList = ({
     };
   }, [activeChatId, openingChatId, fetchChats]);
 
+  // Listen to seen/delivered events to update the status for the latest message
+  // so the sender immediately sees the "eye" icon without refreshing
+  useEffect(() => {
+    const unsubSeen = socketService.onMessageStatusUpdate((payload) => {
+      const convId = payload?.conversationId;
+      const lastSeenId = payload?.lastSeenMessageId || payload?.messageId;
+
+      if (!convId || !lastSeenId) return;
+
+      setChats((prev) =>
+        prev.map((c) => {
+          if (c.id === convId) {
+            // Because the frontend only keeps the ID of the last message
+            const currentLastMsgId = c.lastMessage?.messageId || c.lastMessage?.id;
+            // Update if the seen message is the last message
+            if (currentLastMsgId && String(currentLastMsgId) === String(lastSeenId)) {
+              return {
+                ...c,
+                lastMessageStatus: "seen",
+                lastMessage: {
+                  ...c.lastMessage,
+                  status: "seen",
+                },
+              };
+            }
+          }
+          return c;
+        }),
+      );
+    });
+
+    const unsubDelivered = socketService.onMessageDelivered((payload) => {
+      const convId = payload?.conversationId;
+      const lastDeliveredId = payload?.lastDeliveredMessageId || payload?.messageId;
+
+      if (!convId || !lastDeliveredId) return;
+
+      setChats((prev) =>
+        prev.map((c) => {
+          if (c.id === convId) {
+            const currentLastMsgId = c.lastMessage?.messageId || c.lastMessage?.id;
+            if (currentLastMsgId && String(currentLastMsgId) === String(lastDeliveredId)) {
+              // Only escalate to delivered if it is not already seen
+              if (c.lastMessageStatus !== "seen" && c.lastMessage?.status !== "seen") {
+                return {
+                  ...c,
+                  lastMessageStatus: "delivered",
+                  lastMessage: {
+                    ...c.lastMessage,
+                    status: "delivered",
+                  },
+                };
+              }
+            }
+          }
+          return c;
+        }),
+      );
+    });
+
+    return () => {
+      unsubSeen();
+      unsubDelivered();
+    };
+  }, []);
+
   const [globalUsers, setGlobalUsers] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
 

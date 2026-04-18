@@ -1,5 +1,7 @@
 import React from "react";
+import { FiCheck, FiEye } from "react-icons/fi";
 import { Conversation } from "../../../types/conversation";
+import { useAuth } from "../../../hooks";
 
 interface ConversationItemProps {
   chat: Conversation;
@@ -16,7 +18,9 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   openingChatId,
   onSelectChat,
 }) => {
+  const { user } = useAuth();
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
+  const isMine = chat.lastMessage?.senderId === user?.id || chat.lastMessage?.senderId === "me";
 
   return (
     <div
@@ -50,11 +54,20 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             >
               {chat.name}
             </h3>
-            {chat.lastMessageTimeFormatted && (
-              <span className="text-[11px] ml-2 whitespace-nowrap text-gray-500 font-medium">
-                {chat.lastMessageTimeFormatted}
-              </span>
-            )}
+            <div className="flex items-center ml-2 text-gray-500">
+              {isMine && chat.lastMessage && (
+                <span className="mr-1 mt-[1px]">
+                  {chat.lastMessageStatus === "seen" || chat.lastMessage?.status === "seen" ? (
+                    <FiEye className="text-[11px]" />
+                  ) : (
+                    <FiCheck className="text-[11px]" />
+                  )}
+                </span>
+              )}
+              {chat.lastMessageTimeFormatted && (
+                <span className="text-[11px] whitespace-nowrap font-medium">{chat.lastMessageTimeFormatted}</span>
+              )}
+            </div>
           </div>
           <div className="flex justify-between items-center mt-0.5">
             <p

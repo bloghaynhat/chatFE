@@ -4,6 +4,7 @@ export interface Message {
   senderId: string;
   textPreview: string;
   type: "text" | "media" | "mixed";
+  status?: "sent" | "delivered" | "seen";
 }
 
 export interface Conversation {
