@@ -329,7 +329,7 @@ export const ActiveChatPane = ({
 
   const handleInputChange = (event) => {
     setDraftMessage(event.target.value);
-    const isGroup = selectedChat?.type === "GROUP" || !selectedChat?.targetUserId;
+        const isGroup = selectedChat?.type === "GROUP" || selectedChat?.type === "group" || (selectedChat?.members && selectedChat.members.length > 2);
     const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
 
     if (targetId) {
@@ -372,7 +372,7 @@ export const ActiveChatPane = ({
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isTypingRef.current) {
         isTypingRef.current = false;
-        const isGroup = selectedChat?.type === "GROUP" || !selectedChat?.targetUserId;
+            const isGroup = selectedChat?.type === "GROUP" || selectedChat?.type === "group" || (selectedChat?.members && selectedChat.members.length > 2);
         const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
         socketService.stopTyping(targetId, isGroup);
       }

@@ -107,7 +107,7 @@ export const MessageList = ({
               const isFirstInSequence = !prevMessage || getSenderId(prevMessage) !== currentSenderId || (getMessageTime(prevMessage) !== getMessageTime(message) && Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 300000);
               const isLastInSequence = !nextMessage || getSenderId(nextMessage) !== currentSenderId || (getMessageTime(nextMessage) !== getMessageTime(message) && Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 300000);
 
-              const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP" || selectedChat?.isGroup === true || !selectedChat?.targetUserId;
+              const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP" || selectedChat?.isGroup === true || (selectedChat?.members && selectedChat.members.length > 2);
 
               return (
                 <MessageItem
