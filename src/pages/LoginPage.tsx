@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { LoginForm } from "../components/auth/LoginForm";
+import { User } from "../types/user";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
 
-  const handleLoginSuccess = (userProfile) => {
+  const handleLoginSuccess = (userProfile: User) => {
     if (userProfile?.verified?.email === false && userProfile?.email) {
       navigate("/verify-email", {
         state: { email: userProfile.email, fromLogin: true },
