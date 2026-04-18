@@ -4,11 +4,7 @@ const normalizeConversation = (payload) => {
   if (!payload || typeof payload !== "object") return null;
 
   const conversationId =
-    payload.conversationId ||
-    payload.id ||
-    payload._id ||
-    payload.conversation?.id ||
-    payload.conversation?._id;
+    payload.conversationId || payload.id || payload._id || payload.conversation?.id || payload.conversation?._id;
 
   return {
     ...payload,
@@ -25,6 +21,11 @@ const normalizeMessages = (payload) => {
 };
 
 export const conversationService = {
+  async getConversations(params: any = {}) {
+    const response: any = await api.get("/conversations", { params });
+    return response.data || response;
+  },
+
   async createPrivateConversation(targetUserId) {
     const response: any = await api.post("/conversations/private", { targetUserId });
     return normalizeConversation(response.data || response);
@@ -59,10 +60,7 @@ export const conversationService = {
    * @param {string} type - Message type: 'text', 'media', 'mixed'
    * @returns {Promise<Object>} Message response
    */
-  async sendMediaMessage(
-    conversationId,
-    { content, attachments, type = "media" },
-  ) {
+  async sendMediaMessage(conversationId, { content, attachments, type = "media" }) {
     return api.post(`/conversations/${conversationId}/messages`, {
       content,
       attachments,
