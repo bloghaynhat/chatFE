@@ -135,22 +135,35 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
   // We want the modal to open over the whole screen or maybe look like a standalone mobile app
   // on smaller screens, and standard centered modal on large layout.
   return (
-    <div className="fixed inset-0 bg-black/40 flex flex-col items-center justify-center z-[70] p-0 sm:p-4 transition-opacity">
+    <div 
+      className="fixed inset-0 bg-black/40 flex flex-col items-center justify-center z-[70] p-0 sm:p-4 transition-opacity"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white w-full h-[100dvh] sm:max-w-[400px] sm:h-[650px] sm:max-h-[90vh] sm:rounded-xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
         {/* Header */}
-        <div className="flex items-center px-4 h-14 bg-white flex-shrink-0">
-          {step === "name" && (
-            <button
-              onClick={() => setStep("select")}
-              className="p-2 mr-3 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-            >
-              <FiArrowLeft className="text-xl" />
-            </button>
-          )}
-          <h2 className="text-[19px] font-semibold text-gray-900 tracking-tight">
-            {step === "select" ? "Add Members" : "Group Name"}
-          </h2>
+        <div className="flex items-center justify-between px-4 h-14 bg-white flex-shrink-0">
+          <div className="flex items-center">
+            {step === "name" && (
+              <button
+                onClick={() => setStep("select")}
+                className="p-2 mr-3 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+              >
+                <FiArrowLeft className="text-xl" />
+              </button>
+            )}
+            <h2 className="text-[19px] font-semibold text-gray-900 tracking-tight">
+              {step === "select" ? "Add Members" : "Group Name"}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+          >
+            <FiX className="text-[22px]" />
+          </button>
         </div>
 
         {/* Content Area */}
