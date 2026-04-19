@@ -114,6 +114,14 @@ class SocketService {
     this.messagesSocket.on("conversation:updated", (data) => {
       this.emit("conversation:updated", data);
     });
+
+    this.messagesSocket.on("message:reaction", (data) => {
+      this.emit("message:reaction", data);
+    });
+
+    this.messagesSocket.on("message:reaction:remove", (data) => {
+      this.emit("message:reaction:remove", data);
+    });
   }
 
   setupFriendListeners() {
@@ -215,6 +223,22 @@ class SocketService {
     this.off("message:revoked");
   }
 
+  onMessageReaction(callback) {
+    return this.on("message:reaction", callback);
+  }
+
+  offMessageReaction() {
+    this.off("message:reaction");
+  }
+
+  onMessageReactionRemove(callback) {
+    return this.on("message:reaction:remove", callback);
+  }
+
+  offMessageReactionRemove() {
+    this.off("message:reaction:remove");
+  }
+
   joinRoom(conversationId) {
     return this.joinGroup(conversationId);
   }
@@ -242,6 +266,32 @@ class SocketService {
         } else {
           reject(new Error(res?.error || res?.msg || "Send failed"));
         }
+      });
+    });
+  }
+
+  addReaction(messageId, emoji) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("addReaction", { messageId, emoji }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Reaction failed"));
+      });
+    });
+  }
+
+  removeReaction(messageId, emoji = undefined) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("removeReaction", { messageId, emoji }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Remove reaction failed"));
       });
     });
   }
@@ -338,6 +388,10 @@ export const onTypingStart = (cb) => socketService.on("typing:start", cb);
 export const onTypingStop = (cb) => socketService.on("typing:stop", cb);
 
 export const onConversationUpdated = (cb) => socketService.on("conversation:updated", cb);
+
+export const onMessageReaction = (cb) => socketService.on("message:reaction", cb);
+
+export const onMessageReactionRemove = (cb) => socketService.on("message:reaction:remove", cb);
 
 // Friend
 export const onFriendRequest = (cb) => socketService.on("friend_request:received", cb);

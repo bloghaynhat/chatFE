@@ -174,17 +174,103 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
         });
 
+        socketService.onMessageReaction((payload: any) => {
+          if (!payload) return;
+          const messageId = payload.messageId || payload.reaction?.messageId;
+          const reaction = payload.reaction;
+          if (!messageId || !reaction) return;
+
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (String(m._id || m.id) === String(messageId)) {
+                const currentReactions = m.reactions ? [...m.reactions] : [];
+                // Find if an object for this emoji already exists
+                const existingIndex = currentReactions.findIndex((r) => r.emoji === reaction.emoji);
+                const userObj = {
+                  _id: reaction.userId,
+                  id: reaction.userId,
+                  avatarUrl: reaction.user?.avatarUrl || undefined,
+                  displayName: reaction.user?.displayName || "Unknown User",
+                };
+
+                if (existingIndex !== -1) {
+                  const existingReaction = currentReactions[existingIndex];
+                  const hasUser = existingReaction.users?.some(
+                    (u: any) => String(u._id || u.id) === String(reaction.userId),
+                  );
+                  if (!hasUser) {
+                    currentReactions[existingIndex] = {
+                      ...existingReaction,
+                      users: existingReaction.users ? [...existingReaction.users, userObj] : [userObj],
+                      count: (existingReaction.count || existingReaction.users?.length || 0) + 1,
+                    };
+                  }
+                } else {
+                  currentReactions.push({
+                    emoji: reaction.emoji,
+                    users: [userObj],
+                    count: 1,
+                  });
+                }
+                return { ...m, reactions: currentReactions };
+              }
+              return m;
+            }),
+          );
+        });
+
+        socketService.onMessageReactionRemove((payload: any) => {
+          if (!payload) return;
+          const { messageId, userId, emoji } = payload;
+          if (!messageId || !userId) return;
+
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (String(m._id || m.id) === String(messageId)) {
+                if (!m.reactions || m.reactions.length === 0) return m;
+                let newReactions = [...m.reactions];
+
+                if (emoji) {
+                  const index = newReactions.findIndex((r) => r.emoji === emoji);
+                  if (index !== -1) {
+                    newReactions[index] = {
+                      ...newReactions[index],
+                      users:
+                        newReactions[index].users?.filter((u: any) => String(u._id || u.id) !== String(userId)) || [],
+                    };
+                    newReactions[index].count = newReactions[index].users.length;
+                    if (newReactions[index].count <= 0) {
+                      newReactions.splice(index, 1);
+                    }
+                  }
+                } else {
+                  newReactions = newReactions
+                    .map((r) => ({
+                      ...r,
+                      users: r.users?.filter((u: any) => String(u._id || u.id) !== String(userId)) || [],
+                    }))
+                    .map((r) => ({ ...r, count: r.users.length }))
+                    .filter((r) => r.count > 0);
+                }
+
+                return { ...m, reactions: newReactions };
+              }
+              return m;
+            }),
+          );
+        });
+
         socketService.on("conversation:updated", (payload: any) => {
           const { conversationId, data } = payload;
           if (!conversationId || !data) return;
-          
+
           if (String(conversationId) === String(selectedConversationId)) {
             setSelectedChat((prev: any) => {
               if (!prev) return prev;
               return {
                 ...prev,
                 name: data.name ?? prev.name,
-                avatarUrl: data.avatarUrl ?? prev.avatarUrl
+                avatarUrl: data.avatarUrl ?? prev.avatarUrl,
               };
             });
           }
@@ -197,6 +283,8 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offNewMessage();
       socketService.offMessageRevoked();
       socketService.offMessageEdited();
+      socketService.offMessageReaction();
+      socketService.offMessageReactionRemove();
       socketService.off("conversation:updated");
       // Do not disconnect the socket here to preserve global connectivity
     };
@@ -279,9 +367,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         processedChat.type !== "GROUP" &&
         processedChat.pairKey
       ) {
-        processedChat.targetUserId = processedChat.pairKey
-          .split("_")
-          .find((id) => id !== user?.id && id !== user?._id);
+        processedChat.targetUserId = processedChat.pairKey.split("_").find((id) => id !== user?.id && id !== user?._id);
       }
 
       setSelectedChat(processedChat);
@@ -413,7 +499,13 @@ const MainLayout = ({ children }: { children?: any }) => {
       payloadMedia = mediaFiles || [];
     }
 
-    if (!payloadText.trim() && payloadMedia.length === 0 && !payloadOrText?.forwardingMessage && !payloadOrText?.replyingMessage) return;
+    if (
+      !payloadText.trim() &&
+      payloadMedia.length === 0 &&
+      !payloadOrText?.forwardingMessage &&
+      !payloadOrText?.replyingMessage
+    )
+      return;
 
     const fwMsg = payloadOrText?.forwardingMessage;
     const replyMsg = payloadOrText?.replyingMessage;
@@ -670,9 +762,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
         setMessages((prev) =>
-          prev.filter(
-            (msg) => String(msg.id) !== String(messageId) && String(msg._id) !== String(messageId)
-          ),
+          prev.filter((msg) => String(msg.id) !== String(messageId) && String(msg._id) !== String(messageId)),
         );
       }
     } catch (error) {
@@ -722,7 +812,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           currentUserId={user?.id || user?._id}
           onClose={() => setIsRightSidebarOpen(false)}
           onGroupUpdated={(newInfo: any) => {
-            setSelectedChat((prev: any) => prev ? { ...prev, ...newInfo } : prev);
+            setSelectedChat((prev: any) => (prev ? { ...prev, ...newInfo } : prev));
           }}
         />
       </div>
