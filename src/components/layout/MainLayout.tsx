@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
+import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
 
@@ -20,6 +21,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -171,6 +173,22 @@ const MainLayout = ({ children }: { children?: any }) => {
             });
           }
         });
+
+        socketService.on("conversation:updated", (payload: any) => {
+          const { conversationId, data } = payload;
+          if (!conversationId || !data) return;
+          
+          if (String(conversationId) === String(selectedConversationId)) {
+            setSelectedChat((prev: any) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                name: data.name ?? prev.name,
+                avatarUrl: data.avatarUrl ?? prev.avatarUrl
+              };
+            });
+          }
+        });
       }
     });
 
@@ -179,6 +197,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offNewMessage();
       socketService.offMessageRevoked();
       socketService.offMessageEdited();
+      socketService.off("conversation:updated");
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);
@@ -642,6 +661,25 @@ const MainLayout = ({ children }: { children?: any }) => {
     }
   };
 
+  const handleDeleteMessageForMe = async (message) => {
+    try {
+      const messageId = message?.id || message?._id;
+      if (!messageId) return;
+
+      const res: any = await conversationService.deleteMessageForMe(messageId);
+
+      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+        setMessages((prev) =>
+          prev.filter(
+            (msg) => String(msg.id) !== String(messageId) && String(msg._id) !== String(messageId)
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete message for me:", error);
+    }
+  };
+
   return (
     <div className={darkMode ? "dark" : ""}>
       <div className="flex h-screen bg-white dark:bg-slate-900">
@@ -655,7 +693,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         />
 
         {/* Right Panel - Chat Area */}
-        <div className="flex-1 flex flex-col bg-gray-100 dark:bg-slate-950">
+        <div className="flex-1 flex flex-col min-w-0 bg-gray-100 dark:bg-slate-950">
           {children || (
             <ActiveChatPane
               selectedChat={selectedChat}
@@ -668,12 +706,25 @@ const MainLayout = ({ children }: { children?: any }) => {
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
               onRevokeMessage={handleRevokeMessage}
+              onDeleteMessageForMe={handleDeleteMessageForMe}
               onForwardToTarget={handleForwardToTarget}
               forwardingMessage={forwardingMessage}
               onClearForwarding={clearForwardingMessage}
+              isRightSidebarOpen={isRightSidebarOpen}
+              setIsRightSidebarOpen={setIsRightSidebarOpen}
             />
           )}
         </div>
+
+        <RightSidebar
+          isOpen={isRightSidebarOpen && !!selectedChat}
+          selectedChat={selectedChat}
+          currentUserId={user?.id || user?._id}
+          onClose={() => setIsRightSidebarOpen(false)}
+          onGroupUpdated={(newInfo: any) => {
+            setSelectedChat((prev: any) => prev ? { ...prev, ...newInfo } : prev);
+          }}
+        />
       </div>
     </div>
   );

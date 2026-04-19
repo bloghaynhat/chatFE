@@ -38,9 +38,12 @@ export const ActiveChatPane = ({
   onRetry,
   onSendMessage,
   onRevokeMessage,
+  onDeleteMessageForMe,
   onForwardToTarget,
   forwardingMessage,
   onClearForwarding,
+  isRightSidebarOpen,
+  setIsRightSidebarOpen,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -557,6 +560,8 @@ export const ActiveChatPane = ({
         setIsAttachMenuOpen={setIsAttachMenuOpen}
         setIsEmojiPickerOpen={setIsEmojiPickerOpen}
         headerSearchInputRef={headerSearchInputRef}
+        isRightSidebarOpen={isRightSidebarOpen}
+        setIsRightSidebarOpen={setIsRightSidebarOpen}
       />
 
       <MessageList
@@ -687,6 +692,9 @@ export const ActiveChatPane = ({
           <button
             className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
             onClick={() => {
+              if (onDeleteMessageForMe && contextMenu.message) {
+                onDeleteMessageForMe(contextMenu.message);
+              }
               setContextMenu(null);
             }}
           >
