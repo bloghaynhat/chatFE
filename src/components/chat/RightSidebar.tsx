@@ -18,7 +18,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
 
   useEffect(() => {
     if (!selectedChat?.id) return;
-    
+
     let isMounted = true;
     const fetchData = async () => {
       setIsLoading(true);
@@ -27,7 +27,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
           const membersData = await conversationService.getGroupMembers(selectedChat.id);
           const infoData = await conversationService.getGroupInfo(selectedChat.id);
           if (isMounted) {
-            const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
+            const rawMembersList = Array.isArray(membersData)
+              ? membersData
+              : membersData?.members || membersData?.data || [];
             setMembers(rawMembersList);
             const actualInfo = infoData?.data || infoData;
             setInfo(actualInfo || null);
@@ -45,7 +47,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
                 } catch (err) {
                   return m;
                 }
-              })
+              }),
             );
 
             if (isMounted) {
@@ -59,9 +61,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
         if (isMounted) setIsLoading(false);
       }
     };
-    
+
     fetchData();
-    
+
     return () => {
       isMounted = false;
     };
@@ -69,12 +71,19 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
 
   const groupAvatar = selectedChat?.avatarUrl || info?.conversation?.avatarUrl || info?.avatarUrl;
   const groupName = selectedChat?.name || info?.conversation?.name || info?.name || "Group";
-  const membersCount = info?.memberCount || info?.membersCount || info?.members?.length || members.length || selectedChat?.members?.length || 0;
+  const membersCount =
+    info?.memberCount ||
+    info?.membersCount ||
+    info?.members?.length ||
+    members.length ||
+    selectedChat?.members?.length ||
+    0;
 
-  const currentUserMember = members.find((m: any) => m.userId === currentUserId || m.user?.id === currentUserId || m.id === currentUserId);
+  const currentUserMember = members.find(
+    (m: any) => m.userId === currentUserId || m.user?.id === currentUserId || m.id === currentUserId,
+  );
   const currentUserRole = currentUserMember?.role || "member";
   const canEditGroup = currentUserRole === "admin" || currentUserRole === "owner";
-
 
   const handleEditClick = () => {
     setEditName(groupName);
@@ -110,15 +119,15 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
       await conversationService.updateGroupInfo(selectedChat.id, updatePayload);
       setIsEditing(false);
       setAvatarFile(null);
-      
+
       const infoData = await conversationService.getGroupInfo(selectedChat.id);
       const actualInfo = infoData?.data || infoData;
       setInfo(actualInfo || null);
-      
+
       if (onGroupUpdated && actualInfo) {
-        onGroupUpdated({ 
-          name: actualInfo.conversation?.name || actualInfo.name, 
-          avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl 
+        onGroupUpdated({
+          name: actualInfo.conversation?.name || actualInfo.name,
+          avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl,
         });
       }
     } catch (err) {
@@ -129,16 +138,18 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     }
   };
 
-
-
   return (
     <div
       className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 flex flex-col h-full z-20 shadow-[-5px_0_15px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out relative overflow-hidden ${
         isOpen ? "w-[320px] lg:w-[350px] border-l opacity-100" : "w-0 border-l-0 opacity-0"
       }`}
     >
-      <div className={`w-[320px] lg:w-[350px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}>
-        <div className={`flex w-[200%] h-full shrink-0 transition-transform duration-300 ease-in-out ${isEditing ? "-translate-x-1/2" : "translate-x-0"}`}>
+      <div
+        className={`w-[320px] lg:w-[350px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}
+      >
+        <div
+          className={`flex w-[200%] h-full shrink-0 transition-transform duration-300 ease-in-out ${isEditing ? "-translate-x-1/2" : "translate-x-0"}`}
+        >
           <RightSidebarInfo
             isGroup={isGroup}
             groupName={groupName}
@@ -151,6 +162,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
             onClose={onClose}
             onEditClick={handleEditClick}
             canEdit={canEditGroup}
+            targetUserId={!isGroup ? selectedChat?.targetUserId || selectedChat?.participantId : null}
           />
 
           <RightSidebarEdit

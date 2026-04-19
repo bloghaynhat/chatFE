@@ -324,7 +324,6 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
           loading={loading}
           filteredFriends={filteredFriends}
           searchQuery={searchQuery}
-          handleUnfriend={handleUnfriend}
           handleOpenChat={handleOpenChat}
         />
       </div>
