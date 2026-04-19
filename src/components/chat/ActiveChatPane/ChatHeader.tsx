@@ -52,10 +52,10 @@ export const ChatHeader = ({
   return (
     <div className="px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
       {!isHeaderSearchOpen ? (
-        <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}>
+        <div className="flex items-center justify-between" >
           <div 
-            className="flex items-center gap-3 min-w-0  hover:bg-gray-50 dark:hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-xl transition-colors"
-            
+            className="flex items-center gap-3 min-w-0  hover:bg-gray-50 dark:hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-xl transition-colors cursor-pointer"
+            onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           >
             <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-black/5 dark:border-white/10">
               {selectedChat?.avatarUrl ? (

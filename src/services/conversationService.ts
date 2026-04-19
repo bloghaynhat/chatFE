@@ -56,8 +56,18 @@ export const conversationService = {
   },
 
   async leaveGroupConversation(groupId: string) {
-    const response: any = await api.post(`/groups/${groupId}/leave`);
-    return response.data || response;
+    try {
+      const response: any = await api.post(`/groups/${groupId}/leave`, {});
+      return response.data || response;
+    } catch (error: any) {
+      console.error("[leaveGroupConversation] Error details:", {
+        groupId,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+      });
+      throw error;
+    }
   },
 
   async deleteGroupConversation(groupId: string) {
@@ -67,6 +77,11 @@ export const conversationService = {
 
   async setGroupAdmin(groupId: string, targetUserId: string, isAdmin: boolean) {
     const response: any = await api.post(`/groups/${groupId}/set-admin`, { targetUserId, isAdmin });
+    return response.data || response;
+  },
+
+  async transferGroupOwnership(groupId: string, newOwnerId: string) {
+    const response: any = await api.post(`/groups/${groupId}/transfer-owner`, { newOwnerId });
     return response.data || response;
   },
 

@@ -5,6 +5,7 @@ import { RightSidebarEdit } from "./RightSideBar/RightSidebarEdit";
 import { RightSidebarMembers } from "./RightSideBar/RightSidebarMembers";
 import { RightSidebarAddMember } from "./RightSideBar/RightSidebarAddMember";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
+import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
 
 export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onGroupUpdated }: any) => {
   const [members, setMembers] = useState<any[]>([]);
@@ -18,6 +19,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSelectAdminModalOpen, setIsSelectAdminModalOpen] = useState(false);
 
   const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP";
 
@@ -103,10 +105,40 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     const cleanupRemoved = socketService.on("conversation:member_removed", handleMemberRemoved);
     const cleanupAdded = socketService.on("conversation:members_added", handleMembersAdded);
 
+    const handleOwnerTransferred = async (data: any) => {
+      if (data.conversationId === selectedChat?.id) {
+        try {
+          // Refresh members to get updated roles
+          const membersData = await conversationService.getGroupMembers(selectedChat.id);
+          const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
+
+          const enrichedMembers = await Promise.all(
+            rawMembersList.map(async (m: any) => {
+              const participant = m.user || m;
+              if (participant.displayName || participant.name || participant.username) return m;
+              if (!m.userId) return m;
+              try {
+                const userRes = await userService.getUserById(m.userId);
+                return { ...m, user: userRes.data || userRes };
+              } catch (err) {
+                return m;
+              }
+            })
+          );
+          setMembers(enrichedMembers);
+        } catch (err) {
+          console.error("Failed to refresh members after owner transfer:", err);
+        }
+      }
+    };
+
+    const cleanupOwnerTransfer = socketService.on("group:owner_transferred", handleOwnerTransferred);
+
     return () => {
       isMounted = false;
       if (cleanupRemoved) cleanupRemoved();
       if (cleanupAdded) cleanupAdded();
+      if (cleanupOwnerTransfer) cleanupOwnerTransfer();
     };
   }, [selectedChat?.id, isGroup]);
 
@@ -120,7 +152,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
 
   const currentUserMember = members.find((m: any) => m.userId === currentUserId || m.user?.id === currentUserId || m.id === currentUserId);
   const currentUserRole = currentUserMember?.role || "member";
-  const canEditGroup = currentUserRole === "admin" || currentUserRole === "owner";
+  const canEditGroup = currentUserRole === "admin";
 
 
   const handleEditClick = () => {
@@ -256,10 +288,11 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
       setIsLoading(true);
       await conversationService.leaveGroupConversation(selectedChat.id);
       if (socketService.messagesSocket?.connected) {
-         socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+        socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
       }
       onClose();
-      window.location.href = "/"; // Redirect back to home
+      // Notify ChatList to refresh and remove the conversation
+      window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error) {
       console.error("Failed to leave group", error);
     } finally {
@@ -267,23 +300,71 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     }
   };
 
+  const handleDeleteConfirm = async (deleteForAll: boolean) => {
+    if (currentUserRole === "admin" && !deleteForAll) {
+      // Admin wants to leave without deleting group - need to transfer admin first
+      setIsSelectAdminModalOpen(true);
+      setIsDeleteModalOpen(false);
+    } else {
+      // Either deleting for all (admin), or user is a regular member leaving
+      await handleDeleteGroup(deleteForAll);
+    }
+  };
+
   const handleDeleteGroup = async (deleteForAll: boolean = false) => {
     try {
       setIsLoading(true);
-      // TODO: Update API to accept deleteForAll parameter when backend is ready
-      // For now, we'll just call the delete endpoint without the parameter
-      await conversationService.deleteGroupConversation(selectedChat.id);
-      if (socketService.messagesSocket?.connected) {
-        socketService.messagesSocket.emit("conversation:deleted", { conversationId: selectedChat.id });
+
+      if (deleteForAll) {
+        // Case 1: Delete for all members - delete the entire group
+        await conversationService.deleteGroupConversation(selectedChat.id);
+        if (socketService.messagesSocket?.connected) {
+          socketService.messagesSocket.emit("conversation:deleted", { conversationId: selectedChat.id });
+        }
+      } else {
+        // Case 2: Regular member leaving (or admin after transfer)
+        await conversationService.leaveGroupConversation(selectedChat.id);
+        if (socketService.messagesSocket?.connected) {
+          socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+        }
       }
-      setIsDeleteModalOpen(false);
+
       onClose();
-      window.location.href = "/"; // Redirect back to home
+      // Notify ChatList to refresh and remove the conversation
+      window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error) {
-      console.error("Failed to delete group", error);
-      setIsDeleteModalOpen(false); // Close modal even on error so user can retry
+      console.error("Failed to delete/leave group", error);
+      throw error; // Re-throw to let modal know about the error
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTransferAdminAndLeave = async (newOwnerId: string) => {
+    if (!selectedChat?.id) return;
+
+    try {
+      setIsLoading(true);
+
+      // Step 1: Transfer ownership using transfer-owner endpoint
+      await conversationService.transferGroupOwnership(selectedChat.id, newOwnerId);
+
+      // Step 2: Leave the group
+      await conversationService.leaveGroupConversation(selectedChat.id);
+
+      if (socketService.messagesSocket?.connected) {
+        socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+      }
+
+      setIsSelectAdminModalOpen(false);
+      setIsDeleteModalOpen(false);
+      onClose();
+      // Notify ChatList to refresh and remove the conversation
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (error) {
+      console.error("Failed to transfer ownership and leave:", error);
+      setIsLoading(false);
+      throw error;
     }
   };
 
@@ -362,10 +443,19 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
       <DeleteGroupModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteGroup}
+        onConfirm={handleDeleteConfirm}
         groupName={groupName}
         isLoading={isLoading}
-        isAdmin={canEditGroup}
+        isAdmin={currentUserRole === "admin"}
+      />
+
+      <SelectAdminModal
+        isOpen={isSelectAdminModalOpen}
+        onClose={() => setIsSelectAdminModalOpen(false)}
+        onConfirm={handleTransferAdminAndLeave}
+        members={members}
+        isLoading={isLoading}
+        currentUserId={currentUserId}
       />
     </div>
   );

@@ -7,7 +7,7 @@ interface DeleteGroupModalProps {
   onConfirm: (deleteForAll: boolean) => Promise<void>;
   groupName?: string;
   isLoading?: boolean;
-  isAdmin?: boolean;
+  isAdmin?: boolean; // If true, user can delete the group; if false, user can only leave
 }
 
 export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({

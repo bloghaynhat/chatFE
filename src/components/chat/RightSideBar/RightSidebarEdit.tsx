@@ -45,12 +45,14 @@ export const RightSidebarEdit = ({
         <span className="font-semibold text-[18px] text-gray-800 dark:text-gray-100 ml-4">
           Edit
         </span>
-        <button
-          onClick={onSave}
-          className="p-2 -mr-2 ml-auto rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-500 transition-colors"
-        >
-          <FiCheck className="text-xl" />
-        </button>
+        {currentUserRole === "admin" && (
+          <button
+            onClick={onSave}
+            className="p-2 -mr-2 ml-auto rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-500 transition-colors"
+          >
+            <FiCheck className="text-xl" />
+          </button>
+        )}
       </div>
 
       {/* Edit Group Content */}
@@ -198,7 +200,7 @@ export const RightSidebarEdit = ({
             <FiTrash2 className="text-[#ff4b4b] text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-[#ff4b4b]">
-                {currentUserRole === "member" ? "Leave Group" : "Delete and Leave Group"}
+                {currentUserRole === "admin" ? "Delete Group and Leave" : "Leave Group"}
               </div>
             </div>
           </div>
