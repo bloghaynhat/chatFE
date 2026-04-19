@@ -185,7 +185,9 @@ export const MessageItem = ({
   }
 
   return (
-    <div className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 mb-1 group`}>
+    <div
+      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-2.5" : "mb-[2px]"} group`}
+    >
       {isGroup && !mine && (
         <div
           className="w-7 h-7 rounded-full shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shadow-sm mb-0.5"
@@ -206,14 +208,14 @@ export const MessageItem = ({
         ref={isFirst ? firstMessageRef : null}
         key={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-sm shadow-sm flex flex-col relative ${
+        className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm shadow-sm flex flex-col relative ${
           mine
             ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"
             : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"
         }`}
       >
         {isGroup && !mine && isFirstInSequence && !isForwarded && (
-          <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-2 pb-0 block">
+          <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[5px] pb-0 block leading-tight">
             {senderName}
           </span>
         )}
@@ -241,11 +243,11 @@ export const MessageItem = ({
 
         {/* Bottom area: Reactions + Timestamp */}
         <div
-          className={`flex items-end gap-[6px] px-2 pb-1 ${mine ? "flex-row-reverse" : "flex-row"} ${onlyImagesOrVideos && (!message.reactions || message.reactions.length === 0) ? "absolute bottom-1 right-1" : ""} z-10`}
+          className={`flex items-end gap-[6px] px-2 pb-[3px] flex-row flex-wrap justify-between ${!message.reactions || message.reactions.length === 0 ? "absolute bottom-[3px] right-[4px] w-auto" : "w-full"} z-10`}
         >
           {/* Render selected reactions */}
           {message?.reactions && message.reactions.length > 0 && (
-            <div className={`flex flex-wrap gap-1 max-w-[150px] ${mine ? "justify-end" : "justify-start"}`}>
+            <div className={`flex flex-wrap gap-1 max-w-[390px] justify-start`}>
               {message.reactions.map((r, i) => {
                 const hasMyReaction = r.users?.some((u) => String(u._id || u.id) === String(currentUserId));
                 return (
@@ -265,13 +267,13 @@ export const MessageItem = ({
                       e.stopPropagation();
                       setReactionView({ emoji: r.emoji, users: r.users, x: e.clientX, y: e.clientY });
                     }}
-                    className={`rounded-full px-1.5 py-[2px] flex items-center space-x-1 cursor-pointer border shadow-sm ${hasMyReaction ? "bg-blue-50/90 border-blue-200 dark:bg-blue-900/40 dark:border-blue-800" : "bg-gray-50/90 border-gray-200 dark:bg-slate-700 dark:border-slate-600"}`}
-                    style={{ fontSize: "11.5px", lineHeight: "18px" }}
+                    className={`rounded-[100px] px-2 py-[3px] flex items-center space-x-1 cursor-pointer border shadow-sm transition-colors ${hasMyReaction ? (mine ? "bg-[#55b25f] border-[#55b25f] dark:bg-[#489951] dark:border-[#489951]" : "bg-[#3895e6] border-[#3895e6] dark:bg-[#307bbd] dark:border-[#307bbd]") : "bg-gray-50/90 border-gray-200 dark:bg-slate-700 dark:border-slate-600"}`}
+                    style={{ fontSize: "12.5px", lineHeight: "20px" }}
                   >
                     <span>{r.emoji}</span>
                     {message.reactions.length >= 3 && (
                       <span
-                        className={`font-semibold ${hasMyReaction ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"}`}
+                        className={`font-semibold text-[11.5px] ${hasMyReaction ? "text-white" : "text-gray-600 dark:text-gray-300"}`}
                         style={{ paddingLeft: "1px", paddingRight: "1px" }}
                       >
                         {r.count}
@@ -282,7 +284,7 @@ export const MessageItem = ({
                         {r.users?.slice(0, 3).map((u, idx) => (
                           <div
                             key={idx}
-                            className="w-[18px] h-[18px] rounded-full overflow-hidden border border-white dark:border-slate-800 bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-500 shrink-0"
+                            className={`w-[20px] h-[20px] rounded-full overflow-hidden border bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 shrink-0 ${hasMyReaction ? (mine ? "border-[#55b25f] dark:border-[#489951]" : "border-[#3895e6] dark:border-[#307bbd]") : "border-white dark:border-slate-800"}`}
                           >
                             {u.avatar || u.avatarUrl || u.profilePicture ? (
                               <img
@@ -305,7 +307,7 @@ export const MessageItem = ({
 
           {/* Render Timestamp */}
           <div
-            className={`shrink-0 flex items-center gap-[4px] font-medium tracking-tight ${
+            className={`shrink-0 flex items-center justify-end gap-[4px] font-medium tracking-tight ml-auto ${
               onlyImagesOrVideos && (!message.reactions || message.reactions.length === 0)
                 ? "px-1.5 py-0.5 bg-black/40 rounded-full text-white pointer-events-none text-[11px]"
                 : mine
