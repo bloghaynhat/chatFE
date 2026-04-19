@@ -178,6 +178,13 @@ export const ChatList = ({
     };
   }, []);
 
+  useEffect(() => {
+    const unsubUpdated = socketService.on("conversation:updated", () => {
+      fetchChats(false);
+    });
+    return () => unsubUpdated();
+  }, [fetchChats]);
+
   const [globalUsers, setGlobalUsers] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
 

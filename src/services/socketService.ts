@@ -110,6 +110,10 @@ class SocketService {
     this.messagesSocket.on("typing:stop", (data) => {
       this.emit("typing:stop", data);
     });
+
+    this.messagesSocket.on("conversation:updated", (data) => {
+      this.emit("conversation:updated", data);
+    });
   }
 
   setupFriendListeners() {
@@ -332,6 +336,8 @@ export const onMessageSeen = (cb) => socketService.on("messageSeen", cb);
 export const onTypingStart = (cb) => socketService.on("typing:start", cb);
 
 export const onTypingStop = (cb) => socketService.on("typing:stop", cb);
+
+export const onConversationUpdated = (cb) => socketService.on("conversation:updated", cb);
 
 // Friend
 export const onFriendRequest = (cb) => socketService.on("friend_request:received", cb);
