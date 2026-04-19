@@ -121,15 +121,49 @@ export const RightSidebarInfo = ({
 
         {/* Settings Section */}
         <div className="py-2 border-b border-gray-100 dark:border-slate-800">
-          <div className="flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
-            <FiLink2 className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                t.me/+xyz123 link
+          {!isGroup && targetUserDetails && (
+            <>
+              <div className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
+                <FiPhone className="text-[#aab8c2] group-hover:text-blue-500 text-xl" />
+                <div className="flex flex-col flex-1">
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    {targetUserDetails.phone || "+84 971484472"}
+                  </span>
+                  <span className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">Phone</span>
+                </div>
               </div>
-              <div className="text-[13px] text-gray-500">Link</div>
+
+              <div className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
+                <span className="text-[#aab8c2] group-hover:text-blue-500 text-xl font-bold">@</span>
+                <div className="flex flex-col flex-1">
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    {targetUserDetails.email || "No email provided"}
+                  </span>
+                  <span className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">Email</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
+                <FiInfo className="text-[#aab8c2] group-hover:text-blue-500 text-xl" />
+                <div className="flex flex-col flex-1">
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200 min-h-[22px]">
+                    {targetUserDetails.bio || ""}
+                  </span>
+                  <span className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">Bio</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isGroup && (
+            <div className="flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
+              <FiLink2 className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
+              <div className="flex-1">
+                <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">t.me/+xyz123 link</div>
+                <div className="text-[13px] text-gray-500">Link</div>
+              </div>
             </div>
-          </div>
+          )}
 
           <div
             className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group"
@@ -137,9 +171,7 @@ export const RightSidebarInfo = ({
           >
             <div className="flex items-center">
               <FiBell className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
-              <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                Notifications
-              </div>
+              <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">Notifications</div>
             </div>
             {/* Toggle switch */}
             <div
@@ -154,6 +186,44 @@ export const RightSidebarInfo = ({
               ></div>
             </div>
           </div>
+
+          {!isGroup && friendStatus === "NONE" && (
+            <div className="px-6 py-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                disabled={isProcessingFriend}
+                onClick={handleAddFriend}
+                className="w-full py-2.5 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 active:scale-[0.98] text-white font-medium rounded-lg transition-all disabled:opacity-50"
+              >
+                <FiUserPlus className="text-lg" />
+                <span>{isProcessingFriend ? "Sending..." : "Add Contact"}</span>
+              </button>
+            </div>
+          )}
+
+          {!isGroup && friendStatus === "PENDING" && friendDirection === "INCOMING" && (
+            <div className="px-6 py-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                disabled={isProcessingFriend}
+                onClick={handleAcceptRequest}
+                className="w-full py-2.5 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 active:scale-[0.98] text-white font-medium rounded-lg transition-all disabled:opacity-50"
+              >
+                <FiCheck className="text-lg" />
+                <span>{isProcessingFriend ? "Accepting..." : "Accept Request"}</span>
+              </button>
+            </div>
+          )}
+
+          {!isGroup && friendStatus === "PENDING" && friendDirection === "OUTGOING" && (
+            <div className="px-6 py-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                disabled
+                className="w-full py-2.5 flex items-center justify-center gap-2 bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 font-medium rounded-lg"
+              >
+                <FiInfo className="text-lg" />
+                <span>Request Sent</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Members Section (Group Only) */}

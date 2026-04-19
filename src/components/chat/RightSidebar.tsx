@@ -26,7 +26,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   useEffect(() => {
     setActiveSubView("none"); // Reset view when chat changes
     if (!selectedChat?.id) return;
-    
+
     let isMounted = true;
     const fetchData = async () => {
       setIsLoading(true);
@@ -35,7 +35,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
           const membersData = await conversationService.getGroupMembers(selectedChat.id);
           const infoData = await conversationService.getGroupInfo(selectedChat.id);
           if (isMounted) {
-            const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
+            const rawMembersList = Array.isArray(membersData)
+              ? membersData
+              : membersData?.members || membersData?.data || [];
             setMembers(rawMembersList);
             const actualInfo = infoData?.data || infoData;
             setInfo(actualInfo || null);
@@ -53,7 +55,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
                 } catch (err) {
                   return m;
                 }
-              })
+              }),
             );
 
             if (isMounted) {
@@ -67,7 +69,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
         if (isMounted) setIsLoading(false);
       }
     };
-    
+
     fetchData();
     
     const handleMemberRemoved = (data: any) => {
@@ -154,7 +156,6 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   const currentUserRole = currentUserMember?.role || "member";
   const canEditGroup = currentUserRole === "admin";
 
-
   const handleEditClick = () => {
     setEditName(groupName);
     setEditAvatarUrl(groupAvatar || null);
@@ -189,15 +190,15 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
       await conversationService.updateGroupInfo(selectedChat.id, updatePayload);
       setIsEditing(false);
       setAvatarFile(null);
-      
+
       const infoData = await conversationService.getGroupInfo(selectedChat.id);
       const actualInfo = infoData?.data || infoData;
       setInfo(actualInfo || null);
-      
+
       if (onGroupUpdated && actualInfo) {
-        onGroupUpdated({ 
-          name: actualInfo.conversation?.name || actualInfo.name, 
-          avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl 
+        onGroupUpdated({
+          name: actualInfo.conversation?.name || actualInfo.name,
+          avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl,
         });
       }
     } catch (err) {

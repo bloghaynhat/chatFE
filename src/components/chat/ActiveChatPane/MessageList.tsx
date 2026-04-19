@@ -32,9 +32,7 @@ export const MessageList = ({
     return (
       <div className="flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 bg-[linear-gradient(120deg,_rgba(245,245,200,0.75)_0%,_rgba(184,220,185,0.78)_45%,_rgba(143,198,169,0.8)_100%)] dark:bg-[linear-gradient(120deg,_rgba(30,41,59,0.9)_0%,_rgba(22,78,99,0.85)_50%,_rgba(30,58,138,0.82)_100%)]">
         <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Couldn’t open this conversation
-          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">Couldn’t open this conversation</p>
           <button
             onClick={onRetry}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition"
@@ -58,9 +56,7 @@ export const MessageList = ({
             <span className="text-white/90 dark:text-white/70 text-[14px] mb-5">
               Send a message or tap the greeting below.
             </span>
-            <div className="text-[70px] drop-shadow-md hover:scale-110 transition-transform cursor-pointer">
-              👋
-            </div>
+            <div className="text-[70px] drop-shadow-md hover:scale-110 transition-transform cursor-pointer">👋</div>
           </div>
         </div>
       </div>
@@ -71,7 +67,7 @@ export const MessageList = ({
     <div className="flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 bg-[linear-gradient(120deg,_rgba(245,245,200,0.75)_0%,_rgba(184,220,185,0.78)_45%,_rgba(143,198,169,0.8)_100%)] dark:bg-[linear-gradient(120deg,_rgba(30,41,59,0.9)_0%,_rgba(22,78,99,0.85)_50%,_rgba(30,58,138,0.82)_100%)]">
       {visibleMessages.length > 0 && (
         <PhotoProvider maskOpacity={0.8}>
-          <div className="flex flex-col gap-3 items-start max-w-4xl mx-auto w-full">
+          <div className="flex flex-col gap-0 items-start max-w-4xl mx-auto w-full">
             <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
               {displayCount < messages.length ? (
                 <div className="flex items-center gap-2">
@@ -86,28 +82,39 @@ export const MessageList = ({
             {groupMediaMessages(visibleMessages).map((message, index) => {
               const mine = Boolean(
                 message?.isMine ||
-                  message?.sender?.isMe ||
-                  (currentUserId && (
-                    message?.senderId === currentUserId ||
+                message?.sender?.isMe ||
+                (currentUserId &&
+                  (message?.senderId === currentUserId ||
                     message?.sender === currentUserId ||
                     message?.sender?.id === currentUserId ||
                     message?.sender?._id === currentUserId ||
-                    message?.id_sender === currentUserId
-                  )),
+                    message?.id_sender === currentUserId)),
               );
 
               const groupedMessages = groupMediaMessages(visibleMessages);
-              
+
               const prevMessage = index > 0 ? groupedMessages[index - 1] : null;
               const nextMessage = index < groupedMessages.length - 1 ? groupedMessages[index + 1] : null;
-              
-              const getSenderId = (m) => m?.senderId || m?.sender?.id || m?.id_sender || (m?.isMine ? "me" : null);
-              
-              const currentSenderId = getSenderId(message);
-              const isFirstInSequence = !prevMessage || getSenderId(prevMessage) !== currentSenderId || (getMessageTime(prevMessage) !== getMessageTime(message) && Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 300000);
-              const isLastInSequence = !nextMessage || getSenderId(nextMessage) !== currentSenderId || (getMessageTime(nextMessage) !== getMessageTime(message) && Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 300000);
 
-              const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP" || selectedChat?.isGroup === true || (selectedChat?.members && selectedChat.members.length > 2);
+              const getSenderId = (m) => m?.senderId || m?.sender?.id || m?.id_sender || (m?.isMine ? "me" : null);
+
+              const currentSenderId = getSenderId(message);
+              const isFirstInSequence =
+                !prevMessage ||
+                getSenderId(prevMessage) !== currentSenderId ||
+                (getMessageTime(prevMessage) !== getMessageTime(message) &&
+                  Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 300000);
+              const isLastInSequence =
+                !nextMessage ||
+                getSenderId(nextMessage) !== currentSenderId ||
+                (getMessageTime(nextMessage) !== getMessageTime(message) &&
+                  Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 300000);
+
+              const isGroup =
+                selectedChat?.type === "group" ||
+                selectedChat?.type === "GROUP" ||
+                selectedChat?.isGroup === true ||
+                (selectedChat?.members && selectedChat.members.length > 2);
 
               return (
                 <MessageItem
@@ -123,15 +130,14 @@ export const MessageList = ({
                   isLastInSequence={isLastInSequence}
                   handleContextMenu={handleContextMenu}
                   setPreviewVideoUrl={setPreviewVideoUrl}
+                  currentUserId={currentUserId}
                 />
               );
             })}
 
             {/* Typing Indicator */}
             {typingUsers.size > 0 &&
-              (selectedChat?.targetUserId
-                ? typingUsers.has(selectedChat.targetUserId)
-                : true) && (
+              (selectedChat?.targetUserId ? typingUsers.has(selectedChat.targetUserId) : true) && (
                 <div className="w-fit self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex flex-col gap-1 mt-2">
                   <div className="flex items-center gap-1.5 h-4">
                     <div

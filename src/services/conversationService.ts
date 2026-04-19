@@ -136,8 +136,12 @@ export const conversationService = {
     return api.post(`/messages/${messageId}/revoke`, {});
   },
 
-  async reactMessage(messageId, reaction) {
-    return api.post(`/messages/${messageId}/react`, { reaction });
+  async reactMessage(messageId: string, emoji: string) {
+    return api.post(`/messages/${messageId}/react`, { emoji });
+  },
+
+  async removeReactionMessage(messageId: string, emoji: string) {
+    return api.delete(`/messages/${messageId}/react`, { data: { emoji } });
   },
 
   async markDelivered(conversationId, lastDeliveredMessageId: string) {
