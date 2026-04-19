@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { FiX, FiEdit2, FiBell, FiLink2, FiUserPlus } from "react-icons/fi";
-import { conversationService } from "../../services";
+import { conversationService, userService } from "../../services";
 
-export const RightSidebar = ({ selectedChat, onClose, currentUserId }: any) => {
+export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId }: any) => {
   const [members, setMembers] = useState<any[]>([]);
   const [info, setInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,8 +21,29 @@ export const RightSidebar = ({ selectedChat, onClose, currentUserId }: any) => {
           const membersData = await conversationService.getGroupMembers(selectedChat.id);
           const infoData = await conversationService.getGroupInfo(selectedChat.id);
           if (isMounted) {
-            setMembers(membersData || []);
+            const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || []);
+            setMembers(rawMembersList);
             setInfo(infoData || null);
+
+            // Dynamically enhance members with user profiles if missing
+            const enrichedMembers = await Promise.all(
+              rawMembersList.map(async (m: any) => {
+                const participant = m.user || m;
+                if (participant.displayName || participant.name || participant.username) return m;
+                if (!m.userId) return m;
+                try {
+                  const userRes = await userService.getUserById(m.userId);
+                  const userData = userRes.data || userRes;
+                  return { ...m, user: userData };
+                } catch (err) {
+                  return m;
+                }
+              })
+            );
+
+            if (isMounted) {
+              setMembers(enrichedMembers);
+            }
           }
         }
       } catch (err) {
@@ -41,10 +62,15 @@ export const RightSidebar = ({ selectedChat, onClose, currentUserId }: any) => {
 
   const groupAvatar = selectedChat?.avatarUrl || info?.avatarUrl;
   const groupName = selectedChat?.name || info?.name || "Group";
-  const membersCount = info?.membersCount || members.length || selectedChat?.members?.length || 0;
+  const membersCount = info?.memberCount || info?.membersCount || members.length || selectedChat?.members?.length || 0;
 
   return (
-    <div className="w-[320px] lg:w-[350px] bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800 flex flex-col h-full z-20 shadow-[-5px_0_15px_-10px_rgba(0,0,0,0.1)] transition-all animate-in slide-in-from-right-8 duration-300">
+    <div
+      className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 flex flex-col h-full z-20 shadow-[-5px_0_15px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out relative overflow-hidden ${
+        isOpen ? "w-[320px] lg:w-[350px] border-l opacity-100" : "w-0 border-l-0 opacity-0"
+      }`}
+    >
+      <div className={`w-[320px] lg:w-[350px] flex flex-col h-full shrink-0 relative transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0">
         <div className="flex items-center gap-3">
@@ -125,10 +151,10 @@ export const RightSidebar = ({ selectedChat, onClose, currentUserId }: any) => {
                 const isOwner = member.role === "admin" || member.role === "owner";
                 
                 return (
-                  <div key={member.id || participant.id} className="flex items-center px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
+                  <div key={member._id || member.id || participant._id || participant.id} className="flex items-center px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
                     <div className="w-10 h-10 rounded-full bg-orange-400 font-semibold text-white flex items-center justify-center mr-3 overflow-hidden shrink-0">
-                      {participant.avatarUrl ? (
-                         <img src={participant.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      {(participant.avatarUrl || participant.avatar) ? (
+                         <img src={participant.avatarUrl || participant.avatar} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
                          <span>{displayName.charAt(0).toUpperCase()}</span>
                       )}
@@ -158,6 +184,7 @@ export const RightSidebar = ({ selectedChat, onClose, currentUserId }: any) => {
           <FiUserPlus className="text-2xl" />
         </button>
       )}
+      </div>
     </div>
   );
 };

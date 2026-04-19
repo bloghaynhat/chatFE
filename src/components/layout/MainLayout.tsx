@@ -679,13 +679,12 @@ const MainLayout = ({ children }: { children?: any }) => {
           )}
         </div>
 
-        {isRightSidebarOpen && selectedChat && (
-          <RightSidebar
-            selectedChat={selectedChat}
-            currentUserId={user?.id || user?._id}
-            onClose={() => setIsRightSidebarOpen(false)}
-          />
-        )}
+        <RightSidebar
+          isOpen={isRightSidebarOpen && !!selectedChat}
+          selectedChat={selectedChat}
+          currentUserId={user?.id || user?._id}
+          onClose={() => setIsRightSidebarOpen(false)}
+        />
       </div>
     </div>
   );
