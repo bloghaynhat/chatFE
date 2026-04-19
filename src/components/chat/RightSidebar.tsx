@@ -4,6 +4,7 @@ import { RightSidebarInfo } from "./RightSideBar/RightSidebarInfo";
 import { RightSidebarEdit } from "./RightSideBar/RightSidebarEdit";
 import { RightSidebarMembers } from "./RightSideBar/RightSidebarMembers";
 import { RightSidebarAddMember } from "./RightSideBar/RightSidebarAddMember";
+import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 
 export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onGroupUpdated }: any) => {
   const [members, setMembers] = useState<any[]>([]);
@@ -16,6 +17,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP";
 
@@ -265,6 +267,26 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     }
   };
 
+  const handleDeleteGroup = async (deleteForAll: boolean = false) => {
+    try {
+      setIsLoading(true);
+      // TODO: Update API to accept deleteForAll parameter when backend is ready
+      // For now, we'll just call the delete endpoint without the parameter
+      await conversationService.deleteGroupConversation(selectedChat.id);
+      if (socketService.messagesSocket?.connected) {
+        socketService.messagesSocket.emit("conversation:deleted", { conversationId: selectedChat.id });
+      }
+      setIsDeleteModalOpen(false);
+      onClose();
+      window.location.href = "/"; // Redirect back to home
+    } catch (error) {
+      console.error("Failed to delete group", error);
+      setIsDeleteModalOpen(false); // Close modal even on error so user can retry
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div
       className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 flex flex-col h-full z-20 shadow-[-5px_0_15px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out relative overflow-hidden ${
@@ -313,6 +335,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
             onSave={handleSaveGroupInfo}
             onMembersClick={() => setActiveSubView('members')}
             onAdminsClick={() => setActiveSubView('admins')}
+            onDeleteGroupClick={() => setIsDeleteModalOpen(true)}
           />
 
           <RightSidebarMembers 
@@ -335,6 +358,15 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
           />
         </div>
       </div>
+
+      <DeleteGroupModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteGroup}
+        groupName={groupName}
+        isLoading={isLoading}
+        isAdmin={canEditGroup}
+      />
     </div>
   );
 };

@@ -60,6 +60,11 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async deleteGroupConversation(groupId: string) {
+    const response: any = await api.delete(`/groups/${groupId}`);
+    return response.data || response;
+  },
+
   async setGroupAdmin(groupId: string, targetUserId: string, isAdmin: boolean) {
     const response: any = await api.post(`/groups/${groupId}/set-admin`, { targetUserId, isAdmin });
     return response.data || response;

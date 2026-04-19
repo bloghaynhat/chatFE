@@ -29,6 +29,8 @@ export const RightSidebarEdit = ({
   onSave,
   onMembersClick,
   onAdminsClick,
+  onDeleteGroupClick,
+  isLoading,
 }: any) => {
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
@@ -186,9 +188,11 @@ export const RightSidebarEdit = ({
 
         <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-12 shadow-sm">
           <div
-            className="flex items-center px-5 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors group"
-            onClick={async () => {
-              // Future function: Delete and Leave Group
+            className="flex items-center px-5 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800"
+            onClick={() => {
+              if (onDeleteGroupClick) {
+                onDeleteGroupClick();
+              }
             }}
           >
             <FiTrash2 className="text-[#ff4b4b] text-2xl mr-4 shrink-0" />
