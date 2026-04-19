@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
@@ -9,6 +9,10 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
   const [darkMode, setDarkMode] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
+  const selectedChatRef = useRef(null);
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Set());
@@ -139,6 +143,14 @@ const MainLayout = ({ children }: { children?: any }) => {
         });
 
         socketService.onTypingStart((payload) => {
+          const currentChat = selectedChatRef.current;
+          if (payload?.groupId) {
+            if (payload.groupId !== selectedConversationId) return;
+          } else {
+            const isGroup = currentChat?.type === "group" || currentChat?.type === "GROUP";
+            if (isGroup) return;
+          }
+
           const uId = payload?.userId || payload?.senderId || payload?.id_sender;
           if (uId) {
             setTypingUsers((prev) => {
@@ -241,10 +253,22 @@ const MainLayout = ({ children }: { children?: any }) => {
         return;
       }
 
-      setSelectedChat(chat);
+      let processedChat = { ...chat };
+      if (
+        !processedChat.targetUserId &&
+        processedChat.type !== "group" &&
+        processedChat.type !== "GROUP" &&
+        processedChat.pairKey
+      ) {
+        processedChat.targetUserId = processedChat.pairKey
+          .split("_")
+          .find((id) => id !== user?.id && id !== user?._id);
+      }
+
+      setSelectedChat(processedChat);
       setChatError("");
       setIsOpeningConversation(true);
-      setOpeningChatId(chat.id);
+      setOpeningChatId(processedChat.id);
 
       try {
         // Nếu chat.id có dạng temp- (click từ global search), cần tìm conversation thật trước
@@ -370,9 +394,10 @@ const MainLayout = ({ children }: { children?: any }) => {
       payloadMedia = mediaFiles || [];
     }
 
-    if (!payloadText.trim() && payloadMedia.length === 0 && !payloadOrText?.forwardingMessage) return;
+    if (!payloadText.trim() && payloadMedia.length === 0 && !payloadOrText?.forwardingMessage && !payloadOrText?.replyingMessage) return;
 
     const fwMsg = payloadOrText?.forwardingMessage;
+    const replyMsg = payloadOrText?.replyingMessage;
 
     const performSend = async (txt, medias, isForward = false) => {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -490,10 +515,19 @@ const MainLayout = ({ children }: { children?: any }) => {
           };
         });
 
-        const apiResponse: any = await conversationService.sendMessage(conversationId, {
-          text: txt || " ",
-          media: validMedia,
-        });
+        let apiResponse: any;
+        if (replyMsg) {
+          const messageId = replyMsg.id || replyMsg._id;
+          apiResponse = await conversationService.quoteMessage(messageId, {
+            text: txt || " ",
+            media: validMedia,
+          });
+        } else {
+          apiResponse = await conversationService.sendMessage(conversationId, {
+            text: txt || " ",
+            media: validMedia,
+          });
+        }
 
         const responseData = apiResponse?.data || apiResponse;
         const sentMessagesArray = Array.isArray(responseData)
