@@ -50,6 +50,11 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async updateGroupInfo(groupId: string, data: { name?: string; avatarUrl?: string }) {
+    const response: any = await api.put(`/groups/${groupId}`, data);
+    return response.data || response;
+  },
+
   async getConversationMessages(conversationId, params: { limit?: number; [key: string]: any } = {}) {
     // Limit tối đa backend cho phép là 100
     const limit = Math.min(params.limit || 100, 100);

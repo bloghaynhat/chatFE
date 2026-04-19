@@ -173,6 +173,22 @@ const MainLayout = ({ children }: { children?: any }) => {
             });
           }
         });
+
+        socketService.on("conversation:updated", (payload: any) => {
+          const { conversationId, data } = payload;
+          if (!conversationId || !data) return;
+          
+          if (String(conversationId) === String(selectedConversationId)) {
+            setSelectedChat((prev: any) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                name: data.name ?? prev.name,
+                avatarUrl: data.avatarUrl ?? prev.avatarUrl
+              };
+            });
+          }
+        });
       }
     });
 
@@ -181,6 +197,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offNewMessage();
       socketService.offMessageRevoked();
       socketService.offMessageEdited();
+      socketService.off("conversation:updated");
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);
@@ -684,6 +701,9 @@ const MainLayout = ({ children }: { children?: any }) => {
           selectedChat={selectedChat}
           currentUserId={user?.id || user?._id}
           onClose={() => setIsRightSidebarOpen(false)}
+          onGroupUpdated={(newInfo: any) => {
+            setSelectedChat((prev: any) => prev ? { ...prev, ...newInfo } : prev);
+          }}
         />
       </div>
     </div>
