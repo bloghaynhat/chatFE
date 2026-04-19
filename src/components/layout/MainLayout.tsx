@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
+import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
 
@@ -20,6 +21,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -655,7 +657,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         />
 
         {/* Right Panel - Chat Area */}
-        <div className="flex-1 flex flex-col bg-gray-100 dark:bg-slate-950">
+        <div className="flex-1 flex flex-col min-w-0 bg-gray-100 dark:bg-slate-950">
           {children || (
             <ActiveChatPane
               selectedChat={selectedChat}
@@ -671,9 +673,19 @@ const MainLayout = ({ children }: { children?: any }) => {
               onForwardToTarget={handleForwardToTarget}
               forwardingMessage={forwardingMessage}
               onClearForwarding={clearForwardingMessage}
+              isRightSidebarOpen={isRightSidebarOpen}
+              setIsRightSidebarOpen={setIsRightSidebarOpen}
             />
           )}
         </div>
+
+        {isRightSidebarOpen && selectedChat && (
+          <RightSidebar
+            selectedChat={selectedChat}
+            currentUserId={user?.id || user?._id}
+            onClose={() => setIsRightSidebarOpen(false)}
+          />
+        )}
       </div>
     </div>
   );

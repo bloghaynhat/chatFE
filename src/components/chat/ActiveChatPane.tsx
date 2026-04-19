@@ -41,6 +41,8 @@ export const ActiveChatPane = ({
   onForwardToTarget,
   forwardingMessage,
   onClearForwarding,
+  isRightSidebarOpen,
+  setIsRightSidebarOpen,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -557,6 +559,8 @@ export const ActiveChatPane = ({
         setIsAttachMenuOpen={setIsAttachMenuOpen}
         setIsEmojiPickerOpen={setIsEmojiPickerOpen}
         headerSearchInputRef={headerSearchInputRef}
+        isRightSidebarOpen={isRightSidebarOpen}
+        setIsRightSidebarOpen={setIsRightSidebarOpen}
       />
 
       <MessageList

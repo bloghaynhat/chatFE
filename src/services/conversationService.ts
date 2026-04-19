@@ -40,6 +40,16 @@ export const conversationService = {
     return normalizeConversation(response.data || response);
   },
 
+  async getGroupMembers(groupId: string) {
+    const response: any = await api.get(`/groups/${groupId}/members`);
+    return response.data || response;
+  },
+
+  async getGroupInfo(groupId: string) {
+    const response: any = await api.get(`/groups/${groupId}/info`);
+    return response.data || response;
+  },
+
   async getConversationMessages(conversationId, params: { limit?: number; [key: string]: any } = {}) {
     // Limit tối đa backend cho phép là 100
     const limit = Math.min(params.limit || 100, 100);
