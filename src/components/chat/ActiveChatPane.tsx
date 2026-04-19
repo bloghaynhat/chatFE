@@ -52,6 +52,7 @@ export const ActiveChatPane = ({
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
   const [draftMessage, setDraftMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState(null);
+  const [replyingMessage, setReplyingMessage] = useState(null);
   
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -346,7 +347,7 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
-    if (!draftMessage.trim() && !forwardingMessage && !editingMessage) return;
+    if (!draftMessage.trim() && !forwardingMessage && !editingMessage && !replyingMessage) return;
 
     if (onSendMessage) {
       if (editingMessage) {
@@ -362,12 +363,14 @@ export const ActiveChatPane = ({
           text: draftMessage.trim(),
           type: "text",
           forwardingMessage: forwardingMessage,
+          replyingMessage: replyingMessage,
         };
         onSendMessage(payload);
       }
 
       setDraftMessage("");
       if (onClearForwarding) onClearForwarding();
+      setReplyingMessage(null);
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isTypingRef.current) {
@@ -595,6 +598,7 @@ export const ActiveChatPane = ({
           <button
             className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
             onClick={() => {
+              setReplyingMessage(contextMenu.message);
               setContextMenu(null);
             }}
           >
@@ -733,6 +737,8 @@ export const ActiveChatPane = ({
         attachActions={attachActions}
         editingMessage={editingMessage}
         setEditingMessage={setEditingMessage}
+        replyingMessage={replyingMessage}
+        setReplyingMessage={setReplyingMessage}
         forwardingMessage={forwardingMessage}
         onClearForwarding={onClearForwarding}
         currentUserId={currentUserId}

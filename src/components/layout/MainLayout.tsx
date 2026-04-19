@@ -370,9 +370,10 @@ const MainLayout = ({ children }: { children?: any }) => {
       payloadMedia = mediaFiles || [];
     }
 
-    if (!payloadText.trim() && payloadMedia.length === 0 && !payloadOrText?.forwardingMessage) return;
+    if (!payloadText.trim() && payloadMedia.length === 0 && !payloadOrText?.forwardingMessage && !payloadOrText?.replyingMessage) return;
 
     const fwMsg = payloadOrText?.forwardingMessage;
+    const replyMsg = payloadOrText?.replyingMessage;
 
     const performSend = async (txt, medias, isForward = false) => {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -490,10 +491,19 @@ const MainLayout = ({ children }: { children?: any }) => {
           };
         });
 
-        const apiResponse: any = await conversationService.sendMessage(conversationId, {
-          text: txt || " ",
-          media: validMedia,
-        });
+        let apiResponse: any;
+        if (replyMsg) {
+          const messageId = replyMsg.id || replyMsg._id;
+          apiResponse = await conversationService.quoteMessage(messageId, {
+            text: txt || " ",
+            media: validMedia,
+          });
+        } else {
+          apiResponse = await conversationService.sendMessage(conversationId, {
+            text: txt || " ",
+            media: validMedia,
+          });
+        }
 
         const responseData = apiResponse?.data || apiResponse;
         const sentMessagesArray = Array.isArray(responseData)

@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import userService from "../../../services/userService";
 import {
   FiMessageCircle,
   FiClock,
@@ -12,6 +14,7 @@ import {
   FiFilm,
   FiDelete,
   FiCornerUpRight,
+  FiCornerUpLeft,
   FiEdit2,
   FiX,
   FiSearch,
@@ -40,27 +43,50 @@ export const ChatInput = ({
   attachActions,
   editingMessage,
   setEditingMessage,
+  replyingMessage,
+  setReplyingMessage,
   forwardingMessage,
   onClearForwarding,
   currentUserId,
 }) => {
+  const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
+
+  useEffect(() => {
+    if (replyingMessage) {
+      if (!replyingMessage.sender?.name && !replyingMessage.senderName && !replyingMessage.sender?.displayName) {
+        const senderId = replyingMessage.senderId || replyingMessage.id_sender;
+        if (senderId && senderId !== currentUserId) {
+          userService.getUserById(senderId).then(res => {
+            if (res) {
+              setFetchedReplyingSender(res);
+            }
+          }).catch(err => console.error("Error fetching sender info:", err));
+        }
+      }
+    } else {
+       setFetchedReplyingSender(null);
+    }
+  }, [replyingMessage, currentUserId]);
+
   return (
     <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
-      {(forwardingMessage || editingMessage) && (
+      {(forwardingMessage || editingMessage || replyingMessage) && (
         <div className="max-w-4xl mx-auto mb-2 flex bg-[#edf4f1] dark:bg-slate-800/95 rounded-t-[10px] overflow-hidden relative z-40 p-[8px] pl-[14px] items-center">
           <div className="flex-1 flex flex-col justify-center min-w-0 pr-6 gap-[5px]">
-            <span className="text-[14px] font-medium text-blue-500 flex items-center gap-1.5 leading-none">
+            <span className="text-[14px] font-medium text-[#2ea6f3] flex items-center gap-1.5 leading-none">
               {editingMessage ? (
                 <FiEdit2 className="text-[17px]" strokeWidth={2} />
+              ) : replyingMessage ? (
+                <FiCornerUpLeft className="text-[16px]" strokeWidth={2.5} />
               ) : (
                 <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
               )}
               <span className="text-[14.5px] tracking-tight">
-                {editingMessage ? "Editing" : "Forward Message"}
+                {editingMessage ? "Editing" : replyingMessage ? `Reply to ${replyingMessage?.senderId === currentUserId ? "You" : (fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || "Unknown")}` : "Forward Message"}
               </span>
             </span>
             <p className="text-[13.5px] text-gray-500/90 dark:text-gray-400 truncate leading-none flex gap-1 items-center pb-0.5">
-              {editingMessage ? null : (
+              {editingMessage || replyingMessage ? null : (
                 <span className="font-medium text-gray-700 dark:text-gray-300">
                   {forwardingMessage?.senderId === currentUserId
                     ? "You"
@@ -72,22 +98,29 @@ export const ChatInput = ({
                 ? editingMessage.media?.length
                   ? `Photo${editingMessage.text ? `, ${editingMessage.text}` : ""}`
                   : editingMessage.text
-                : forwardingMessage?.media?.length
-                  ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
-                  : forwardingMessage?.text}
+                : replyingMessage
+                  ? replyingMessage.media?.length || replyingMessage.mediaItems?.length
+                    ? `Photo${replyingMessage.text ? `, ${replyingMessage.text}` : ""}`
+                    : replyingMessage.text
+                  : forwardingMessage?.media?.length
+                    ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
+                    : forwardingMessage?.text}
             </p>
           </div>
           <button
-            onClick={() => {
+             onClick={() => {
               if (editingMessage) {
                 setEditingMessage(null);
                 setDraftMessage("");
+              }
+              if (replyingMessage) {
+                setReplyingMessage(null);
               }
               if (forwardingMessage && onClearForwarding) {
                 onClearForwarding();
               }
             }}
-            className="absolute right-3 text-gray-400 hover:text-blue-500 transition-colors p-[8px]"
+            className="absolute right-3 text-gray-400 hover:text-[#2ea6f3] transition-colors p-[8px]"
           >
             <FiX
               className="text-[#3e3e3e]"
@@ -95,11 +128,11 @@ export const ChatInput = ({
               style={{ fontSize: "22px" }}
             />
           </button>
-          <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-blue-500 rounded-[5px]"></div>
+          <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-[#2ea6f3] rounded-[5px]"></div>
         </div>
       )}
       <div
-        className={`flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage ? "-mt-4 z-40 relative" : ""}`}
+        className={`flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40 relative" : ""}`}
       >
         <div
           ref={attachMenuRef}
@@ -234,12 +267,12 @@ export const ChatInput = ({
         <button
           className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition cursor-pointer z-50 relative"
           onClick={
-            editingMessage || draftMessage.trim() || forwardingMessage
+            editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage
               ? handleSendMessage
               : undefined
           }
         >
-          {editingMessage || draftMessage.trim() || forwardingMessage ? (
+          {editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage ? (
             <FiSend className="text-[20px] lg:text-[22px]" />
           ) : (
             <FiMic className="text-[20px] lg:text-[22px]" />

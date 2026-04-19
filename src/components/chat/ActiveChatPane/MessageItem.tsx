@@ -10,8 +10,10 @@ import { MessageAudio } from "./MessageTypes/MessageAudio";
 import { MessageDocument } from "./MessageTypes/MessageDocument";
 import { MessageText } from "./MessageTypes/MessageText";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
+import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
 export const MessageItem = ({
   message,
+  messages,
   index,
   isFirst,
   firstMessageRef,
@@ -204,6 +206,7 @@ export const MessageItem = ({
           </span>
         )}
       {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
+      <QuotedMessageHeader message={message} messages={messages} mine={mine} />
 
       {isMedia && (
         <MessageMedia

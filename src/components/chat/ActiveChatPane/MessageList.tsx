@@ -113,6 +113,7 @@ export const MessageList = ({
                 <MessageItem
                   key={message.id || message._id || index}
                   message={message}
+                  messages={visibleMessages}
                   index={index}
                   isFirst={index === 0}
                   firstMessageRef={firstMessageRef}
