@@ -45,6 +45,26 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async addGroupMembers(groupId: string, memberIds: string[]) {
+    const response: any = await api.post(`/groups/${groupId}/members`, { memberIds });
+    return response.data || response;
+  },
+
+  async removeGroupMember(groupId: string, userId: string) {
+    const response: any = await api.delete(`/groups/${groupId}/members/${userId}`);
+    return response.data || response;
+  },
+
+  async leaveGroupConversation(groupId: string) {
+    const response: any = await api.post(`/groups/${groupId}/leave`);
+    return response.data || response;
+  },
+
+  async setGroupAdmin(groupId: string, targetUserId: string, isAdmin: boolean) {
+    const response: any = await api.post(`/groups/${groupId}/set-admin`, { targetUserId, isAdmin });
+    return response.data || response;
+  },
+
   async getGroupInfo(groupId: string) {
     const response: any = await api.get(`/groups/${groupId}/info`);
     return response.data || response;

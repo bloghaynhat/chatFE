@@ -272,6 +272,11 @@ class SocketService {
     });
   }
 
+  notifyAddMembers(conversationId: string, memberIds: string[]) {
+    if (!this.messagesSocket?.connected) return;
+    this.messagesSocket.emit("addMember", { conversationId, memberIds });
+  }
+
   startTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 

@@ -31,7 +31,7 @@ export const RightSidebarEdit = ({
   onAdminsClick,
 }: any) => {
   return (
-    <div className="w-1/3 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
+    <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
       {/* Edit Group Header */}
       <div className="flex items-center px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
         <button
