@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { FiX, FiEdit2, FiBell, FiLink2, FiUserPlus, FiMessageSquare, FiShield, FiKey, FiTrash2, FiLogOut } from "react-icons/fi";
+import { FiX, FiEdit2, FiBell, FiLink2, FiUserPlus } from "react-icons/fi";
+import { MemberItem } from "./MemberItem";
+import { ContextMenuDropdown } from "./ContextMenuDropdown";
 
 export const RightSidebarInfo = ({
   isGroup,
@@ -40,8 +41,7 @@ export const RightSidebarInfo = ({
     setContextMenu({ x, y, member });
   };
 
-  const handleAction = (e: React.MouseEvent, action: string) => {
-    e.stopPropagation();
+  const handleAction = (action: string) => {
     if (!contextMenu) return;
 
     const { member } = contextMenu;
@@ -82,7 +82,7 @@ export const RightSidebarInfo = ({
             {isGroup ? "Group Info" : "User Info"}
           </span>
         </div>
-        {isGroup && canEdit && (
+        {isGroup && (
           <button
             onClick={onEditClick}
             className="p-2 -mr-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 transition-colors"
@@ -164,122 +164,26 @@ export const RightSidebarInfo = ({
                 <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
               </div>
             ) : (
-              members.map((member: any) => {
-                const participant = member.user || member;
-                const displayName =
-                  participant.displayName || participant.name || participant.username || "Unknown";
-                const isOwner = member.role === "admin" || member.role === "owner";
-
-                return (
-                  <div
-                    key={member._id || member.id || participant._id || participant.id}
-                    onContextMenu={(e) => handleContextMenu(e, member)}
-                    className={`flex items-center px-4 py-2.5 cursor-pointer transition-colors relative ${
-                      contextMenu?.member === member 
-                        ? 'bg-gray-100 dark:bg-slate-800' 
-                        : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-orange-400 font-semibold text-white flex items-center justify-center mr-3 overflow-hidden shrink-0">
-                      {participant.avatarUrl || participant.avatar ? (
-                        <img
-                          src={participant.avatarUrl || participant.avatar}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>{displayName.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {displayName}
-                      </div>
-                      <div className="text-[13px] text-gray-500 dark:text-gray-400 truncate">
-                        last seen recently
-                      </div>
-                    </div>
-                    {isOwner && (
-                      <span className="text-[12px] text-gray-400 dark:text-gray-500 font-medium">
-                        owner
-                      </span>
-                    )}
-                  </div>
-                );
-              })
+              members.map((member: any) => (
+                <MemberItem
+                  key={member._id || member.id || member.user?._id || member.user?.id}
+                  member={member}
+                  isSelected={contextMenu?.member === member}
+                  onContextMenu={handleContextMenu}
+                />
+              ))
             )}
           </div>
         )}
       </div>
 
-      {/* Floating Add Button */}
-      {isGroup && (
-        <button className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30">
-          <FiUserPlus className="text-2xl" />
-        </button>
-      )}
-
       {/* Context Menu Dropdown */}
-      {contextMenu && createPortal(
-        <div 
-          className="fixed z-[9999] bg-white dark:bg-slate-900 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-slate-800 py-2 w-[220px]"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={(e) => e.stopPropagation()}
-          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
-        >
-          <button 
-            onClick={(e) => handleAction(e, "sendMessage")}
-            className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
-          >
-            <FiMessageSquare className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
-            Send Message
-          </button>
-          
-          {(currentUserRole === "admin" || currentUserRole === "ADMIN" || currentUserRole === "owner" || currentUserRole === "OWNER") ? (
-           (contextMenu.member.role !== "owner" && contextMenu.member.role !== "OWNER" &&
-            (contextMenu.member.user?._id !== currentUserId && contextMenu.member.userId !== currentUserId)) && (
-            <>
-              {contextMenu.member.role !== "admin" && contextMenu.member.role !== "ADMIN" && (
-                <button 
-                  onClick={(e) => handleAction(e, "promote")}
-                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
-                >
-                  <FiShield className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
-                  Promote to admin
-                </button>
-              )}
-              
-              <button 
-                onClick={(e) => handleAction(e, "restrict")}
-                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
-              >
-                <FiKey className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
-                Restrict user
-              </button>
-
-              <button 
-                onClick={(e) => handleAction(e, "remove")}
-                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
-              >
-                <FiTrash2 className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
-                Remove from group
-              </button>
-            </>
-           )
-          ) : (
-            (contextMenu.member.role !== "admin" && contextMenu.member.role !== "ADMIN" && contextMenu.member.role !== "owner" && contextMenu.member.role !== "OWNER") && (
-              <button 
-                onClick={(e) => handleAction(e, "leave")}
-                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
-              >
-                <FiLogOut className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
-                Leave group
-              </button>
-            )
-          )}
-        </div>,
-        document.body
-      )}
+      <ContextMenuDropdown
+        contextMenu={contextMenu}
+        onAction={handleAction}
+        currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 };
