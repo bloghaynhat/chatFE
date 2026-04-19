@@ -66,8 +66,45 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     
     fetchData();
     
+    const handleMemberRemoved = (data: any) => {
+      if (data.conversationId === selectedChat?.id) {
+        setMembers((prev) => prev.filter((m: any) => (m.userId || m.user?.id || m.user?._id) !== data.removedUserId));
+      }
+    };
+    
+    const handleMembersAdded = async (data: any) => {
+      if (data.conversationId === selectedChat?.id) {
+        try {
+          const membersData = await conversationService.getGroupMembers(selectedChat.id);
+          const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
+          
+          const enrichedMembers = await Promise.all(
+            rawMembersList.map(async (m: any) => {
+              const participant = m.user || m;
+              if (participant.displayName || participant.name || participant.username) return m;
+              if (!m.userId) return m;
+              try {
+                const userRes = await userService.getUserById(m.userId);
+                return { ...m, user: userRes.data || userRes };
+              } catch (err) {
+                return m;
+              }
+            })
+          );
+          setMembers(enrichedMembers);
+        } catch (err) {
+          console.error("Failed to refresh members:", err);
+        }
+      }
+    };
+
+    const cleanupRemoved = socketService.on("conversation:member_removed", handleMemberRemoved);
+    const cleanupAdded = socketService.on("conversation:members_added", handleMembersAdded);
+
     return () => {
       isMounted = false;
+      if (cleanupRemoved) cleanupRemoved();
+      if (cleanupAdded) cleanupAdded();
     };
   }, [selectedChat?.id, isGroup]);
 
@@ -176,6 +213,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     try {
       setIsLoading(true);
       await conversationService.removeGroupMember(selectedChat.id, userId);
+      
+      socketService.notifyRemoveMember(selectedChat.id, userId);
+
       setMembers((prev) => prev.filter((m: any) => (m.userId || m.user?.id || m.user?._id) !== userId));
       
       if (socketService.messagesSocket?.connected) {

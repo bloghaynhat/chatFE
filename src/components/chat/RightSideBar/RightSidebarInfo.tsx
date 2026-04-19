@@ -267,13 +267,15 @@ export const RightSidebarInfo = ({
             </>
            )
           ) : (
-            <button 
-              onClick={(e) => handleAction(e, "leave")}
-              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
-            >
-              <FiLogOut className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
-              Leave group
-            </button>
+            (contextMenu.member.role !== "admin" && contextMenu.member.role !== "ADMIN" && contextMenu.member.role !== "owner" && contextMenu.member.role !== "OWNER") && (
+              <button 
+                onClick={(e) => handleAction(e, "leave")}
+                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center text-[15px] font-medium text-gray-900 dark:text-gray-100 transition-colors"
+              >
+                <FiLogOut className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
+                Leave group
+              </button>
+            )
           )}
         </div>,
         document.body

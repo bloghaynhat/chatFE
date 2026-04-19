@@ -114,6 +114,14 @@ class SocketService {
     this.messagesSocket.on("conversation:updated", (data) => {
       this.emit("conversation:updated", data);
     });
+
+    this.messagesSocket.on("conversation:members_added", (data) => {
+      this.emit("conversation:members_added", data);
+    });
+
+    this.messagesSocket.on("conversation:member_removed", (data) => {
+      this.emit("conversation:member_removed", data);
+    });
   }
 
   setupFriendListeners() {
@@ -277,6 +285,11 @@ class SocketService {
     this.messagesSocket.emit("addMember", { conversationId, memberIds });
   }
 
+  notifyRemoveMember(conversationId: string, userId: string) {
+    if (!this.messagesSocket?.connected) return;
+    this.messagesSocket.emit("removeMember", { conversationId, userId });
+  }
+
   startTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 
@@ -343,6 +356,10 @@ export const onTypingStart = (cb) => socketService.on("typing:start", cb);
 export const onTypingStop = (cb) => socketService.on("typing:stop", cb);
 
 export const onConversationUpdated = (cb) => socketService.on("conversation:updated", cb);
+
+export const onMembersAdded = (cb) => socketService.on("conversation:members_added", cb);
+
+export const onMemberRemoved = (cb) => socketService.on("conversation:member_removed", cb);
 
 // Friend
 export const onFriendRequest = (cb) => socketService.on("friend_request:received", cb);
