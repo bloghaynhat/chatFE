@@ -117,11 +117,11 @@ export const conversationService = {
   },
 
   async deleteMessageForMe(messageId) {
-    return api.post(`/messages/${messageId}/delete`);
+    return api.post(`/messages/${messageId}/delete`, {});
   },
 
   async deleteMessageForEveryone(messageId) {
-    return api.post(`/messages/${messageId}/delete-for-everyone`);
+    return api.post(`/messages/${messageId}/delete-for-everyone`, {});
   },
 
   async pinMessage(messageId) {

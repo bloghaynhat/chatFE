@@ -661,6 +661,25 @@ const MainLayout = ({ children }: { children?: any }) => {
     }
   };
 
+  const handleDeleteMessageForMe = async (message) => {
+    try {
+      const messageId = message?.id || message?._id;
+      if (!messageId) return;
+
+      const res: any = await conversationService.deleteMessageForMe(messageId);
+
+      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+        setMessages((prev) =>
+          prev.filter(
+            (msg) => String(msg.id) !== String(messageId) && String(msg._id) !== String(messageId)
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete message for me:", error);
+    }
+  };
+
   return (
     <div className={darkMode ? "dark" : ""}>
       <div className="flex h-screen bg-white dark:bg-slate-900">
@@ -687,6 +706,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
               onRevokeMessage={handleRevokeMessage}
+              onDeleteMessageForMe={handleDeleteMessageForMe}
               onForwardToTarget={handleForwardToTarget}
               forwardingMessage={forwardingMessage}
               onClearForwarding={clearForwardingMessage}
