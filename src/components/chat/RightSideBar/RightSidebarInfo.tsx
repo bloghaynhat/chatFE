@@ -15,7 +15,7 @@ export const RightSidebarInfo = ({
   canEdit,
 }: any) => {
   return (
-    <div className="w-1/2 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
+    <div className="w-1/3 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
         <div className="flex items-center gap-3">

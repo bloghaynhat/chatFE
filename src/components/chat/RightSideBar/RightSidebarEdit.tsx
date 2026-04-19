@@ -23,12 +23,15 @@ export const RightSidebarEdit = ({
   isUploadingAvatar,
   onAvatarChange,
   membersCount,
+  adminCount,
   currentUserRole,
   onClose,
   onSave,
+  onMembersClick,
+  onAdminsClick,
 }: any) => {
   return (
-    <div className="w-1/2 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
+    <div className="w-1/3 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
       {/* Edit Group Header */}
       <div className="flex items-center px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
         <button
@@ -149,42 +152,28 @@ export const RightSidebarEdit = ({
         </div>
 
         <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
+          <div 
+            className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800"
+            onClick={onAdminsClick}
+          >
             <FiShield className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
                 Administrators
               </div>
-              <div className="text-[13px] text-gray-500">1</div>
+              <div className="text-[13px] text-gray-500">{adminCount || 1}</div>
             </div>
           </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
+          <div 
+            className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800"
+            onClick={onMembersClick}
+          >
             <FiUsers className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
                 Members
               </div>
               <div className="text-[13px] text-gray-500">{membersCount}</div>
-            </div>
-          </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
-            <FiUserX className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Removed users
-              </div>
-              <div className="text-[13px] text-gray-500">No removed users</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
-            <FiMessageSquare className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Chat history for new members
-              </div>
             </div>
           </div>
         </div>

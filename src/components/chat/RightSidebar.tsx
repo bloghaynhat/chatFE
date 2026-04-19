@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { conversationService, userService, mediaService } from "../../services";
 import { RightSidebarInfo } from "./RightSideBar/RightSidebarInfo";
 import { RightSidebarEdit } from "./RightSideBar/RightSidebarEdit";
+import { RightSidebarMembers } from "./RightSideBar/RightSidebarMembers";
 
 export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onGroupUpdated }: any) => {
   const [members, setMembers] = useState<any[]>([]);
@@ -9,6 +10,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   const [isLoading, setIsLoading] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeSubView, setActiveSubView] = useState<"none" | "members" | "admins">("none");
   const [editName, setEditName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -17,6 +19,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   const isGroup = selectedChat?.type === "group" || selectedChat?.type === "GROUP";
 
   useEffect(() => {
+    setActiveSubView("none"); // Reset view when chat changes
     if (!selectedChat?.id) return;
     
     let isMounted = true;
@@ -70,6 +73,10 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
   const groupAvatar = selectedChat?.avatarUrl || info?.conversation?.avatarUrl || info?.avatarUrl;
   const groupName = selectedChat?.name || info?.conversation?.name || info?.name || "Group";
   const membersCount = info?.memberCount || info?.membersCount || info?.members?.length || members.length || selectedChat?.members?.length || 0;
+  
+  const adminCount = members.length > 0 
+    ? members.filter((m: any) => m.role === 'admin' || m.role === 'owner' || m.role === 'ADMIN' || m.role === 'OWNER').length 
+    : (info?.adminIds?.length ? info.adminIds.length + (info?.ownerId ? 1 : 0) : 1);
 
   const currentUserMember = members.find((m: any) => m.userId === currentUserId || m.user?.id === currentUserId || m.id === currentUserId);
   const currentUserRole = currentUserMember?.role || "member";
@@ -138,7 +145,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
       }`}
     >
       <div className={`w-[320px] lg:w-[350px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}>
-        <div className={`flex w-[200%] h-full shrink-0 transition-transform duration-300 ease-in-out ${isEditing ? "-translate-x-1/2" : "translate-x-0"}`}>
+        <div className={`flex w-[300%] h-full shrink-0 transition-transform duration-300 ease-in-out ${
+          activeSubView !== "none" ? "-translate-x-2/3" : isEditing ? "-translate-x-1/3" : "translate-x-0"
+        }`}>
           <RightSidebarInfo
             isGroup={isGroup}
             groupName={groupName}
@@ -162,9 +171,19 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
             isUploadingAvatar={isUploadingAvatar}
             onAvatarChange={handleAvatarChange}
             membersCount={membersCount}
+            adminCount={adminCount}
             currentUserRole={currentUserRole}
             onClose={() => setIsEditing(false)}
             onSave={handleSaveGroupInfo}
+            onMembersClick={() => setActiveSubView('members')}
+            onAdminsClick={() => setActiveSubView('admins')}
+          />
+
+          <RightSidebarMembers 
+            type={activeSubView === "none" ? "members" : activeSubView}
+            members={members}
+            onClose={() => setActiveSubView("none")}
+            groupName={groupName}
           />
         </div>
       </div>
