@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FiCheck, FiDownload, FiEye } from "react-icons/fi";
 import { PhotoView } from "react-photo-view";
 import { getMessageId, getMessageText, getMessageTime } from "../../../utils/chatUtils";
@@ -11,6 +11,12 @@ import { MessageDocument } from "./MessageTypes/MessageDocument";
 import { MessageText } from "./MessageTypes/MessageText";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
+import { socketService } from "../../../services/socketService";
+import { conversationService } from "../../../services/conversationService";
+import { useAuth } from "../../../hooks";
+
+const DEFAULT_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+
 export const MessageItem = ({
   message,
   messages,
@@ -23,12 +29,14 @@ export const MessageItem = ({
   isLastInSequence = true,
   handleContextMenu,
   setPreviewVideoUrl,
+  currentUserId,
 }) => {
   const [fetchedSender, setFetchedSender] = useState(null);
 
   useEffect(() => {
     if (isGroup && !mine && message?.senderId && !message?.senderName && !message?.sender?.displayName) {
-      userService.getUserById(message.senderId)
+      userService
+        .getUserById(message.senderId)
         .then((res) => {
           if (res) {
             setFetchedSender(res.data || res);
@@ -46,7 +54,7 @@ export const MessageItem = ({
   // Parse forwarded message
   let isForwarded = Boolean(message?.originalMessageId);
   let fwData = null;
-  let text = rawText
+  let text = rawText;
 
   if (typeof rawText === "string" && rawText.startsWith("[FWM]::")) {
     isForwarded = true;
@@ -134,13 +142,7 @@ export const MessageItem = ({
 
   if (isSystem) {
     return (
-      <SystemMessage
-        message={message}
-        index={index}
-        isFirst={isFirst}
-        firstMessageRef={firstMessageRef}
-        text={text}
-      />
+      <SystemMessage message={message} index={index} isFirst={isFirst} firstMessageRef={firstMessageRef} text={text} />
     );
   }
 
@@ -182,12 +184,21 @@ export const MessageItem = ({
   }
 
   return (
-    <div className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 mb-1`}>
+    <div className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 mb-1 group`}>
       {isGroup && !mine && (
-        <div className="w-7 h-7 rounded-full shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shadow-sm mb-0.5" style={{ opacity: isLastInSequence ? 1 : 0 }}>
+        <div
+          className="w-7 h-7 rounded-full shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shadow-sm mb-0.5"
+          style={{ opacity: isLastInSequence ? 1 : 0 }}
+        >
           {isLastInSequence ? (
-             senderAvatar ? <img src={senderAvatar} alt={senderName} className="w-full h-full object-cover" /> : senderAvatarStr
-          ) : ""}
+            senderAvatar ? (
+              <img src={senderAvatar} alt={senderName} className="w-full h-full object-cover" />
+            ) : (
+              senderAvatarStr
+            )
+          ) : (
+            ""
+          )}
         </div>
       )}
       <div
@@ -205,33 +216,79 @@ export const MessageItem = ({
             {senderName}
           </span>
         )}
-      {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
-      <QuotedMessageHeader message={message} messages={messages} mine={mine} />
+        {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
+        <QuotedMessageHeader message={message} messages={messages} mine={mine} />
 
-      {isMedia && (
-        <MessageMedia
-          message={message}
-          mediaItems={mediaItems}
-          images={images}
-          hasText={hasText}
-          onlyImagesOrVideos={onlyImagesOrVideos}
-          mine={mine}
-          isSeen={isSeen}
-          setPreviewVideoUrl={setPreviewVideoUrl}
-        />
-      )}
+        {isMedia && (
+          <MessageMedia
+            message={message}
+            mediaItems={mediaItems}
+            images={images}
+            hasText={hasText}
+            onlyImagesOrVideos={onlyImagesOrVideos}
+            mine={mine}
+            isSeen={isSeen}
+            setPreviewVideoUrl={setPreviewVideoUrl}
+          />
+        )}
 
-      {isAudio && (
-        <MessageAudio audios={audios} mine={mine} hasText={hasText} />
-      )}
+        {isAudio && <MessageAudio audios={audios} mine={mine} hasText={hasText} />}
 
-      {isDocument && (
-        <MessageDocument message={message} messageFiles={messageFiles} mine={mine} />
-      )}
+        {isDocument && <MessageDocument message={message} messageFiles={messageFiles} mine={mine} />}
 
-      {!onlyImagesOrVideos && (
-        <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
-      )}
+        {!onlyImagesOrVideos && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />}
+
+        {/* Render selected reactions */}
+        {message?.reactions && message.reactions.length > 0 && (
+          <div className={`flex flex-wrap gap-1 px-1.5 pb-1.5 -mt-0.5 z-10 ${mine ? "justify-end" : "justify-start"}`}>
+            {message.reactions.map((r, i) => {
+              const hasMyReaction = r.users?.some((u) => String(u._id || u.id) === String(currentUserId));
+              return (
+                <div
+                  key={i}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const msgId = message._id || message.id;
+                    if (hasMyReaction) {
+                      conversationService.removeReactionMessage(msgId, r.emoji).catch(console.error);
+                    } else {
+                      conversationService.reactMessage(msgId, r.emoji).catch(console.error);
+                    }
+                  }}
+                  className={`rounded-full px-1.5 py-[2px] flex items-center space-x-1 cursor-pointer border shadow-sm ${hasMyReaction ? "bg-blue-50/90 border-blue-200 dark:bg-blue-900/40 dark:border-blue-800" : "bg-gray-50/90 border-gray-200 dark:bg-slate-700 dark:border-slate-600"}`}
+                  style={{ fontSize: "11.5px", lineHeight: "18px" }}
+                >
+                  <span>{r.emoji}</span>
+                  {r.count > 1 && (
+                    <span
+                      className={`font-semibold ${hasMyReaction ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"}`}
+                    >
+                      {r.count}
+                    </span>
+                  )}
+                  <div className="flex -space-x-1 ml-0.5">
+                    {r.users?.slice(0, 3).map((u, idx) => (
+                      <div
+                        key={idx}
+                        className="w-[18px] h-[18px] rounded-full overflow-hidden border border-white dark:border-slate-800 bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-500"
+                      >
+                        {u.avatar || u.avatarUrl || u.profilePicture ? (
+                          <img
+                            src={u.avatar || u.avatarUrl || u.profilePicture}
+                            alt="User"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (u.displayName || u.username || u.name || "?").charAt(0).toUpperCase()
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

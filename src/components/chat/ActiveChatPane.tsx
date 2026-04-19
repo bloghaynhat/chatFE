@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
+import { conversationService } from "../../services/conversationService";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -24,7 +25,7 @@ import {
   FiCornerUpRight,
   FiRotateCcw,
   FiTrash2,
-  FiDownload
+  FiDownload,
 } from "react-icons/fi";
 
 export const ActiveChatPane = ({
@@ -56,7 +57,7 @@ export const ActiveChatPane = ({
   const [draftMessage, setDraftMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState(null);
   const [replyingMessage, setReplyingMessage] = useState(null);
-  
+
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
   const emojiMenuRef = useRef(null);
@@ -191,9 +192,7 @@ export const ActiveChatPane = ({
   }, [isLoading]);
 
   const visibleMessages = useMemo(() => {
-    return messages.length > displayCount
-      ? messages.slice(messages.length - displayCount)
-      : messages;
+    return messages.length > displayCount ? messages.slice(messages.length - displayCount) : messages;
   }, [messages, displayCount]);
 
   useEffect(() => {
@@ -243,16 +242,17 @@ export const ActiveChatPane = ({
     year: "numeric",
   });
 
-  const selectedCalendarHeadline = selectedCalendarDate.toLocaleDateString(
-    "en-US",
-    { weekday: "short", month: "long", day: "numeric" },
-  );
+  const selectedCalendarHeadline = selectedCalendarDate.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+  });
 
   const calendarGrid = useMemo(() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     const firstDay = new Date(year, month, 1);
-    const leadingEmptyDays = (firstDay.getDay() + 6) % 7; 
+    const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
     const totalDays = new Date(year, month + 1, 0).getDate();
     return { leadingEmptyDays, totalDays };
   }, [calendarMonth]);
@@ -265,8 +265,7 @@ export const ActiveChatPane = ({
 
   const isViewingCurrentMonthOrLater =
     calendarMonth.getFullYear() > todayStart.getFullYear() ||
-    (calendarMonth.getFullYear() === todayStart.getFullYear() &&
-      calendarMonth.getMonth() >= todayStart.getMonth());
+    (calendarMonth.getFullYear() === todayStart.getFullYear() && calendarMonth.getMonth() >= todayStart.getMonth());
 
   useEffect(() => {
     if (!isAttachMenuOpen && !isMoreMenuOpen && !isEmojiPickerOpen) return;
@@ -333,7 +332,10 @@ export const ActiveChatPane = ({
 
   const handleInputChange = (event) => {
     setDraftMessage(event.target.value);
-        const isGroup = selectedChat?.type === "GROUP" || selectedChat?.type === "group" || (selectedChat?.members && selectedChat.members.length > 2);
+    const isGroup =
+      selectedChat?.type === "GROUP" ||
+      selectedChat?.type === "group" ||
+      (selectedChat?.members && selectedChat.members.length > 2);
     const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
 
     if (targetId) {
@@ -378,7 +380,10 @@ export const ActiveChatPane = ({
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isTypingRef.current) {
         isTypingRef.current = false;
-            const isGroup = selectedChat?.type === "GROUP" || selectedChat?.type === "group" || (selectedChat?.members && selectedChat.members.length > 2);
+        const isGroup =
+          selectedChat?.type === "GROUP" ||
+          selectedChat?.type === "group" ||
+          (selectedChat?.members && selectedChat.members.length > 2);
         const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
         socketService.stopTyping(targetId, isGroup);
       }
@@ -434,33 +439,21 @@ export const ActiveChatPane = ({
               <div className="flex flex-col gap-6 w-full max-w-3xl h-full pb-16">
                 <div className="flex-1 flex flex-col items-center justify-center border-[5px] border-dashed border-blue-500 rounded-[2.5rem] bg-white/95 dark:bg-slate-800/95 shadow-2xl transition-transform hover:scale-[1.01]">
                   <FiImage className="text-6xl md:text-7xl text-blue-500 mb-4" />
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-                    Drop as Image
-                  </p>
-                  <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2">
-                    Compresses image
-                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Drop as Image</p>
+                  <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2">Compresses image</p>
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center border-[5px] border-dashed border-purple-500 rounded-[2.5rem] bg-white/95 dark:bg-slate-800/95 shadow-2xl transition-transform hover:scale-[1.01]">
                   <FiFile className="text-6xl md:text-7xl text-purple-500 mb-4" />
-                  <p className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-                    Drop as File
-                  </p>
-                  <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2">
-                    Original quality
-                  </p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Drop as File</p>
+                  <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2">Original quality</p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="absolute inset-4 border-4 border-dashed border-blue-500 rounded-3xl backdrop-blur-sm bg-white/70 dark:bg-slate-900/70 flex flex-col items-center justify-center shadow-2xl z-50">
               <FiFile className="text-8xl text-blue-500 mb-6" />
-              <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
-                Drop files here to send them
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 mt-4 text-xl">
-                without compression
-              </p>
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Drop files here to send them</h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-4 text-xl">without compression</p>
             </div>
           )}
         </div>
@@ -478,8 +471,7 @@ export const ActiveChatPane = ({
                   <FiX className="text-xl text-gray-500 dark:text-gray-400" />
                 </button>
                 <h3 className="font-medium text-lg text-gray-800 dark:text-white">
-                  Send {previewFiles.length}{" "}
-                  {previewFiles.length === 1 ? "Photo" : "Photos"}
+                  Send {previewFiles.length} {previewFiles.length === 1 ? "Photo" : "Photos"}
                 </h3>
               </div>
               <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-500 dark:text-gray-400">
@@ -503,11 +495,7 @@ export const ActiveChatPane = ({
                       }`}
                     >
                       {isImage ? (
-                        <img
-                          src={file.preview}
-                          alt="preview"
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={file.preview} alt="preview" className="w-full h-full object-cover" />
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full p-4">
                           <FiFile className="text-4xl text-blue-500 mb-2" />
@@ -582,125 +570,147 @@ export const ActiveChatPane = ({
 
       {contextMenu && (
         <div
-          className="fixed z-[9999] w-[200px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-[9999] flex flex-col gap-2"
+          style={{ top: Math.max(contextMenu.y - 50, 10), left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          {contextMenu.message?.senderId === currentUserId ||
-          contextMenu.message?.sender?.id === currentUserId ||
-          contextMenu.message?.id_sender === currentUserId ? (
-            <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
-              <div className="flex -space-x-[4px] text-blue-500">
-                <FiCheckCircle className="text-sm" />
-                <FiCheckCircle className="text-sm" />
-              </div>
-              <span>
-                {getDateLabel(contextMenu.message?.createdAt || contextMenu.message?.updatedAt)}{" "}
-                at {getMessageTime(contextMenu.message)}
-              </span>
-            </div>
-          ) : null}
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-            onClick={() => {
-              setReplyingMessage(contextMenu.message);
-              setContextMenu(null);
-            }}
-          >
-            <FiCornerUpLeft className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Reply</span>
-          </button>
-          {(contextMenu.message?.senderId === currentUserId ||
+          {/* Reaction Picker above menu */}
+          <div className="bg-white dark:bg-slate-800 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_15px_rgba(0,0,0,0.3)] flex items-center px-1.5 py-1 gap-0.5 border border-gray-100 dark:border-slate-700 w-max">
+            {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => {
+              const msgId = contextMenu.message?._id || contextMenu.message?.id;
+              const hasMyReaction = contextMenu.message?.reactions
+                ?.find((r: any) => r.emoji === emoji)
+                ?.users?.some((u: any) => String(u._id || u.id) === String(currentUserId));
+
+              return (
+                <div
+                  key={emoji}
+                  onClick={() => {
+                    if (hasMyReaction) {
+                      conversationService.removeReactionMessage(msgId, emoji).catch(console.error);
+                    } else {
+                      conversationService.reactMessage(msgId, emoji).catch(console.error);
+                    }
+                    setContextMenu(null);
+                  }}
+                  className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full w-9 h-9 flex items-center justify-center text-[22px] transition-transform hover:scale-125 origin-bottom ${hasMyReaction ? "bg-blue-50 dark:bg-blue-900/30" : ""}`}
+                >
+                  {emoji}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="w-[200px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
+            {contextMenu.message?.senderId === currentUserId ||
             contextMenu.message?.sender?.id === currentUserId ||
-            contextMenu.message?.id_sender === currentUserId) && (
+            contextMenu.message?.id_sender === currentUserId ? (
+              <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
+                <div className="flex -space-x-[4px] text-blue-500">
+                  <FiCheckCircle className="text-sm" />
+                  <FiCheckCircle className="text-sm" />
+                </div>
+                <span>
+                  {getDateLabel(contextMenu.message?.createdAt || contextMenu.message?.updatedAt)} at{" "}
+                  {getMessageTime(contextMenu.message)}
+                </span>
+              </div>
+            ) : null}
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
-                setEditingMessage(contextMenu.message);
-                setDraftMessage(getMessageText(contextMenu.message));
+                setReplyingMessage(contextMenu.message);
                 setContextMenu(null);
               }}
             >
-              <FiEdit2 className="text-[18px]" strokeWidth={2} />{" "}
-              <span className="font-medium">Edit</span>
+              <FiCornerUpLeft className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Reply</span>
             </button>
-          )}
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-            onClick={() => {
-              setContextMenu(null);
-            }}
-          >
-            <FiCopy className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Copy</span>
-          </button>
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-            onClick={() => {
-              setContextMenu(null);
-            }}
-          >
-            <div className="relative flex items-center text-[18px] w-[18px] h-[18px] justify-center font-bold">
-              <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">A</span>
-              <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">文</span>
-            </div>
-            <span className="font-medium">Translate</span>
-          </button>
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-            onClick={() => {
-              setContextMenu(null);
-            }}
-          >
-            <FiMapPin className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Pin</span>
-          </button>
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-            onClick={() => handleOpenForwardModal(contextMenu.message)}
-          >
-            <FiCornerUpRight className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Forward</span>
-          </button>
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-            onClick={() => {
-              setContextMenu(null);
-            }}
-          >
-            <FiCheckCircle className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Select</span>
-          </button>
+            {(contextMenu.message?.senderId === currentUserId ||
+              contextMenu.message?.sender?.id === currentUserId ||
+              contextMenu.message?.id_sender === currentUserId) && (
+              <button
+                className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+                onClick={() => {
+                  setEditingMessage(contextMenu.message);
+                  setDraftMessage(getMessageText(contextMenu.message));
+                  setContextMenu(null);
+                }}
+              >
+                <FiEdit2 className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Edit</span>
+              </button>
+            )}
+            <button
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+              onClick={() => {
+                setContextMenu(null);
+              }}
+            >
+              <FiCopy className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Copy</span>
+            </button>
+            <button
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+              onClick={() => {
+                setContextMenu(null);
+              }}
+            >
+              <div className="relative flex items-center text-[18px] w-[18px] h-[18px] justify-center font-bold">
+                <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">A</span>
+                <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">文</span>
+              </div>
+              <span className="font-medium">Translate</span>
+            </button>
+            <button
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+              onClick={() => {
+                setContextMenu(null);
+              }}
+            >
+              <FiMapPin className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Pin</span>
+            </button>
+            <button
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+              onClick={() => handleOpenForwardModal(contextMenu.message)}
+            >
+              <FiCornerUpRight className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Forward</span>
+            </button>
+            <button
+              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+              onClick={() => {
+                setContextMenu(null);
+              }}
+            >
+              <FiCheckCircle className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Select</span>
+            </button>
 
-          {(contextMenu.message?.senderId === currentUserId ||
-            contextMenu.message?.sender?.id === currentUserId ||
-            contextMenu.message?.id_sender === currentUserId) && (
+            {(contextMenu.message?.senderId === currentUserId ||
+              contextMenu.message?.sender?.id === currentUserId ||
+              contextMenu.message?.id_sender === currentUserId) && (
+              <button
+                className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
+                onClick={() => {
+                  if (onRevokeMessage && contextMenu.message) {
+                    onRevokeMessage(contextMenu.message);
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                <FiRotateCcw className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Recall</span>
+              </button>
+            )}
+
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
               onClick={() => {
-                if (onRevokeMessage && contextMenu.message) {
-                  onRevokeMessage(contextMenu.message);
+                if (onDeleteMessageForMe && contextMenu.message) {
+                  onDeleteMessageForMe(contextMenu.message);
                 }
                 setContextMenu(null);
               }}
             >
-              <FiRotateCcw className="text-[18px]" strokeWidth={2} />{" "}
-              <span className="font-medium">Recall</span>
+              <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
+              <span className="font-medium">Delete for me only</span>
             </button>
-          )}
-
-          <button
-            className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
-            onClick={() => {
-              if (onDeleteMessageForMe && contextMenu.message) {
-                onDeleteMessageForMe(contextMenu.message);
-              }
-              setContextMenu(null);
-            }}
-          >
-            <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Delete for me only</span>
-          </button>
+          </div>
         </div>
       )}
 
