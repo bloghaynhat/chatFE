@@ -6,29 +6,33 @@ export const QuotedMessageHeader = ({ message, messages = [], mine }) => {
   
   const [fetchedSenderName, setFetchedSenderName] = useState("");
 
+  const targetSenderId = message?.quotedMessage?.senderId || message?.quotedMessage?.id_sender;
+  const fallbackNameFromMsg = message?.quotedMessage?.sender?.name ||
+    message?.quotedMessage?.senderName ||
+    message?.quotedMessage?.sender?.displayName ||
+    message?.quotedMessage?.sender?.username;
+  const quotedMessageId = message?.quotedMessageId || message?.quotedMessage?.id || message?.quotedMessage?._id;
+
   useEffect(() => {
     if (!isQuoted) return;
 
-    let targetSenderId = message?.quotedMessage?.senderId || message?.quotedMessage?.id_sender;
-    let fallbackName = message?.quotedMessage?.sender?.name ||
-      message?.quotedMessage?.senderName ||
-      message?.quotedMessage?.sender?.displayName ||
-      message?.quotedMessage?.sender?.username;
+    let targetId = targetSenderId;
+    let fallbackName = fallbackNameFromMsg;
 
     // Nếu không có thông tin từ quotedMessage, fallback tìm trong mảng messages
-    if (!fallbackName && message?.quotedMessageId) {
-      const originalMessage = messages?.find(m => String(m.id || m._id) === String(message.quotedMessageId));
+    if (!fallbackName && quotedMessageId) {
+      const originalMessage = messages?.find(m => String(m.id || m._id) === String(quotedMessageId));
       if (originalMessage) {
         fallbackName = originalMessage.senderName || originalMessage.sender?.displayName || originalMessage.sender?.name;
-        targetSenderId = originalMessage.senderId || originalMessage.id_sender;
+        targetId = originalMessage.senderId || originalMessage.id_sender;
       }
     }
 
     if (fallbackName) {
       setFetchedSenderName(fallbackName);
-    } else if (targetSenderId) {
+    } else if (targetId) {
       // Fetch if we only have ID
-      userService.getUserById(targetSenderId)
+      userService.getUserById(targetId)
         .then((res) => {
           if (res) {
             setFetchedSenderName(res.displayName || res.fullName || res.lastName || res.name || "Unknown");
@@ -38,7 +42,7 @@ export const QuotedMessageHeader = ({ message, messages = [], mine }) => {
     } else {
       setFetchedSenderName("Unknown");
     }
-  }, [message, messages, isQuoted]);
+  }, [isQuoted, targetSenderId, fallbackNameFromMsg, quotedMessageId, messages]);
 
   if (!isQuoted) return null;
 
