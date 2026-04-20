@@ -83,6 +83,25 @@ export const ChatList = ({
     return () => cleanup();
   }, []);
 
+  // Handle group name/avatar updates
+  useEffect(() => {
+    const handleGroupRenamed = () => {
+      fetchChats(false);
+    };
+
+    const handleGroupAvatarChanged = () => {
+      fetchChats(false);
+    };
+
+    const cleanupRenamed = socketService.on("group:renamed", handleGroupRenamed);
+    const cleanupAvatar = socketService.on("group:avatar_changed", handleGroupAvatarChanged);
+
+    return () => {
+      if (cleanupRenamed) cleanupRenamed();
+      if (cleanupAvatar) cleanupAvatar();
+    };
+  }, [fetchChats]);
+
   // Reset unread count when chat is opened
   useEffect(() => {
     if (activeChatId) {

@@ -292,6 +292,35 @@ const MainLayout = ({ children }: { children?: any }) => {
           // Notify ChatList to refresh and remove the dissolved group
           window.dispatchEvent(new Event("chatList:refresh"));
         });
+
+        // Handle group renamed
+        const handleGroupRenamed = (payload: any) => {
+          const { conversationId, newName } = payload;
+          if (!conversationId || !newName) return;
+
+          if (String(conversationId) === String(selectedConversationId)) {
+            setSelectedChat((prev: any) => {
+              if (!prev) return prev;
+              return { ...prev, name: newName };
+            });
+          }
+        };
+
+        // Handle group avatar changed
+        const handleGroupAvatarChanged = (payload: any) => {
+          const { conversationId, avatarUrl } = payload;
+          if (!conversationId || !avatarUrl) return;
+
+          if (String(conversationId) === String(selectedConversationId)) {
+            setSelectedChat((prev: any) => {
+              if (!prev) return prev;
+              return { ...prev, avatarUrl };
+            });
+          }
+        };
+
+        socketService.onGroupRenamed(handleGroupRenamed);
+        socketService.onGroupAvatarChanged(handleGroupAvatarChanged);
       }
     });
 
@@ -304,6 +333,8 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offMessageReactionRemove();
       socketService.off("conversation:updated");
       socketService.offGroupDissolved();
+      socketService.offGroupRenamed();
+      socketService.offGroupAvatarChanged();
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);
