@@ -208,6 +208,30 @@ export const ActiveChatPane = ({
     setDragType(null);
   }, []);
 
+  useEffect(() => {
+    const handlePaste = (e: any) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        onDrop(files, [], e);
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => {
+      document.removeEventListener("paste", handlePaste);
+    };
+  }, [onDrop]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'image/jpeg': [],
