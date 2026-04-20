@@ -298,31 +298,47 @@ const MainLayout = ({ children }: { children?: any }) => {
         });
 
         // Handle message pin
-        socketService.on("message:pinned", (payload: PinMessagePayload) => {
-          const { messageId, pinnedAt, pinnedBy } = payload;
-          if (!messageId) return;
+        socketService.onMessagePinned((payload: any) => {
+          const { conversationId, message } = payload;
+          if (!message) return;
+          const msgId = message.id || message._id;
 
-          setMessages((prev) =>
-            prev.map((m) =>
-              String(m._id || m.id) === String(messageId)
-                ? { ...m, pinnedAt, pinnedBy }
+          setMessages((prev) => {
+            // Only update if it belongs to currently open conversation
+            let msgConvId = conversationId || message.conversationId;
+            if (msgConvId && typeof msgConvId === "object") {
+              msgConvId = msgConvId._id || msgConvId.id;
+            }
+            if (String(msgConvId) !== String(selectedConversationId)) return prev;
+
+            return prev.map((m) =>
+              String(m._id || m.id) === String(msgId)
+                ? { ...m, ...message, pinnedAt: message.pinnedAt || new Date().toISOString() }
                 : m
             )
-          );
+          });
         });
 
         // Handle message unpin
-        socketService.on("message:unpinned", (payload: UnpinMessagePayload) => {
-          const { messageId } = payload;
-          if (!messageId) return;
+        socketService.onMessageUnpinned((payload: any) => {
+          const { conversationId, message } = payload;
+          if (!message) return;
+          const msgId = message.id || message._id;
 
-          setMessages((prev) =>
-            prev.map((m) =>
-              String(m._id || m.id) === String(messageId)
-                ? { ...m, pinnedAt: undefined, pinnedBy: undefined }
+          setMessages((prev) => {
+            // Only update if it belongs to currently open conversation
+            let msgConvId = conversationId || message.conversationId;
+            if (msgConvId && typeof msgConvId === "object") {
+              msgConvId = msgConvId._id || msgConvId.id;
+            }
+            if (String(msgConvId) !== String(selectedConversationId)) return prev;
+
+            return prev.map((m) =>
+              String(m._id || m.id) === String(msgId)
+                ? { ...m, ...message, pinnedAt: undefined, pinnedBy: undefined }
                 : m
             )
-          );
+          });
         });
 
         socketService.on("conversation:updated", (payload: any) => {
@@ -942,12 +958,12 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
 
     try {
-      const res: any = await conversationService.pinMessage(messageId);
-      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+      const res: any = await socketService.pinMessage(messageId);
+      if (res && (res.success || res.status === 200 || res.statusText === "OK" || res.status === "success")) {
         console.log("[Pin] Success:", { conversationId: selectedConversationId, messageId });
         // Server will broadcast back to other clients, but we already updated optimistically
       } else {
-        throw new Error(res?.error || res?.message || "Pin failed");
+        throw new Error(res?.error || res?.msg || res?.message || "Pin failed");
       }
     } catch (error) {
       // Rollback on error
@@ -997,12 +1013,12 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
 
     try {
-      const res: any = await conversationService.unpinMessage(messageId);
-      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+      const res: any = await socketService.unpinMessage(messageId);
+      if (res && (res.success || res.status === 200 || res.statusText === "OK" || res.status === "success")) {
         console.log("[Unpin] Success:", { conversationId: selectedConversationId, messageId });
         // Server will broadcast back to other clients, but we already updated optimistically
       } else {
-        throw new Error(res?.error || res?.message || "Unpin failed");
+        throw new Error(res?.error || res?.msg || res?.message || "Unpin failed");
       }
     } catch (error) {
       // Rollback on error - restore original pinned state
