@@ -209,6 +209,18 @@ export const ActiveChatPane = ({
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: {
+      'image/jpeg': [],
+      'image/png': [],
+      'image/gif': [],
+      'image/webp': [],
+      'video/mp4': [],
+      'video/mpeg': [],
+      'video/quicktime': [],
+      'audio/mpeg': [],
+      'audio/wav': [],
+      'application/pdf': []
+    },
     onDrop,
     noClick: true,
     noKeyboard: true,
@@ -528,7 +540,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,audio/mpeg,audio/wav,audio/aac,audio/ogg,audio/flac,audio/mp3"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,audio/mpeg,audio/wav"
         ref={photoVideoInputRef}
         style={{ display: "none" }}
         onChange={(e: any) => {
@@ -541,7 +553,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
-        accept=".pdf,application/pdf"
+        accept="application/pdf"
         ref={documentInputRef}
         style={{ display: "none" }}
         onChange={(e: any) => {
@@ -699,6 +711,7 @@ export const ActiveChatPane = ({
         messagesEndRef={messagesEndRef}
         handleContextMenu={handleContextMenu}
         setPreviewVideoUrl={setPreviewVideoUrl}
+        onNavigateToMessage={handleNavigateToMessage}
       />
 
       {contextMenu && (

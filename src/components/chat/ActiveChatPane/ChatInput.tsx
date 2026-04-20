@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import userService from "../../../services/userService";
 import {
   FiMessageCircle,
@@ -67,6 +67,39 @@ export const ChatInput = ({
     }
   }, [replyingMessage, currentUserId]);
 
+  const getPreviewText = (msg: any) => {
+    if (!msg) return "";
+    const text = (msg.text || msg.content || "").trim();
+    const msgType = typeof msg.type === 'string' ? msg.type.toLowerCase() : "";
+    
+    const isImage = msgType.includes("image") || msg.imageUrl || msg.type === 'IMAGE';
+    const isVideo = msgType.includes("video") || msg.videoUrl || msg.type === 'VIDEO';
+    const isAudio = msgType.includes("audio") || msg.type === 'AUDIO';
+    const isDoc = msgType === "document" || msgType === "file" || msg.type === 'DOCUMENT';
+    
+    const files = msg.files || msg.media || msg.mediaItems || [];
+    let mediaLabel = "";
+    
+    if (isImage) mediaLabel = "Photos";
+    else if (isVideo) mediaLabel = "Video";
+    else if (isAudio) mediaLabel = "Voice Message";
+    else if (isDoc) mediaLabel = "Documents";
+    else if (files && files.length > 0) {
+      const firstFile = files[0];
+      const type = typeof firstFile === 'string' ? "image" : (firstFile.type || firstFile.mimetype || "");
+      const url = typeof firstFile === 'string' ? firstFile : (firstFile.url || "");
+      if (type.toLowerCase().includes("image") || url.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i)) mediaLabel = "Photos";
+      else if (type.toLowerCase().includes("video") || url.match(/\.(mp4|mpeg|webm|ogg|mov)$/i)) mediaLabel = "Video";
+      else if (type.toLowerCase().includes("audio") || url.match(/\.(mp3|wav|ogg|m4a|aac)$/i)) mediaLabel = "Voice Message";
+      else mediaLabel = "Documents";
+    }
+
+    if (mediaLabel) {
+      return text ? `${mediaLabel}, ${text}` : mediaLabel;
+    }
+    return text || "Attachments";
+  };
+
   return (
     <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
       {(forwardingMessage || editingMessage || replyingMessage) && (
@@ -96,16 +129,12 @@ export const ChatInput = ({
                 </span>
               )}
               {editingMessage
-                ? editingMessage.media?.length
-                  ? `Photo${editingMessage.text ? `, ${editingMessage.text}` : ""}`
-                  : editingMessage.text
+                ? getPreviewText(editingMessage)
                 : replyingMessage
-                  ? replyingMessage.media?.length || replyingMessage.mediaItems?.length
-                    ? `Photo${replyingMessage.text ? `, ${replyingMessage.text}` : ""}`
-                    : replyingMessage.text
-                  : forwardingMessage?.media?.length
-                    ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
-                    : forwardingMessage?.text}
+                  ? getPreviewText(replyingMessage)
+                  : forwardingMessage
+                    ? getPreviewText(forwardingMessage)
+                    : ""}
             </p>
           </div>
           <button

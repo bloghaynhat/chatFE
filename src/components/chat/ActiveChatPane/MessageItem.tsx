@@ -27,7 +27,8 @@ export const MessageItem = ({
   handleContextMenu,
   setPreviewVideoUrl,
   currentUserId,
-}) => {
+  onNavigateToMessage,
+}: any) => {
   const [fetchedSender, setFetchedSender] = useState(null);
   const [reactionView, setReactionView] = useState(null);
 
@@ -245,7 +246,7 @@ export const MessageItem = ({
           </span>
         )}
         {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
-        <QuotedMessageHeader message={message} messages={messages} mine={mine} currentUserId={currentUserId} />
+        <QuotedMessageHeader message={message} messages={messages} mine={mine} currentUserId={currentUserId} onNavigateToMessage={onNavigateToMessage} />
 
         {isMedia && (
           <MessageMedia

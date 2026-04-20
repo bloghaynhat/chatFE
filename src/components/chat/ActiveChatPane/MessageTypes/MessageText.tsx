@@ -1,7 +1,31 @@
+import React, { Fragment } from "react";
 import { FiCheck, FiEye } from "react-icons/fi";
 import { getMessageTime } from "../../../../utils/chatUtils";
 import { AnimatedEmojiMessage, JUMBO_EMOJI_ASSETS } from "./AnimatedEmojiMessage";
 
+const renderTextWithLinks = (text) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:opacity-80 transition-opacity break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <Fragment key={i}>{part}</Fragment>;
+  });
+};
 export const MessageText = ({ message, text, mine, isSeen }) => {
   const hasReactions = message?.reactions && message.reactions.length > 0;
 
@@ -19,7 +43,7 @@ export const MessageText = ({ message, text, mine, isSeen }) => {
           <AnimatedEmojiMessage emoji={trimmedText} isNew={isNewMsg} isMine={mine} />
         ) : (
           <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.3] pb-[8px]">
-            {text}
+            {renderTextWithLinks(text)}
             {!hasReactions && <span className="inline-block w-[60px] h-[8px]" aria-hidden="true" />}
           </p>
         ))}

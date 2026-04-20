@@ -1,14 +1,15 @@
-export const MessageAudio = ({ audios, mine, hasText }) => {
+export const MessageAudio = ({ audios, mine }) => {
   return (
-    <div className={`p-2 flex flex-col gap-2 pb-2`}>
+    <div className={`p-2 flex flex-col gap-2 pb-3 min-w-[260px] md:min-w-[320px]`}>
       {audios.map((aud, i) => {
         const audUrl = aud.url || aud.preview || (typeof aud === "string" ? aud : "");
         return (
-          <div key={i} className="flex flex-col gap-1 w-full max-w-[240px] md:max-w-[280px]">
+          <div key={i} className="w-full">
             <audio
               controls
               src={audUrl}
-              className={`w-full h-10 outline-none ${mine ? "" : "filter brightness-90 dark:brightness-100"}`}
+              className={`w-full h-[44px] outline-none rounded-full overflow-hidden ${mine ? "" : "filter shadow-sm"}`}
+              style={{ backgroundColor: mine ? "transparent" : "#f1f5f9" }}
             />
           </div>
         );
