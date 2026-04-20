@@ -261,17 +261,13 @@ const MainLayout = ({ children }: { children?: any }) => {
         });
 
         socketService.on("conversation:updated", (payload: any) => {
-          const { conversationId, data } = payload;
-          if (!conversationId || !data) return;
+          const { conversationId, updates } = payload;
+          if (!conversationId || !updates) return;
 
           if (String(conversationId) === String(selectedConversationId)) {
             setSelectedChat((prev: any) => {
               if (!prev) return prev;
-              return {
-                ...prev,
-                name: data.name ?? prev.name,
-                avatarUrl: data.avatarUrl ?? prev.avatarUrl,
-              };
+              return { ...prev, ...updates };
             });
           }
         });
@@ -441,6 +437,26 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
 
         setSelectedConversationId(conversationId);
+
+        // Nếu là group chat, fetch thông tin nhóm mới nhất và update selectedChat
+        const isGroupChat = processedChat.type === 'group' || processedChat.type === 'GROUP';
+        if (isGroupChat) {
+          try {
+            const infoResult: any = await conversationService.getGroupInfo(conversationId);
+            const infoData = infoResult?.data || infoResult;
+            const groupData = infoData?.conversation || infoData;
+            if (groupData) {
+              setSelectedChat((prev: any) => ({
+                ...prev,
+                name: groupData.name ?? prev.name,
+                avatarUrl: groupData.avatarUrl ?? prev.avatarUrl,
+                membersCount: groupData.membersCount ?? prev.membersCount,
+              }));
+            }
+          } catch (e) {
+            console.warn('Failed to fetch group info on open', e);
+          }
+        }
 
         const messageResult = await conversationService.getConversationMessages(conversationId);
 
