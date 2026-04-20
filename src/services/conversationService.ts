@@ -182,4 +182,14 @@ export const conversationService = {
     const response: any = await api.post(`/messages/forward`, data);
     return response.data || response;
   },
+
+  async getConversationMedia(conversationId: string, params: { limit?: number; cursor?: string } = {}) {
+    const response: any = await api.get(`/conversations/${conversationId}/media`, {
+      params: {
+        limit: params.limit || 50,
+        ...(params.cursor && { cursor: params.cursor }),
+      },
+    });
+    return response.data || response;
+  },
 };

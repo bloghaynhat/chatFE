@@ -7,7 +7,15 @@ import { RightSidebarAddMember } from "./RightSideBar/RightSidebarAddMember";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
 
-export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onGroupUpdated }: any) => {
+export const RightSidebar = ({
+  isOpen,
+  selectedChat,
+  onClose,
+  currentUserId,
+  onGroupUpdated,
+  onShowInChat,
+  messages,
+}: any) => {
   const [members, setMembers] = useState<any[]>([]);
   const [info, setInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,19 +79,21 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     };
 
     fetchData();
-    
+
     const handleMemberRemoved = (data: any) => {
       if (data.conversationId === selectedChat?.id) {
         setMembers((prev) => prev.filter((m: any) => (m.userId || m.user?.id || m.user?._id) !== data.removedUserId));
       }
     };
-    
+
     const handleMembersAdded = async (data: any) => {
       if (data.conversationId === selectedChat?.id) {
         try {
           const membersData = await conversationService.getGroupMembers(selectedChat.id);
-          const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
-          
+          const rawMembersList = Array.isArray(membersData)
+            ? membersData
+            : membersData?.members || membersData?.data || [];
+
           const enrichedMembers = await Promise.all(
             rawMembersList.map(async (m: any) => {
               const participant = m.user || m;
@@ -95,7 +105,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
               } catch (err) {
                 return m;
               }
-            })
+            }),
           );
           setMembers(enrichedMembers);
         } catch (err) {
@@ -112,7 +122,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
         try {
           // Refresh members to get updated roles
           const membersData = await conversationService.getGroupMembers(selectedChat.id);
-          const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
+          const rawMembersList = Array.isArray(membersData)
+            ? membersData
+            : membersData?.members || membersData?.data || [];
 
           const enrichedMembers = await Promise.all(
             rawMembersList.map(async (m: any) => {
@@ -125,7 +137,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
               } catch (err) {
                 return m;
               }
-            })
+            }),
           );
           setMembers(enrichedMembers);
         } catch (err) {
@@ -179,13 +191,25 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
 
   const groupAvatar = selectedChat?.avatarUrl || info?.conversation?.avatarUrl || info?.avatarUrl;
   const groupName = selectedChat?.name || info?.conversation?.name || info?.name || "Group";
-  const membersCount = info?.memberCount || info?.membersCount || info?.members?.length || members.length || selectedChat?.members?.length || 0;
-  
-  const adminCount = members.length > 0 
-    ? members.filter((m: any) => m.role === 'admin' || m.role === 'owner' || m.role === 'ADMIN' || m.role === 'OWNER').length 
-    : (info?.adminIds?.length ? info.adminIds.length + (info?.ownerId ? 1 : 0) : 1);
+  const membersCount =
+    info?.memberCount ||
+    info?.membersCount ||
+    info?.members?.length ||
+    members.length ||
+    selectedChat?.members?.length ||
+    0;
 
-  const currentUserMember = members.find((m: any) => m.userId === currentUserId || m.user?.id === currentUserId || m.id === currentUserId);
+  const adminCount =
+    members.length > 0
+      ? members.filter((m: any) => m.role === "admin" || m.role === "owner" || m.role === "ADMIN" || m.role === "OWNER")
+          .length
+      : info?.adminIds?.length
+        ? info.adminIds.length + (info?.ownerId ? 1 : 0)
+        : 1;
+
+  const currentUserMember = members.find(
+    (m: any) => m.userId === currentUserId || m.user?.id === currentUserId || m.id === currentUserId,
+  );
   const currentUserRole = currentUserMember?.role || "member";
   const canEditGroup = currentUserRole === "admin";
 
@@ -253,19 +277,17 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     }
   };
 
-
-
   const handleAddMembers = async (memberIds: string[]) => {
     try {
       setIsLoading(true);
       await conversationService.addGroupMembers(selectedChat.id, memberIds);
-      
+
       // Emit socket over to the added users
       socketService.notifyAddMembers(selectedChat.id, memberIds);
 
       const membersData = await conversationService.getGroupMembers(selectedChat.id);
-      const rawMembersList = Array.isArray(membersData) ? membersData : (membersData?.members || membersData?.data || []);
-      
+      const rawMembersList = Array.isArray(membersData) ? membersData : membersData?.members || membersData?.data || [];
+
       const enrichedMembers = await Promise.all(
         rawMembersList.map(async (m: any) => {
           const participant = m.user || m;
@@ -277,7 +299,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
           } catch (err) {
             return m;
           }
-        })
+        }),
       );
       setMembers(enrichedMembers);
       setActiveSubView("members");
@@ -292,7 +314,7 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     try {
       setIsLoading(true);
       await conversationService.removeGroupMember(selectedChat.id, userId);
-      
+
       socketService.notifyRemoveMember(selectedChat.id, userId);
 
       setMembers((prev) => prev.filter((m: any) => (m.userId || m.user?.id || m.user?._id) !== userId));
@@ -314,12 +336,14 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
     try {
       setIsLoading(true);
       await conversationService.setGroupAdmin(selectedChat.id, userId, true);
-      setMembers((prev) => prev.map((m: any) => {
-        if ((m.userId || m.user?.id || m.user?._id) === userId) {
-          return { ...m, role: "admin" };
-        }
-        return m;
-      }));
+      setMembers((prev) =>
+        prev.map((m: any) => {
+          if ((m.userId || m.user?.id || m.user?._id) === userId) {
+            return { ...m, role: "admin" };
+          }
+          return m;
+        }),
+      );
 
       if (socketService.messagesSocket?.connected) {
         socketService.messagesSocket.emit("conversation:updated", {
@@ -432,12 +456,21 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
         isOpen ? "w-[320px] lg:w-[350px] border-l opacity-100" : "w-0 border-l-0 opacity-0"
       }`}
     >
-      <div className={`w-[320px] lg:w-[350px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}>
-        <div 
+      <div
+        className={`w-[320px] lg:w-[350px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}
+      >
+        <div
           className="flex h-full shrink-0 transition-transform duration-300 ease-in-out"
-          style={{ 
-            width: "400%", 
-            transform: activeSubView === "addMember" ? "translateX(-75%)" : activeSubView !== "none" ? "translateX(-50%)" : isEditing ? "translateX(-25%)" : "translateX(0)" 
+          style={{
+            width: "400%",
+            transform:
+              activeSubView === "addMember"
+                ? "translateX(-75%)"
+                : activeSubView !== "none"
+                  ? "translateX(-50%)"
+                  : isEditing
+                    ? "translateX(-25%)"
+                    : "translateX(0)",
           }}
         >
           <RightSidebarInfo
@@ -458,6 +491,15 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
             onPromoteAdmin={handlePromoteAdmin}
             onLeaveGroup={handleLeaveGroup}
             targetUserId={!isGroup ? selectedChat?.targetUserId || selectedChat?.participantId : null}
+            conversationId={selectedChat?.id}
+            onShowInChat={
+              onShowInChat &&
+              ((mediaUrl) => {
+                onShowInChat(mediaUrl);
+                onClose();
+              })
+            }
+            messages={messages}
           />
 
           <RightSidebarEdit
@@ -473,12 +515,12 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
             currentUserRole={currentUserRole}
             onClose={() => setIsEditing(false)}
             onSave={handleSaveGroupInfo}
-            onMembersClick={() => setActiveSubView('members')}
-            onAdminsClick={() => setActiveSubView('admins')}
+            onMembersClick={() => setActiveSubView("members")}
+            onAdminsClick={() => setActiveSubView("admins")}
             onDeleteGroupClick={() => setIsDeleteModalOpen(true)}
           />
 
-          <RightSidebarMembers 
+          <RightSidebarMembers
             type={activeSubView === "none" || activeSubView === "addMember" ? "members" : activeSubView}
             members={members}
             onClose={() => setActiveSubView("none")}

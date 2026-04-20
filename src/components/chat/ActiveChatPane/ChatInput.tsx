@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import userService from "../../../services/userService";
 import {
   FiMessageCircle,
@@ -19,13 +19,9 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 
-const frequentEmojis = [
-  "😂", "😘", "❤️", "😍", "😊", "😁", "👍", "😌",
-  "😔", "😄", "😭", "💋", "😒", "😳", "😜", "🙈",
-  "😉", "😀", "😥", "😝", "😱", "😡", "😏", "😞",
-  "😅", "😚", "🙊", "🤤", "😃", "😋", "😆", "👌",
-];
+// frequentEmojis removed
 
 export const ChatInput = ({
   draftMessage,
@@ -56,15 +52,18 @@ export const ChatInput = ({
       if (!replyingMessage.sender?.name && !replyingMessage.senderName && !replyingMessage.sender?.displayName) {
         const senderId = replyingMessage.senderId || replyingMessage.id_sender;
         if (senderId && senderId !== currentUserId) {
-          userService.getUserById(senderId).then(res => {
-            if (res) {
-              setFetchedReplyingSender(res);
-            }
-          }).catch(err => console.error("Error fetching sender info:", err));
+          userService
+            .getUserById(senderId)
+            .then((res) => {
+              if (res) {
+                setFetchedReplyingSender(res);
+              }
+            })
+            .catch((err) => console.error("Error fetching sender info:", err));
         }
       }
     } else {
-       setFetchedReplyingSender(null);
+      setFetchedReplyingSender(null);
     }
   }, [replyingMessage, currentUserId]);
 
@@ -82,15 +81,17 @@ export const ChatInput = ({
                 <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
               )}
               <span className="text-[14.5px] tracking-tight">
-                {editingMessage ? "Editing" : replyingMessage ? `Reply to ${replyingMessage?.senderId === currentUserId ? "You" : (fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || "Unknown")}` : "Forward Message"}
+                {editingMessage
+                  ? "Editing"
+                  : replyingMessage
+                    ? `Reply to ${replyingMessage?.senderId === currentUserId ? "You" : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || "Unknown"}`
+                    : "Forward Message"}
               </span>
             </span>
             <p className="text-[13.5px] text-gray-500/90 dark:text-gray-400 truncate leading-none flex gap-1 items-center pb-0.5">
               {editingMessage || replyingMessage ? null : (
                 <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {forwardingMessage?.senderId === currentUserId
-                    ? "You"
-                    : forwardingMessage?.sender?.name || "Someone"}
+                  {forwardingMessage?.senderId === currentUserId ? "You" : forwardingMessage?.sender?.name || "Someone"}
                   :
                 </span>
               )}
@@ -108,7 +109,7 @@ export const ChatInput = ({
             </p>
           </div>
           <button
-             onClick={() => {
+            onClick={() => {
               if (editingMessage) {
                 setEditingMessage(null);
                 setDraftMessage("");
@@ -122,11 +123,7 @@ export const ChatInput = ({
             }}
             className="absolute right-3 text-gray-400 hover:text-[#2ea6f3] transition-colors p-[8px]"
           >
-            <FiX
-              className="text-[#3e3e3e]"
-              strokeWidth={1}
-              style={{ fontSize: "22px" }}
-            />
+            <FiX className="text-[#3e3e3e]" strokeWidth={1} style={{ fontSize: "22px" }} />
           </button>
           <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-[#2ea6f3] rounded-[5px]"></div>
         </div>
@@ -154,9 +151,7 @@ export const ChatInput = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none text-gray-900 dark:text-gray-100 hover:bg-white/75 dark:hover:bg-slate-700/80 transition"
                 >
                   <ActionIcon className="text-[18px] shrink-0" />
-                  <span className="font-semibold tracking-tight">
-                    {action.label}
-                  </span>
+                  <span className="font-semibold tracking-tight">{action.label}</span>
                 </button>
               );
             })}
@@ -164,68 +159,15 @@ export const ChatInput = ({
 
           <div
             ref={emojiMenuRef}
-            className={`absolute left-0 bottom-14 w-[min(460px,88vw)] max-w-[88vw] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-2xl border border-white/70 dark:border-slate-700 z-50 overflow-hidden origin-bottom-left will-change-transform transition-all duration-200 ease-out ${isEmojiPickerOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
+            className={`absolute left-0 bottom-14 z-50 origin-bottom-left will-change-transform transition-all duration-200 ease-out ${isEmojiPickerOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
             aria-hidden={!isEmojiPickerOpen}
           >
-            <div className="px-4 py-2.5 border-b border-gray-200/80 dark:border-slate-700 flex items-center gap-3 text-gray-600 dark:text-gray-300">
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-white/80 dark:bg-slate-700/80">
-                <FiClock className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/60 dark:hover:bg-slate-700/60 transition">
-                <FiSmile className="text-lg" />
-              </button>
-            </div>
-
-            <div className="px-4 py-2.5 border-b border-gray-200/80 dark:border-slate-700">
-              <div className="h-10 rounded-xl bg-white/70 dark:bg-slate-700/70 flex items-center gap-2.5 px-3 text-gray-500 dark:text-gray-300">
-                <FiSearch className="text-base" />
-                <span className="text-sm font-medium text-gray-400 dark:text-gray-400">
-                  Search Emoji
-                </span>
-                <div className="ml-auto flex items-center gap-2 text-gray-400 dark:text-gray-400">
-                  <FiHeart className="text-base" />
-                  <FiThumbsUp className="text-base" />
-                  <FiThumbsDown className="text-base" />
-                  <FiZap className="text-base" />
-                  <FiSmile className="text-base" />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-4 py-3">
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2.5">
-                Frequently Used
-              </p>
-
-              <div className="grid grid-cols-8 gap-1 pb-1">
-                {frequentEmojis.map((emoji, index) => (
-                  <button
-                    key={index}
-                    onClick={() =>
-                      setDraftMessage((prev) => `${prev}${emoji}`)
-                    }
-                    className="h-10 w-10 rounded-lg inline-flex items-center justify-center text-2xl hover:bg-white/70 dark:hover:bg-slate-700/70 transition"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="px-4 py-2.5 border-t border-gray-200/80 dark:border-slate-700 flex items-center justify-around text-gray-500 dark:text-gray-300">
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-white/80 dark:bg-slate-700/80">
-                <FiSmile className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/70 dark:hover:bg-slate-700/70 transition">
-                <FiMessageCircle className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/70 dark:hover:bg-slate-700/70 transition">
-                <FiFilm className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/70 dark:hover:bg-slate-700/70 transition">
-                <FiDelete className="text-lg" />
-              </button>
-            </div>
+            <EmojiPicker
+              onEmojiClick={(emojiData) => setDraftMessage((prev) => `${prev}${emojiData.emoji}`)}
+              theme={Theme.AUTO}
+              width={350}
+              height={400}
+            />
           </div>
 
           <button

@@ -1017,6 +1017,53 @@ const MainLayout = ({ children }: { children?: any }) => {
       throw error;
     } finally {
       pendingPinOperations.current.delete(operationKey);
+  const handleShowInChat = (mediaUrl: string) => {
+    // Search for the actual message that contains this media
+    console.log("🔍 Searching for message containing media URL:", mediaUrl);
+
+    const foundMessage = messages.find((msg) => {
+      if (!msg.media || !Array.isArray(msg.media)) return false;
+      return msg.media.some((m: any) => m.url === mediaUrl || m.preview === mediaUrl);
+    });
+
+    if (!foundMessage) {
+      console.warn("❌ Message containing this media not found");
+      return;
+    }
+
+    const messageId = foundMessage.id || foundMessage._id;
+    console.log("✅ Found message ID:", messageId);
+
+    // Try to find and scroll to the message element
+    const findAndScrollToMessage = () => {
+      const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+      console.log("📍 Found element:", messageElement);
+
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Highlight the message temporarily
+        messageElement.classList.add("bg-yellow-100", "dark:bg-yellow-900/30");
+        console.log("✅ Message highlighted and scrolled");
+        setTimeout(() => {
+          messageElement.classList.remove("bg-yellow-100", "dark:bg-yellow-900/30");
+        }, 2000);
+        return true;
+      }
+      return false;
+    };
+
+    // First attempt
+    if (findAndScrollToMessage()) return;
+
+    // If message element not found (may be outside viewport), scroll chat to top and retry
+    console.warn("⚠️ Message element not found, trying to scroll chat to top...");
+    const chatContainer = document.querySelector("[data-chat-container]");
+    if (chatContainer) {
+      chatContainer.scrollTop = 0;
+      // Wait for messages to render, then retry
+      setTimeout(() => {
+        findAndScrollToMessage();
+      }, 300);
     }
   };
 
@@ -1066,6 +1113,8 @@ const MainLayout = ({ children }: { children?: any }) => {
           onGroupUpdated={(newInfo: any) => {
             setSelectedChat((prev: any) => (prev ? { ...prev, ...newInfo } : prev));
           }}
+          onShowInChat={handleShowInChat}
+          messages={messages}
         />
       </div>
     </div>
