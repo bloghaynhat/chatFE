@@ -71,6 +71,12 @@ export const RightSidebarInfo = ({
 
   // Fetch user details for non-group view
   useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     const fetchUserDetails = async () => {
       if (isGroup || !targetUserId) return;
       try {
