@@ -110,18 +110,24 @@ export const PinnedBar: React.FC<PinnedBarProps> = ({
       <div className="flex items-center gap-3">
         {/* Progress Indicators (Instagram Stories style) */}
         <div className="flex gap-1.5 shrink-0">
-          {pinnedMessages.map((_, idx) => (
-            <div
-              key={idx}
-              className={`h-1 rounded-full transition-all duration-300 ${
-                idx === currentIndex
-                  ? "bg-blue-500 dark:bg-blue-400 w-6"
-                  : idx < currentIndex
-                  ? "bg-blue-300 dark:bg-blue-600/50 w-4"
-                  : "bg-gray-300 dark:bg-slate-600 w-4"
-              }`}
-            />
-          ))}
+          {Array.from({ length: Math.min(totalPinned, 3) }).map((_, idx) => {
+            const activeDotIndex = totalPinned <= 3 ? currentIndex : currentIndex % 3;
+            const isActive = idx === activeDotIndex;
+            const isBefore = idx < activeDotIndex;
+
+            return (
+              <div
+                key={idx}
+                className={`h-1 rounded-full transition-all duration-300 ${
+                  isActive
+                    ? "bg-blue-500 dark:bg-blue-400 w-6"
+                    : isBefore
+                    ? "bg-blue-300 dark:bg-blue-600/50 w-4"
+                    : "bg-gray-300 dark:bg-slate-600 w-4"
+                }`}
+              />
+            );
+          })}
         </div>
 
         {/* Preview Content */}

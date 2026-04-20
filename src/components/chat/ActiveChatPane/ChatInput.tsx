@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import userService from "../../../services/userService";
 import {
   FiMessageCircle,
@@ -18,6 +18,8 @@ import {
   FiEdit2,
   FiX,
   FiSearch,
+  FiType,
+  FiTrash2,
 } from "react-icons/fi";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 
@@ -44,6 +46,7 @@ export const ChatInput = ({
   forwardingMessage,
   onClearForwarding,
   currentUserId,
+  handleSendVoice,
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
 
@@ -66,6 +69,154 @@ export const ChatInput = ({
       setFetchedReplyingSender(null);
     }
   }, [replyingMessage, currentUserId]);
+
+  const [isVoiceMenuOpen, setIsVoiceMenuOpen] = useState(false);
+  const voiceMenuRef = useRef<HTMLDivElement>(null);
+
+  const [isListeningText, setIsListeningText] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<any>(null);
+  const audioChunksRef = useRef<any[]>([]);
+  const recordIntervalRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isVoiceMenuOpen) return;
+    const handleOutsideClick = (e: any) => {
+      if (voiceMenuRef.current && !voiceMenuRef.current.contains(e.target)) {
+        setIsVoiceMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isVoiceMenuOpen]);
+
+  const toggleVoiceToText = () => {
+    setIsVoiceMenuOpen(false);
+    if (isListeningText) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListeningText(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói!");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'vi-VN';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+         setDraftMessage((prev: string) => prev + (prev ? " " : "") + finalTranscript);
+      }
+    };
+    
+    recognition.onerror = (e: any) => console.error(e);
+    recognition.onend = () => setIsListeningText(false);
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsListeningText(true);
+  };
+
+  const startVoiceRecording = async () => {
+    setIsVoiceMenuOpen(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        if (!mediaRecorderRef.current?.cancelRecording) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mpeg' });
+          const file = new File([audioBlob], `voice_message_${Date.now()}.mp3`, { type: 'audio/mpeg' });
+          if (handleSendVoice) handleSendVoice(file);
+        }
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecordingAudio(true);
+      setRecordingTime(0);
+      recordIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      alert("Không thể truy cập Microphone");
+    }
+  };
+
+  const stopVoiceRecording = (cancel = false) => {
+    if (mediaRecorderRef.current && isRecordingAudio) {
+      if (cancel) {
+        mediaRecorderRef.current.cancelRecording = true;
+      } else {
+        mediaRecorderRef.current.cancelRecording = false;
+      }
+      mediaRecorderRef.current.stop();
+      setIsRecordingAudio(false);
+      clearInterval(recordIntervalRef.current);
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const getPreviewText = (msg: any) => {
+    if (!msg) return "";
+    const text = (msg.text || msg.content || "").trim();
+    const msgType = typeof msg.type === 'string' ? msg.type.toLowerCase() : "";
+    
+    const isImage = msgType.includes("image") || msg.imageUrl || msg.type === 'IMAGE';
+    const isVideo = msgType.includes("video") || msg.videoUrl || msg.type === 'VIDEO';
+    const isAudio = msgType.includes("audio") || msg.type === 'AUDIO';
+    const isDoc = msgType === "document" || msgType === "file" || msg.type === 'DOCUMENT';
+    
+    const files = msg.files || msg.media || msg.mediaItems || [];
+    let mediaLabel = "";
+    
+    if (isImage) mediaLabel = "Photos";
+    else if (isVideo) mediaLabel = "Video";
+    else if (isAudio) mediaLabel = "Voice Message";
+    else if (isDoc) mediaLabel = "Documents";
+    else if (files && files.length > 0) {
+      const firstFile = files[0];
+      const type = typeof firstFile === 'string' ? "image" : (firstFile.type || firstFile.mimetype || "");
+      const url = typeof firstFile === 'string' ? firstFile : (firstFile.url || "");
+      if (type.toLowerCase().includes("image") || url.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i)) mediaLabel = "Photos";
+      else if (type.toLowerCase().includes("video") || url.match(/\.(mp4|mpeg|webm|ogg|mov)$/i)) mediaLabel = "Video";
+      else if (type.toLowerCase().includes("audio") || url.match(/\.(mp3|wav|ogg|m4a|aac)$/i)) mediaLabel = "Voice Message";
+      else mediaLabel = "Documents";
+    }
+
+    if (mediaLabel) {
+      return text ? `${mediaLabel}, ${text}` : mediaLabel;
+    }
+    return text || "Attachments";
+  };
 
   return (
     <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
@@ -96,16 +247,12 @@ export const ChatInput = ({
                 </span>
               )}
               {editingMessage
-                ? editingMessage.media?.length
-                  ? `Photo${editingMessage.text ? `, ${editingMessage.text}` : ""}`
-                  : editingMessage.text
+                ? getPreviewText(editingMessage)
                 : replyingMessage
-                  ? replyingMessage.media?.length || replyingMessage.mediaItems?.length
-                    ? `Photo${replyingMessage.text ? `, ${replyingMessage.text}` : ""}`
-                    : replyingMessage.text
-                  : forwardingMessage?.media?.length
-                    ? `Photo${forwardingMessage.text ? `, ${forwardingMessage.text}` : ""}`
-                    : forwardingMessage?.text}
+                  ? getPreviewText(replyingMessage)
+                  : forwardingMessage
+                    ? getPreviewText(forwardingMessage)
+                    : ""}
             </p>
           </div>
           <button
@@ -131,9 +278,33 @@ export const ChatInput = ({
       <div
         className={`flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40 relative" : ""}`}
       >
+        {isRecordingAudio ? (
+          <div className="relative flex-1 h-11 lg:h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-between px-4 border border-red-500/20 shadow-lg">
+            <div className="flex items-center gap-3 text-red-500">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+              <span className="font-semibold text-[15px]">{formatRecordingTime(recordingTime)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => stopVoiceRecording(true)}
+                className="h-8 w-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-white/50 hover:text-red-500 dark:hover:bg-slate-700/50 transition-colors"
+                title="Hủy ghi âm"
+              >
+                <FiTrash2 className="text-xl" />
+              </button>
+              <button 
+                onClick={() => stopVoiceRecording(false)}
+                className="h-8 w-8 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
+                title="Gửi voice"
+              >
+                <FiSend className="text-lg" />
+              </button>
+            </div>
+          </div>
+        ) : (
         <div
           ref={attachMenuRef}
-          className="relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border border-white/90 dark:border-slate-700/90"
+          className={`relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${isListeningText ? "border-blue-300 dark:border-blue-500/50 shadow-blue-500/10" : "border-white/90 dark:border-slate-700/90"}`}
         >
           <div
             className={`absolute right-0 bottom-14 w-[260px] max-w-[78vw] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-xl p-2 border border-white/70 dark:border-slate-700 z-50 origin-bottom-right will-change-transform transition-all duration-200 ease-out ${isAttachMenuOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
@@ -205,21 +376,70 @@ export const ChatInput = ({
             <FiPaperclip className="text-[20px] lg:text-[22px]" />
           </button>
         </div>
+        )}
 
-        <button
-          className="h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-[#2ea6f3] text-white inline-flex items-center justify-center shadow-md hover:bg-[#1f97e5] transition cursor-pointer z-50 relative"
-          onClick={
-            editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage
-              ? handleSendMessage
-              : undefined
-          }
-        >
-          {editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage ? (
-            <FiSend className="text-[20px] lg:text-[22px]" />
-          ) : (
-            <FiMic className="text-[20px] lg:text-[22px]" />
-          )}
-        </button>
+        {!isRecordingAudio && (
+          <div className="relative flex items-center shrink-0">
+            {isVoiceMenuOpen && (
+              <div 
+                ref={voiceMenuRef}
+                className="absolute right-0 bottom-[calc(100%+12px)] w-[220px] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-xl p-2 border border-black/5 dark:border-white/10 z-[100] origin-bottom-right animate-in fade-in zoom-in-95 duration-200"
+              >
+                <button
+                  onClick={toggleVoiceToText}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-white/50 dark:hover:bg-slate-700/80 transition-colors"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isListeningText ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 animate-pulse' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300'}`}>
+                    <FiType className="text-[15px]" />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <span className="text-[14px] font-semibold text-gray-800 dark:text-gray-100 leading-tight">
+                      {isListeningText ? "Dừng thuyết minh" : "Speech to Text"}
+                    </span>
+                    <span className="text-[12px] text-gray-500 truncate">Text will be typed automatically</span>
+                  </div>
+                </button>
+                <button
+                  onClick={startVoiceRecording}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-white/50 dark:hover:bg-slate-700/80 transition-colors mt-1"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center shrink-0 text-gray-600 dark:text-gray-300">
+                    <FiMic className="text-[16px]" />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <span className="text-[14px] font-semibold text-gray-800 dark:text-gray-100 leading-tight">Record Audio</span>
+                    <span className="text-[12px] text-gray-500 truncate">Send as an audio file</span>
+                  </div>
+                </button>
+              </div>
+            )}
+            
+            <button
+              className={`h-11 w-11 lg:h-12 lg:w-12 rounded-full inline-flex items-center justify-center shadow-md transition cursor-pointer z-50 relative ${
+                isListeningText 
+                  ? "bg-blue-100 text-blue-600 animate-pulse hover:bg-blue-200" 
+                  : "bg-[#2ea6f3] text-white hover:bg-[#1f97e5]"
+              }`}
+              onClick={() => {
+                if (editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage) {
+                  handleSendMessage();
+                } else if (isListeningText) {
+                  toggleVoiceToText();
+                } else {
+                  setIsVoiceMenuOpen(!isVoiceMenuOpen);
+                  setIsAttachMenuOpen(false);
+                  setIsEmojiPickerOpen(false);
+                }
+              }}
+            >
+              {editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage ? (
+                <FiSend className="text-[20px] lg:text-[22px]" />
+              ) : (
+                <FiMic className="text-[20px] lg:text-[22px]" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

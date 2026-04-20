@@ -71,6 +71,12 @@ export const RightSidebarInfo = ({
 
   // Fetch user details for non-group view
   useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     const fetchUserDetails = async () => {
       if (isGroup || !targetUserId) return;
       try {
@@ -328,13 +334,6 @@ export const RightSidebarInfo = ({
         currentUserRole={currentUserRole}
         currentUserId={currentUserId}
       />
-
-      {isGroup && (
-        <button className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30">
-          {/* FiUserPlus icon would go here if imported */}
-          <span className="text-2xl">+</span>
-        </button>
-      )}
 
       <DeleteContactModal
         isOpen={showDeleteConfirm}

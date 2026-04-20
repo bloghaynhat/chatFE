@@ -208,7 +208,43 @@ export const ActiveChatPane = ({
     setDragType(null);
   }, []);
 
+  useEffect(() => {
+    const handlePaste = (e: any) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        onDrop(files, [], e);
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => {
+      document.removeEventListener("paste", handlePaste);
+    };
+  }, [onDrop]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: {
+      'image/jpeg': [],
+      'image/png': [],
+      'image/gif': [],
+      'image/webp': [],
+      'video/mp4': [],
+      'video/mpeg': [],
+      'video/quicktime': [],
+      'audio/mpeg': [],
+      'audio/wav': [],
+      'application/pdf': []
+    },
     onDrop,
     noClick: true,
     noKeyboard: true,
@@ -510,6 +546,16 @@ export const ActiveChatPane = ({
     }
   };
 
+  const handleSendVoice = (voiceFile: any) => {
+    if (onSendMessage) {
+      const fileWithPreview = Object.assign(voiceFile, {
+        preview: URL.createObjectURL(voiceFile),
+        isImageMode: false,
+      });
+      onSendMessage("", [fileWithPreview], { compress: false });
+    }
+  };
+
   if (!selectedChat) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -528,7 +574,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,audio/mpeg,audio/wav,audio/aac,audio/ogg,audio/flac,audio/mp3"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,audio/mpeg,audio/wav"
         ref={photoVideoInputRef}
         style={{ display: "none" }}
         onChange={(e: any) => {
@@ -541,7 +587,7 @@ export const ActiveChatPane = ({
       <input
         type="file"
         multiple
-        accept=".pdf,application/pdf"
+        accept="application/pdf"
         ref={documentInputRef}
         style={{ display: "none" }}
         onChange={(e: any) => {
@@ -699,6 +745,7 @@ export const ActiveChatPane = ({
         messagesEndRef={messagesEndRef}
         handleContextMenu={handleContextMenu}
         setPreviewVideoUrl={setPreviewVideoUrl}
+        onNavigateToMessage={handleNavigateToMessage}
       />
 
       {contextMenu && (
@@ -775,6 +822,10 @@ export const ActiveChatPane = ({
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
+                const textToCopy = getMessageText(contextMenu.message);
+                if (textToCopy) {
+                  navigator.clipboard.writeText(textToCopy).catch(err => console.error("Failed to copy text: ", err));
+                }
                 setContextMenu(null);
               }}
             >
@@ -921,6 +972,7 @@ export const ActiveChatPane = ({
         forwardingMessage={forwardingMessage}
         onClearForwarding={onClearForwarding}
         currentUserId={currentUserId}
+        handleSendVoice={handleSendVoice}
       />
 
       {previewVideoUrl && (

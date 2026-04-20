@@ -636,28 +636,28 @@ class SocketService {
     });
   }
 
-  pinMessage(conversationId: string, messageId: string) {
+  pinMessage(messageId: string) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("pinMessage", { conversationId, messageId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Pin failed"));
+      this.messagesSocket.emit("pinMessage", { messageId }, (res) => {
+        if (res?.success || res?.status === "success") resolve(res);
+        else reject(new Error(res?.error || res?.msg || "Pin failed"));
       });
     });
   }
 
-  unpinMessage(conversationId: string, messageId: string) {
+  unpinMessage(messageId: string) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("unpinMessage", { conversationId, messageId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Unpin failed"));
+      this.messagesSocket.emit("unpinMessage", { messageId }, (res) => {
+        if (res?.success || res?.status === "success") resolve(res);
+        else reject(new Error(res?.error || res?.msg || "Unpin failed"));
       });
     });
   }
