@@ -5,6 +5,7 @@ import { RightSidebarSettings } from "./RightSideBarTypes/RightSidebarSettings";
 import { RightSidebarMemberList } from "./RightSideBarTypes/RightSidebarMemberList";
 import { MoreMenu } from "./RightSideBarTypes/MoreMenu";
 import { DeleteContactModal } from "./RightSideBarTypes/DeleteContactModal";
+import { MediaGallery } from "./MediaGallery";
 import React, { useState, useEffect, useCallback } from "react";
 import { useContactsSocketListeners } from "../../../hooks";
 import { removeFriend, checkFriendRequestStatus, sendFriendRequest, acceptFriendRequest } from "../../../services";
@@ -29,6 +30,9 @@ interface RightSidebarInfoProps {
   onSendMessage?: (member: any) => void;
   onLeaveGroup?: () => void;
   targetUserId?: string | null;
+  conversationId?: string;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
 }
 
 export const RightSidebarInfo = ({
@@ -50,6 +54,9 @@ export const RightSidebarInfo = ({
   onSendMessage,
   onLeaveGroup,
   targetUserId,
+  conversationId,
+  onShowInChat,
+  messages,
 }: RightSidebarInfoProps) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
@@ -60,6 +67,7 @@ export const RightSidebarInfo = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
 
   // Fetch user details for non-group view
   useEffect(() => {
@@ -187,18 +195,22 @@ export const RightSidebarInfo = ({
 
   // Determine display name
   const displayName = isGroup
-    ? (groupName || "Group")
-    : (targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || "User");
+    ? groupName || "Group"
+    : targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || "User";
 
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
-      <RightSidebarHeader
-        isGroup={isGroup}
-        onClose={onClose}
-        onEditClick={onEditClick}
-      />
+      <RightSidebarHeader isGroup={isGroup} onClose={onClose} onEditClick={onEditClick}>
+        {!isGroup && (
+          <MoreMenu
+            isOpen={isMoreMenuOpen}
+            onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+            onDeleteClick={() => setShowDeleteConfirm(true)}
+          />
+        )}
+      </RightSidebarHeader>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
         <RightSidebarAvatar
           avatarUrl={isGroup ? groupAvatar : targetUserDetails?.avatarUrl}
           name={displayName}
@@ -218,14 +230,96 @@ export const RightSidebarInfo = ({
           onAcceptRequest={handleAcceptRequest}
         />
 
-        {isGroup && (
-          <RightSidebarMemberList
-            members={members}
-            isLoading={isLoading}
-            contextMenu={contextMenu}
-            onContextMenu={handleContextMenu}
-          />
+        {/* Tab Navigation - Members + Media tabs for groups, Media only for private */}
+        {(isGroup || conversationId) && (
+          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
+            {/* Members tab - only for groups */}
+            {isGroup && (
+              <button
+                onClick={() => setActiveTab("members")}
+                className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  activeTab === "members"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                Members
+              </button>
+            )}
+
+            {/* Media/Files/Links/Voice tabs - for both groups and private */}
+            {conversationId && (
+              <>
+                <button
+                  onClick={() => setActiveTab("images")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "images"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Media
+                </button>
+                <button
+                  onClick={() => setActiveTab("files")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "files"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Files
+                </button>
+                <button
+                  onClick={() => setActiveTab("links")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "links"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Links
+                </button>
+                <button
+                  onClick={() => setActiveTab("voice")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "voice"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Voice
+                </button>
+              </>
+            )}
+          </div>
         )}
+
+        {/* Content Area */}
+        {activeTab === "members" && isGroup && (
+          <div className="flex-1 overflow-y-auto">
+            <RightSidebarMemberList
+              members={members}
+              isLoading={isLoading}
+              contextMenu={contextMenu}
+              onContextMenu={handleContextMenu}
+            />
+          </div>
+        )}
+
+        {(activeTab === "images" || activeTab === "files" || activeTab === "links" || activeTab === "voice") &&
+          conversationId && (
+            <div className="flex-1 overflow-hidden">
+              <MediaGallery
+                conversationId={conversationId}
+                currentUserId={currentUserId}
+                onShowInChat={onShowInChat}
+                messages={messages}
+                activeTab={activeTab}
+                hideTabNavigation={true}
+              />
+            </div>
+          )}
       </div>
 
       <ContextMenuDropdown
@@ -240,14 +334,6 @@ export const RightSidebarInfo = ({
           {/* FiUserPlus icon would go here if imported */}
           <span className="text-2xl">+</span>
         </button>
-      )}
-
-      {!isGroup && (
-        <MoreMenu
-          isOpen={isMoreMenuOpen}
-          onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-          onDeleteClick={() => setShowDeleteConfirm(true)}
-        />
       )}
 
       <DeleteContactModal
