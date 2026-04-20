@@ -79,13 +79,10 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
             const { icon, color } = getFileIcon(file.name);
 
             return (
-              <a
+              <div
                 key={file.messageId}
-                href={file.url}
-                download={file.name}
-                target="_blank"
-                rel="noopener noreferrer"
                 onContextMenu={(e) => handleContextMenu(e, file)}
+                onClick={() => window.open(file.url, "_blank")}
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors border-b border-gray-100 dark:border-slate-700 cursor-pointer group"
               >
                 {/* File Icon Container */}
@@ -106,7 +103,14 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
                 </div>
 
                 {/* Download Button */}
-                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a 
+                  href={file.url}
+                  download={file.name}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
                   <div className="bg-blue-500 hover:bg-blue-600 rounded-full p-2 transition-colors">
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -117,8 +121,8 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
                       />
                     </svg>
                   </div>
-                </div>
-              </a>
+                </a>
+              </div>
             );
           })}
         </div>
