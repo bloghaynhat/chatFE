@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { createPortal } from "react-dom";
 
 interface MediaItem {
   messageId: string;
@@ -12,6 +13,8 @@ interface MediaItem {
 interface MediaGalleryLinksProps {
   links: MediaItem[];
   isLoading: boolean;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
 }
 
 const extractDomain = (url: string): string => {
@@ -28,7 +31,24 @@ const truncateUrl = (url: string, maxLength: number = 45): string => {
   return url.substring(0, maxLength) + "...";
 };
 
-export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isLoading }) => {
+export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isLoading, onShowInChat, messages }) => {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; link: MediaItem } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, link: MediaItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 80);
+    setContextMenu({ x, y, link });
+  };
+
+  const handleShowInChat = () => {
+    if (contextMenu && onShowInChat) {
+      onShowInChat(contextMenu.link.url);
+    }
+    setContextMenu(null);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {links.length === 0 && !isLoading ? (
@@ -46,6 +66,7 @@ export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isL
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onContextMenu={(e) => handleContextMenu(e, link)}
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors border-b border-gray-100 dark:border-slate-700 cursor-pointer group"
               >
                 {/* Link Icon Container */}
@@ -94,6 +115,31 @@ export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isL
           })}
         </div>
       )}
+
+      {/* Context Menu - Rendered via Portal */}
+      {contextMenu &&
+        createPortal(
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)}>
+            <div
+              className="absolute bg-white dark:bg-slate-800 rounded-lg shadow-xl py-2 min-w-48 border border-gray-200 dark:border-slate-700"
+              style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {onShowInChat && (
+                <button
+                  onClick={handleShowInChat}
+                  className="w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-left flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Show in chat
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

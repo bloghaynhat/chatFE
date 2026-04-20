@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { createPortal } from "react-dom";
 
 interface MediaItem {
   messageId: string;
@@ -12,6 +13,8 @@ interface MediaItem {
 interface MediaGalleryFilesProps {
   files: MediaItem[];
   isLoading: boolean;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
 }
 
 const getFileIcon = (fileName: string) => {
@@ -46,7 +49,24 @@ const formatFileSize = (bytes: number): string => {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 };
 
-export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isLoading }) => {
+export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isLoading, onShowInChat, messages }) => {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: MediaItem } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, file: MediaItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 80);
+    setContextMenu({ x, y, file });
+  };
+
+  const handleShowInChat = () => {
+    if (contextMenu && onShowInChat) {
+      onShowInChat(contextMenu.file.url);
+    }
+    setContextMenu(null);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {files.length === 0 && !isLoading ? (
@@ -63,6 +83,7 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
                 key={file.messageId}
                 href={file.url}
                 download={file.name}
+                onContextMenu={(e) => handleContextMenu(e, file)}
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors border-b border-gray-100 dark:border-slate-700 cursor-pointer group"
               >
                 {/* File Icon Container */}
@@ -100,6 +121,31 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
           })}
         </div>
       )}
+
+      {/* Context Menu - Rendered via Portal */}
+      {contextMenu &&
+        createPortal(
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)}>
+            <div
+              className="absolute bg-white dark:bg-slate-800 rounded-lg shadow-xl py-2 min-w-48 border border-gray-200 dark:border-slate-700"
+              style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {onShowInChat && (
+                <button
+                  onClick={handleShowInChat}
+                  className="w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-left flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Show in chat
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

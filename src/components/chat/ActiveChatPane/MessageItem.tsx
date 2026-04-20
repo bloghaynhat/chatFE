@@ -135,9 +135,16 @@ export const MessageItem = ({
   const isSystem = message?.type === "system" || message?.type === "SYSTEM";
 
   const hasText = !!text && text.trim() !== "";
-  
+
   const trimmedText = text ? text.trim() : "";
-  const isJumboEmoji = !!JUMBO_EMOJI_ASSETS[trimmedText] && text.replace(/\s+/g, '') === trimmedText && !isMedia && !isDocument && !isAudio && !isForwarded && !isSystem;
+  const isJumboEmoji =
+    !!JUMBO_EMOJI_ASSETS[trimmedText] &&
+    text.replace(/\s+/g, "") === trimmedText &&
+    !isMedia &&
+    !isDocument &&
+    !isAudio &&
+    !isForwarded &&
+    !isSystem;
 
   const onlyImagesOrVideos = isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
 
@@ -218,10 +225,13 @@ export const MessageItem = ({
       <div
         ref={isFirst ? firstMessageRef : null}
         key={getMessageId(message, index)}
+        data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
         className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm flex flex-col relative ${
-          isJumboEmoji 
-            ? (mine ? "self-end bg-transparent" : "self-start bg-transparent")
+          isJumboEmoji
+            ? mine
+              ? "self-end bg-transparent"
+              : "self-start bg-transparent"
             : mine
               ? "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"
               : "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"

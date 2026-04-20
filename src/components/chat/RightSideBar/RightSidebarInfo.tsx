@@ -31,6 +31,8 @@ interface RightSidebarInfoProps {
   onLeaveGroup?: () => void;
   targetUserId?: string | null;
   conversationId?: string;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
 }
 
 export const RightSidebarInfo = ({
@@ -53,6 +55,8 @@ export const RightSidebarInfo = ({
   onLeaveGroup,
   targetUserId,
   conversationId,
+  onShowInChat,
+  messages,
 }: RightSidebarInfoProps) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
@@ -63,7 +67,7 @@ export const RightSidebarInfo = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"members" | "media">(isGroup ? "members" : "media");
+  const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
 
   // Fetch user details for non-group view
   useEffect(() => {
@@ -226,32 +230,67 @@ export const RightSidebarInfo = ({
           onAcceptRequest={handleAcceptRequest}
         />
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Members + Media tabs for groups, Media only for private */}
         {(isGroup || conversationId) && (
-          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0 overflow-x-auto scrollbar-hide">
+          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
+            {/* Members tab - only for groups */}
             {isGroup && (
               <button
                 onClick={() => setActiveTab("members")}
-                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+                className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === "members"
                     ? "border-blue-500 text-blue-600 dark:text-blue-400"
                     : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
                 }`}
               >
-                Members ({membersCount || 0})
+                Members
               </button>
             )}
+
+            {/* Media/Files/Links/Voice tabs - for both groups and private */}
             {conversationId && (
-              <button
-                onClick={() => setActiveTab("media")}
-                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
-                  activeTab === "media"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                }`}
-              >
-                Media
-              </button>
+              <>
+                <button
+                  onClick={() => setActiveTab("images")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "images"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Media
+                </button>
+                <button
+                  onClick={() => setActiveTab("files")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "files"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Files
+                </button>
+                <button
+                  onClick={() => setActiveTab("links")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "links"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Links
+                </button>
+                <button
+                  onClick={() => setActiveTab("voice")}
+                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "voice"
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Voice
+                </button>
+              </>
             )}
           </div>
         )}
@@ -268,11 +307,19 @@ export const RightSidebarInfo = ({
           </div>
         )}
 
-        {activeTab === "media" && conversationId && (
-          <div className="flex-1 overflow-hidden">
-            <MediaGallery conversationId={conversationId} isGroup={isGroup} currentUserId={currentUserId} />
-          </div>
-        )}
+        {(activeTab === "images" || activeTab === "files" || activeTab === "links" || activeTab === "voice") &&
+          conversationId && (
+            <div className="flex-1 overflow-hidden">
+              <MediaGallery
+                conversationId={conversationId}
+                currentUserId={currentUserId}
+                onShowInChat={onShowInChat}
+                messages={messages}
+                activeTab={activeTab}
+                hideTabNavigation={true}
+              />
+            </div>
+          )}
       </div>
 
       <ContextMenuDropdown

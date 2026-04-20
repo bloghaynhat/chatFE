@@ -11,9 +11,17 @@ interface MediaGalleryGroupsProps {
   groups: Group[];
   isLoading: boolean;
   onGroupClick?: (group: Group) => void;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
 }
 
-export const MediaGalleryGroups: React.FC<MediaGalleryGroupsProps> = ({ groups, isLoading, onGroupClick }) => {
+export const MediaGalleryGroups: React.FC<MediaGalleryGroupsProps> = ({
+  groups,
+  isLoading,
+  onGroupClick,
+  onShowInChat,
+  messages,
+}) => {
   return (
     <div className="flex flex-col h-full">
       {groups.length === 0 && !isLoading ? (

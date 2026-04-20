@@ -7,7 +7,15 @@ import { RightSidebarAddMember } from "./RightSideBar/RightSidebarAddMember";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
 
-export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onGroupUpdated }: any) => {
+export const RightSidebar = ({
+  isOpen,
+  selectedChat,
+  onClose,
+  currentUserId,
+  onGroupUpdated,
+  onShowInChat,
+  messages,
+}: any) => {
   const [members, setMembers] = useState<any[]>([]);
   const [info, setInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -427,6 +435,14 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
             onLeaveGroup={handleLeaveGroup}
             targetUserId={!isGroup ? selectedChat?.targetUserId || selectedChat?.participantId : null}
             conversationId={selectedChat?.id}
+            onShowInChat={
+              onShowInChat &&
+              ((mediaUrl) => {
+                onShowInChat(mediaUrl);
+                onClose();
+              })
+            }
+            messages={messages}
           />
 
           <RightSidebarEdit

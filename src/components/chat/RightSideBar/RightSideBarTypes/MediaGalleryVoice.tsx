@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 
 interface MediaItem {
   messageId: string;
@@ -12,6 +13,8 @@ interface MediaItem {
 interface MediaGalleryVoiceProps {
   voices: MediaItem[];
   isLoading: boolean;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
 }
 
 const formatDuration = (seconds: number): string => {
@@ -20,8 +23,9 @@ const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
-export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, isLoading }) => {
+export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, isLoading, onShowInChat, messages }) => {
   const [playing, setPlaying] = React.useState<string | null>(null);
+  const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; voice: MediaItem } | null>(null);
   const audioRef = React.useRef<HTMLAudioElement>(null);
 
   const handlePlayClick = (voiceId: string, url: string) => {
@@ -37,6 +41,21 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent, voice: MediaItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 80);
+    setContextMenu({ x, y, voice });
+  };
+
+  const handleShowInChat = () => {
+    if (contextMenu && onShowInChat) {
+      onShowInChat(contextMenu.voice.url);
+    }
+    setContextMenu(null);
+  };
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -49,6 +68,7 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
             {voices.map((voice) => (
               <div
                 key={voice.messageId}
+                onContextMenu={(e) => handleContextMenu(e, voice)}
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors border-b border-gray-100 dark:border-slate-700"
               >
                 {/* Play Button */}
@@ -109,6 +129,31 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
       </div>
 
       <audio ref={audioRef} onEnded={() => setPlaying(null)} />
+
+      {/* Context Menu - Rendered via Portal */}
+      {contextMenu &&
+        createPortal(
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)}>
+            <div
+              className="absolute bg-white dark:bg-slate-800 rounded-lg shadow-xl py-2 min-w-48 border border-gray-200 dark:border-slate-700"
+              style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {onShowInChat && (
+                <button
+                  onClick={handleShowInChat}
+                  className="w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 text-left flex items-center gap-2 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Show in chat
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 };

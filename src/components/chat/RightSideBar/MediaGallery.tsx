@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { conversationService } from "../../../services";
+import { conversationService, socketService } from "../../../services";
 import { MediaGalleryImages } from "./RightSideBarTypes/MediaGalleryImages";
 import { MediaGalleryFiles } from "./RightSideBarTypes/MediaGalleryFiles";
 import { MediaGalleryLinks } from "./RightSideBarTypes/MediaGalleryLinks";
 import { MediaGalleryVoice } from "./RightSideBarTypes/MediaGalleryVoice";
-import { MediaGalleryGroups } from "./RightSideBarTypes/MediaGalleryGroups";
 
 interface MediaItem {
   messageId: string;
@@ -26,11 +25,21 @@ interface MediaData {
 
 interface MediaGalleryProps {
   conversationId: string;
-  isGroup?: boolean;
   currentUserId?: string;
+  onShowInChat?: (mediaUrl: string) => void;
+  messages?: any[];
+  activeTab?: "images" | "files" | "links" | "voice";
+  hideTabNavigation?: boolean;
 }
 
-export const MediaGallery: React.FC<MediaGalleryProps> = ({ conversationId, isGroup = false, currentUserId }) => {
+export const MediaGallery: React.FC<MediaGalleryProps> = ({
+  conversationId,
+  currentUserId,
+  onShowInChat,
+  messages,
+  activeTab: externalActiveTab,
+  hideTabNavigation,
+}) => {
   const [media, setMedia] = useState<MediaData>({
     images: [],
     files: [],
@@ -40,9 +49,13 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ conversationId, isGr
     hasMore: false,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"images" | "files" | "links" | "voice" | "groups">("images");
+  const [activeTab, setActiveTab] = useState<"images" | "files" | "links" | "voice">("images");
   const [nextCursor, setNextCursor] = useState<string>("");
   const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Use external activeTab if provided, otherwise use internal state
+  const currentActiveTab = externalActiveTab || activeTab;
+  const setCurrentActiveTab = externalActiveTab ? () => {} : setActiveTab;
 
   const fetchMedia = useCallback(
     async (cursor?: string) => {
@@ -52,6 +65,8 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ conversationId, isGr
           limit: 50,
           ...(cursor && { cursor }),
         });
+
+        console.log("📸 Media API Response:", result);
 
         setMedia((prev) => ({
           images: cursor ? [...prev.images, ...(result.images || [])] : result.images || [],
@@ -91,6 +106,32 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ conversationId, isGr
     return () => observer.disconnect();
   }, [media.hasMore, nextCursor, isLoading, fetchMedia]);
 
+  // Socket listener for new messages with media
+  useEffect(() => {
+    const handleNewMessage = (messageData: any) => {
+      // Only refetch if the message is from current conversation
+      const msgConversationId = messageData?.conversationId || messageData?.message?.conversationId;
+      if (msgConversationId !== conversationId) return;
+
+      // Check if the message contains any media
+      if (
+        messageData?.message?.media &&
+        Array.isArray(messageData.message.media) &&
+        messageData.message.media.length > 0
+      ) {
+        console.log("🔔 New message with media received, refetching media gallery...");
+        // Refetch media when new message with media arrives
+        fetchMedia();
+      }
+    };
+
+    socketService.onNewMessage(handleNewMessage);
+
+    return () => {
+      socketService.offNewMessage();
+    };
+  }, [conversationId, fetchMedia]);
+
   const totalMedia = media.images.length + media.files.length + media.links.length + media.voices.length;
 
   if (totalMedia === 0 && !isLoading) {
@@ -112,36 +153,64 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ conversationId, isGr
   return (
     <div className="flex flex-col h-full">
       {/* Tab Navigation - Horizontal Scrollable */}
-      <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0 overflow-x-auto scrollbar-hide">
-        {[
-          { tab: "images", label: "Media", count: media.images.length },
-          { tab: "files", label: "Files", count: media.files.length },
-          { tab: "links", label: "Links", count: media.links.length },
-          { tab: "voice", label: "Voice", count: media.voices.length },
-          ...(isGroup ? [{ tab: "groups", label: "Groups", count: 0 }] : []),
-        ].map(({ tab, label, count }) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
-              activeTab === tab
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-            }`}
-          >
-            {label}
-            {count > 0 && <span className="ml-1 text-xs">({count})</span>}
-          </button>
-        ))}
-      </div>
+      {!hideTabNavigation && (
+        <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0 overflow-x-auto scrollbar-hide">
+          {[
+            { tab: "images", label: "Media", count: media.images.length },
+            { tab: "files", label: "Files", count: media.files.length },
+            { tab: "links", label: "Links", count: media.links.length },
+            { tab: "voice", label: "Voice", count: media.voices.length },
+          ].map(({ tab, label, count }) => (
+            <button
+              key={tab}
+              onClick={() => setCurrentActiveTab(tab as any)}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+                currentActiveTab === tab
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+              }`}
+            >
+              {label}
+              {count > 0 && <span className="ml-1 text-xs">({count})</span>}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "images" && <MediaGalleryImages images={media.images} isLoading={isLoading} />}
-        {activeTab === "files" && <MediaGalleryFiles files={media.files} isLoading={isLoading} />}
-        {activeTab === "links" && <MediaGalleryLinks links={media.links} isLoading={isLoading} />}
-        {activeTab === "voice" && <MediaGalleryVoice voices={media.voices} isLoading={isLoading} />}
-        {activeTab === "groups" && isGroup && <MediaGalleryGroups groups={[]} isLoading={isLoading} />}
+        {currentActiveTab === "images" && (
+          <MediaGalleryImages
+            images={media.images}
+            isLoading={isLoading}
+            onShowInChat={onShowInChat}
+            messages={messages}
+          />
+        )}
+        {currentActiveTab === "files" && (
+          <MediaGalleryFiles
+            files={media.files}
+            isLoading={isLoading}
+            onShowInChat={onShowInChat}
+            messages={messages}
+          />
+        )}
+        {currentActiveTab === "links" && (
+          <MediaGalleryLinks
+            links={media.links}
+            isLoading={isLoading}
+            onShowInChat={onShowInChat}
+            messages={messages}
+          />
+        )}
+        {currentActiveTab === "voice" && (
+          <MediaGalleryVoice
+            voices={media.voices}
+            isLoading={isLoading}
+            onShowInChat={onShowInChat}
+            messages={messages}
+          />
+        )}
 
         {/* Infinite scroll trigger */}
         <div ref={observerTarget} className="h-4" />
