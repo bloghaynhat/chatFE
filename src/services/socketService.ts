@@ -121,6 +121,8 @@ class SocketService {
 
     this.messagesSocket.on("conversation:member_removed", (data) => {
       this.emit("conversation:member_removed", data);
+    });
+
     this.messagesSocket.on("message:reaction", (data) => {
       this.emit("message:reaction", data);
     });

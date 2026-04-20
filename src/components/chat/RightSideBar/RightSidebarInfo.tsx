@@ -18,6 +18,27 @@ import { removeFriend, checkFriendRequestStatus, sendFriendRequest, acceptFriend
 import { useContactsSocketListeners } from "../../../hooks";
 import { userService } from "../../../services";
 
+interface RightSidebarInfoProps {
+  isGroup: boolean;
+  groupName?: string;
+  groupAvatar?: string;
+  membersCount?: number;
+  members: any[];
+  isLoading: boolean;
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: (enabled: boolean) => void;
+  onClose: () => void;
+  onEditClick?: () => void;
+  canEdit?: boolean;
+  currentUserRole?: string;
+  currentUserId?: string;
+  onRemoveMember?: (userId: string) => void;
+  onPromoteAdmin?: (userId: string) => void;
+  onSendMessage?: (member: any) => void;
+  onLeaveGroup?: () => void;
+  targetUserId?: string | null;
+}
+
 export const RightSidebarInfo = ({
   isGroup,
   groupName,
@@ -35,9 +56,25 @@ export const RightSidebarInfo = ({
   onRemoveMember,
   onPromoteAdmin,
   onSendMessage,
-  onLeaveGroup
-}: any) => {
+  onLeaveGroup,
+  targetUserId,
+}: RightSidebarInfoProps) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
+
+  // Friend request states (for non-group)
+  const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
+  const [friendRequestId, setFriendRequestId] = useState<string | null>(null);
+  const [friendDirection, setFriendDirection] = useState<"INCOMING" | "OUTGOING" | null>(null);
+  const [isProcessingFriend, setIsProcessingFriend] = useState(false);
+
+  // More menu states
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // User details (for non-group)
+  const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
 
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
@@ -48,11 +85,10 @@ export const RightSidebarInfo = ({
   const handleContextMenu = (e: React.MouseEvent, member: any) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Position menu to avoid clipping
+
     const x = Math.min(e.clientX, window.innerWidth - 220);
     const y = Math.min(e.clientY, window.innerHeight - 200);
-    
+
     setContextMenu({ x, y, member });
   };
 
@@ -82,20 +118,7 @@ export const RightSidebarInfo = ({
     setContextMenu(null);
   };
 
-  targetUserId,
-}: any) => {
-  const [friendStatus, setFriendStatus] = useState("LOADING"); // PENDING, ACCEPTED, NONE, LOADING
-  const [friendRequestId, setFriendRequestId] = useState<string | null>(null); // Used for accepting incoming requests
-  const [friendDirection, setFriendDirection] = useState<string | null>(null); // INCOMING or OUTGOING
-  const [isProcessingFriend, setIsProcessingFriend] = useState(false);
-
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
-
-  const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
-
+  // Fetch user details for non-group view
   useEffect(() => {
     const fetchUserDetails = async () => {
       if (isGroup || !targetUserId) return;
@@ -109,6 +132,7 @@ export const RightSidebarInfo = ({
     fetchUserDetails();
   }, [isGroup, targetUserId]);
 
+  // Check friend status for non-group
   const fetchStatus = useCallback(async () => {
     if (isGroup || !targetUserId) return;
     try {
@@ -230,43 +254,42 @@ export const RightSidebarInfo = ({
           </button>
         )}
 
-          {!isGroup && friendStatus === "ACCEPTED" && (
-            <div ref={moreMenuRef} className="relative">
-              <button
-                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                className={`p-2 rounded-full transition-colors ${
-                  isMoreMenuOpen
-                    ? "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300"
-                    : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                <FiMoreVertical className="text-xl" />
-              </button>
+        {!isGroup && friendStatus === "ACCEPTED" && (
+          <div ref={moreMenuRef} className="relative">
+            <button
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className={`p-2 rounded-full transition-colors ${
+                isMoreMenuOpen
+                  ? "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300"
+                  : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              <FiMoreVertical className="text-xl" />
+            </button>
 
-              <div
-                className={`absolute right-0 top-10 w-48 rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-gray-200 dark:border-slate-700 z-50 origin-top-right transition-all duration-200 ${
-                  isMoreMenuOpen
-                    ? "opacity-100 scale-100 pointer-events-auto"
-                    : "opacity-0 scale-95 pointer-events-none"
-                }`}
-                aria-hidden={!isMoreMenuOpen}
-              >
-                <div className="p-1.5">
-                  <button
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      setShowDeleteConfirm(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-[14px] font-medium text-red-500 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors"
-                  >
-                    <FiTrash2 className="text-[17px]" />
-                    <span>Delete Contact</span>
-                  </button>
-                </div>
+            <div
+              className={`absolute right-0 top-10 w-48 rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-gray-200 dark:border-slate-700 z-50 origin-top-right transition-all duration-200 ${
+                isMoreMenuOpen
+                  ? "opacity-100 scale-100 pointer-events-auto"
+                  : "opacity-0 scale-95 pointer-events-none"
+              }`}
+              aria-hidden={!isMoreMenuOpen}
+            >
+              <div className="p-1.5">
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    setShowDeleteConfirm(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-[14px] font-medium text-red-500 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors"
+                >
+                  <FiTrash2 className="text-[17px]" />
+                  <span>Delete Contact</span>
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Scrollable Content */}
@@ -277,7 +300,7 @@ export const RightSidebarInfo = ({
             {groupAvatar ? (
               <img src={groupAvatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <span>{groupName.charAt(0).toUpperCase()}</span>
+              <span>{groupName?.charAt(0).toUpperCase()}</span>
             )}
             {canEdit && (
               <div
@@ -350,7 +373,6 @@ export const RightSidebarInfo = ({
               <FiBell className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
               <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">Notifications</div>
             </div>
-            {/* Toggle switch */}
             <div
               className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
                 notificationsEnabled ? "bg-blue-500" : "bg-gray-300 dark:bg-slate-600"
@@ -431,12 +453,6 @@ export const RightSidebarInfo = ({
         currentUserRole={currentUserRole}
         currentUserId={currentUserId}
       />
-      {/* Floating Add Button */}
-      {isGroup && (
-        <button className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30">
-          <FiUserPlus className="text-2xl" />
-        </button>
-      )}
 
       {/* Delete Confirmation Popup */}
       {showDeleteConfirm &&
