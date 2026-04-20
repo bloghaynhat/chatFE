@@ -10,6 +10,8 @@ import { MessageList } from "./ActiveChatPane/MessageList";
 import { ChatInput } from "./ActiveChatPane/ChatInput";
 import { ForwardModal } from "./ActiveChatPane/ForwardModal";
 import { CalendarModal } from "./ActiveChatPane/CalendarModal";
+import { PinnedBar } from "./ActiveChatPane/PinnedBar";
+import { PinnedList } from "./ActiveChatPane/PinnedList";
 import { getDateLabel, getMessageTime, getMessageText } from "../../utils/chatUtils";
 import {
   FiImage,
@@ -57,6 +59,8 @@ export const ActiveChatPane = ({
   const [draftMessage, setDraftMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState(null);
   const [replyingMessage, setReplyingMessage] = useState(null);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -88,6 +92,69 @@ export const ActiveChatPane = ({
       fetchFriends();
     }
   }, [forwardModalVisible]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+
+    const handlePinned = (data: any) => {
+      const msg = data?.message || data;
+      if (msg && (msg.conversationId === selectedConversationId || data.conversationId === selectedConversationId)) {
+        setPinnedMessages((prev) => {
+          if (prev.find((m) => m._id === msg._id || m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+    };
+
+    const handleUnpinned = (data: any) => {
+      const unpinnedId = data?.messageId || data?.message?._id || data?.message?.id || data?._id || data?.id;
+      if (unpinnedId) {
+        setPinnedMessages((prev) => prev.filter((m) => m._id !== unpinnedId && m.id !== unpinnedId));
+      }
+    };
+
+    const unsubscribePinned = socketService.on("message:pinned", handlePinned);
+    const unsubscribeUnpinned = socketService.on("message:unpinned", handleUnpinned);
+
+    return () => {
+      if (unsubscribePinned) unsubscribePinned();
+      if (unsubscribeUnpinned) unsubscribeUnpinned();
+    };
+  }, [selectedConversationId]);
+
+  // Socket-based pin/unpin handlers
+  const handlePinMessage = async (messageId: string) => {
+    try {
+      await socketService.pinMessage(messageId);
+      // The socket event will update the pinnedMessages state automatically
+    } catch (error) {
+      console.error("Failed to pin message:", error);
+      throw error;
+    }
+  };
+
+  const handleUnpinMessage = async (messageId: string) => {
+    try {
+      await socketService.unpinMessage(messageId);
+      // The socket event will update the pinnedMessages state automatically
+    } catch (error) {
+      console.error("Failed to unpin message:", error);
+      throw error;
+    }
+  };
+
+  // Navigate to a specific message
+  const handleNavigateToMessage = (messageId: string) => {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Add highlight effect
+      messageElement.classList.add("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+      setTimeout(() => {
+        messageElement.classList.remove("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+      }, 2000);
+    }
+  };
 
   const handleOpenForwardModal = (message) => {
     setMessageToForward(message);
@@ -532,6 +599,7 @@ export const ActiveChatPane = ({
       )}
 
       <ChatHeader
+        selectedConversationId={selectedConversationId}
         selectedChat={selectedChat}
         currentUserId={currentUserId}
         isLoading={isLoading}
@@ -551,6 +619,17 @@ export const ActiveChatPane = ({
         isRightSidebarOpen={isRightSidebarOpen}
         setIsRightSidebarOpen={setIsRightSidebarOpen}
       />
+
+      {/* Pinned Messages Bar */}
+      {selectedConversationId && pinnedMessages.length > 0 && (
+        <PinnedBar
+          pinnedMessages={pinnedMessages}
+          currentUserId={currentUserId}
+          onUnpin={handleUnpinMessage}
+          onOpenList={() => setIsPinnedListOpen(true)}
+          onNavigateToMessage={handleNavigateToMessage}
+        />
+      )}
 
       <MessageList
         isLoading={isLoading}
@@ -662,10 +741,17 @@ export const ActiveChatPane = ({
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
+                const msgId = contextMenu.message?.id || contextMenu.message?._id;
+                if (msgId) {
+                  handlePinMessage(msgId).catch(console.error);
+                }
                 setContextMenu(null);
               }}
             >
-              <FiMapPin className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Pin</span>
+              <FiMapPin className="text-[18px]" strokeWidth={2} />
+              <span className="font-medium">
+                {pinnedMessages.some((m) => (m.id || m._id) === (contextMenu.message?.id || contextMenu.message?._id)) ? "Unpin" : "Pin"}
+              </span>
             </button>
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
@@ -737,6 +823,16 @@ export const ActiveChatPane = ({
         selectedCalendarDate={selectedCalendarDate}
         setSelectedCalendarDate={setSelectedCalendarDate}
         setHeaderSearchValue={setHeaderSearchValue}
+      />
+
+      {/* Pinned List Sidebar */}
+      <PinnedList
+        pinnedMessages={pinnedMessages}
+        currentUserId={currentUserId}
+        isOpen={isPinnedListOpen}
+        onClose={() => setIsPinnedListOpen(false)}
+        onUnpin={handleUnpinMessage}
+        onNavigateToMessage={handleNavigateToMessage}
       />
 
       <ChatInput

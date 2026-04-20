@@ -5,6 +5,11 @@ export interface Message {
   textPreview: string;
   type: "text" | "media" | "mixed";
   status?: "sent" | "delivered" | "seen";
+  /**
+   * Pin-related fields (may be present on pinned messages)
+   */
+  pinnedAt?: string;
+  pinnedBy?: string;
 }
 
 /**

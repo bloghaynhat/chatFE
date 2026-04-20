@@ -13,7 +13,7 @@ import {
   FiGift,
   FiLock,
   FiEyeOff,
-  FiTrash2,
+  FiTrash2
 } from "react-icons/fi";
 
 const moreActions = [
@@ -49,6 +49,7 @@ export const ChatHeader = ({
   isRightSidebarOpen,
   setIsRightSidebarOpen,
 }: any) => {
+
   return (
     <div className="px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
       {!isHeaderSearchOpen ? (
