@@ -1,6 +1,6 @@
 export const MessageAudio = ({ audios, mine, hasText }) => {
   return (
-    <div className={`p-2 flex flex-col gap-2 ${hasText ? "pb-1" : ""}`}>
+    <div className={`p-2 flex flex-col gap-2 pb-2`}>
       {audios.map((aud, i) => {
         const audUrl = aud.url || aud.preview || (typeof aud === "string" ? aud : "");
         return (

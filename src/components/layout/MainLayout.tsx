@@ -1017,6 +1017,9 @@ const MainLayout = ({ children }: { children?: any }) => {
       throw error;
     } finally {
       pendingPinOperations.current.delete(operationKey);
+    }
+  };
+
   const handleShowInChat = (mediaUrl: string) => {
     // Search for the actual message that contains this media
     console.log("🔍 Searching for message containing media URL:", mediaUrl);

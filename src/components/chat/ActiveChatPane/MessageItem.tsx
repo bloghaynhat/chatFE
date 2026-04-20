@@ -229,7 +229,7 @@ export const MessageItem = ({
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm flex flex-col relative ${
+        className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm flex flex-col relative pb-2 ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
@@ -268,7 +268,11 @@ export const MessageItem = ({
 
         {/* Bottom area: Reactions + Timestamp */}
         <div
-          className={`flex items-end gap-[6px] px-2 pb-[3px] flex-row flex-wrap justify-between ${!message.reactions || message.reactions.length === 0 ? "absolute bottom-[3px] right-[4px] w-auto" : "w-full"} z-10`}
+          className={`flex items-end gap-2 px-2 pb-2 flex-row flex-wrap justify-between ${
+            !message.reactions || message.reactions.length === 0
+              ? "absolute bottom-0 right-[4px] w-auto pt-2"
+              : "w-full pt-1"
+          } z-10`}
         >
           {/* Render selected reactions */}
           {message?.reactions && message.reactions.length > 0 && (
@@ -341,7 +345,7 @@ export const MessageItem = ({
             }`}
           >
             {message.pinnedAt && (
-              <FiMapPin className="text-[12px] text-blue-500 dark:text-blue-400" strokeWidth={2.5} />
+              <FiMapPin className="text-[14px] text-blue-500 dark:text-blue-400" strokeWidth={2.5} />
             )}
             {message.isEdited && (
               <span

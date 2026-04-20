@@ -13,7 +13,7 @@ export const MessageMedia = ({
   setPreviewVideoUrl,
 }) => {
   return (
-    <div className={`p-1 cursor-pointer overflow-hidden ${hasText ? "pb-0 rounded-t-lg" : "rounded-lg"} relative`}>
+    <div className={`p-2 cursor-pointer overflow-hidden rounded-lg relative`}>
       {mediaItems.length === 1 ? (
         images.includes(mediaItems[0]) ? (
           <PhotoView src={mediaItems[0].url || mediaItems[0].preview || mediaItems[0]}>
