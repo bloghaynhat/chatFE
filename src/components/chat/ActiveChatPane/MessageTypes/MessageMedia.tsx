@@ -28,17 +28,13 @@ export const MessageMedia = ({
             className="relative w-full rounded-lg bg-black overflow-hidden group flex justify-center items-center cursor-pointer"
             onClick={() =>
               setPreviewVideoUrl(
-                mediaItems[0].url ||
-                  mediaItems[0].preview ||
-                  (typeof mediaItems[0] === "string" ? mediaItems[0] : ""),
+                mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : ""),
               )
             }
           >
             <video
               src={
-                mediaItems[0].url ||
-                mediaItems[0].preview ||
-                (typeof mediaItems[0] === "string" ? mediaItems[0] : "")
+                mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : "")
               }
               className="w-full h-auto max-h-[400px] object-contain pointer-events-none"
             />
@@ -60,9 +56,7 @@ export const MessageMedia = ({
             </div>
             <a
               href={
-                mediaItems[0].url ||
-                mediaItems[0].preview ||
-                (typeof mediaItems[0] === "string" ? mediaItems[0] : "")
+                mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : "")
               }
               download={mediaItems[0].filename || mediaItems[0].name || "video.mp4"}
               target="_blank"
@@ -140,13 +134,6 @@ export const MessageMedia = ({
               );
             }
           })}
-        </div>
-      )}
-      {onlyImagesOrVideos && (
-        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/40 rounded-full flex items-center justify-end gap-[4px] text-white pointer-events-none">
-          {message.isEdited && <span className="italic font-semibold text-[10px]">edited</span>}
-          <span className="text-[11px] font-medium leading-none">{getMessageTime(message)}</span>
-          {mine && <>{isSeen ? <FiEye className="text-[13px]" /> : <FiCheck className="text-[13px]" />}</>}
         </div>
       )}
     </div>
