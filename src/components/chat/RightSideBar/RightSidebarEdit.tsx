@@ -23,12 +23,17 @@ export const RightSidebarEdit = ({
   isUploadingAvatar,
   onAvatarChange,
   membersCount,
+  adminCount,
   currentUserRole,
   onClose,
   onSave,
+  onMembersClick,
+  onAdminsClick,
+  onDeleteGroupClick,
+  isLoading,
 }: any) => {
   return (
-    <div className="w-1/2 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
+    <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
       {/* Edit Group Header */}
       <div className="flex items-center px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
         <button
@@ -40,12 +45,14 @@ export const RightSidebarEdit = ({
         <span className="font-semibold text-[18px] text-gray-800 dark:text-gray-100 ml-4">
           Edit
         </span>
-        <button
-          onClick={onSave}
-          className="p-2 -mr-2 ml-auto rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-500 transition-colors"
-        >
-          <FiCheck className="text-xl" />
-        </button>
+        {currentUserRole === "admin" && (
+          <button
+            onClick={onSave}
+            className="p-2 -mr-2 ml-auto rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-500 transition-colors"
+          >
+            <FiCheck className="text-xl" />
+          </button>
+        )}
       </div>
 
       {/* Edit Group Content */}
@@ -63,14 +70,16 @@ export const RightSidebarEdit = ({
                     onAvatarChange(e.target.files[0]);
                   }
                 }}
+                disabled={currentUserRole === "member" ? true : false}
               />
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-100 transition-opacity">
+              {currentUserRole === "admin" && ( <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-100 transition-opacity">
                 {isUploadingAvatar ? (
                   <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
                 ) : (
                   <FiCamera className="text-white text-3xl" />
                 )}
-              </div>
+              </div>)}
+             
             </label>
             {editAvatarUrl || groupAvatar ? (
               <img src={editAvatarUrl || groupAvatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -90,12 +99,14 @@ export const RightSidebarEdit = ({
                 placeholder="Group Name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
+                readOnly={currentUserRole === "member" ? true : false}
+                disabled={currentUserRole === "member" ? true : false}
               />
             </div>
           </div>
         </div>
-
-        <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
+        {!(currentUserRole === "member") && (
+          <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
           <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
             <FiLock className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
@@ -144,21 +155,29 @@ export const RightSidebarEdit = ({
             </div>
           </div>
         </div>
+        )}
+        
         <div className="px-5 py-1 text-[13px] text-gray-500 mb-3">
           Add a group chat for comments
         </div>
 
         <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
+          <div 
+            className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800"
+            onClick={onAdminsClick}
+          >
             <FiShield className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
                 Administrators
               </div>
-              <div className="text-[13px] text-gray-500">1</div>
+              <div className="text-[13px] text-gray-500">{adminCount || 1}</div>
             </div>
           </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
+          <div 
+            className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800"
+            onClick={onMembersClick}
+          >
             <FiUsers className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
@@ -167,39 +186,21 @@ export const RightSidebarEdit = ({
               <div className="text-[13px] text-gray-500">{membersCount}</div>
             </div>
           </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
-            <FiUserX className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Removed users
-              </div>
-              <div className="text-[13px] text-gray-500">No removed users</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
-            <FiMessageSquare className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Chat history for new members
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-12 shadow-sm">
           <div
-            className="flex items-center px-5 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors group"
-            onClick={async () => {
-              // Future function: Delete and Leave Group
+            className="flex items-center px-5 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800"
+            onClick={() => {
+              if (onDeleteGroupClick) {
+                onDeleteGroupClick();
+              }
             }}
           >
             <FiTrash2 className="text-[#ff4b4b] text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-[#ff4b4b]">
-                {currentUserRole === "member" ? "Leave Group" : "Delete and Leave Group"}
+                {currentUserRole === "admin" ? "Delete Group and Leave" : "Leave Group"}
               </div>
             </div>
           </div>

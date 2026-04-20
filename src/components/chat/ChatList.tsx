@@ -4,6 +4,7 @@ import { userService, conversationService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
+import { useAuth } from "../../hooks/useAuth";
 
 export const ChatList = ({
   searchQuery = "",
@@ -14,6 +15,7 @@ export const ChatList = ({
   isGlobalSearchEnabled = false,
   onSelectChat,
 }: any) => {
+  const { user } = useAuth();
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,6 +52,35 @@ export const ChatList = ({
       if (unsubFriendAccepted) unsubFriendAccepted();
     };
   }, [fetchChats]);
+
+  // Handle member removed from conversation (including self leave)
+  useEffect(() => {
+    const handleMemberRemoved = (data: any) => {
+      const { conversationId, removedUserId } = data;
+
+      // If current user was removed, remove the conversation from local state
+      if (removedUserId === user?.id) {
+        setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
+      } else {
+        // Other member was removed, refresh the list to update member counts
+        fetchChats(false);
+      }
+    };
+
+    const cleanup = socketService.on("conversation:member_removed", handleMemberRemoved);
+    return () => cleanup();
+  }, [user?.id, fetchChats]);
+
+  // Handle conversation deleted
+  useEffect(() => {
+    const handleConversationDeleted = (data: any) => {
+      const { conversationId } = data;
+      setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
+    };
+
+    const cleanup = socketService.on("conversation:deleted", handleConversationDeleted);
+    return () => cleanup();
+  }, []);
 
   // Reset unread count when chat is opened
   useEffect(() => {

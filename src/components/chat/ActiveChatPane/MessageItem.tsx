@@ -141,12 +141,6 @@ export const MessageItem = ({
   const hasText = !!text && text.trim() !== "";
   const onlyImagesOrVideos = isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
 
-  if (isSystem) {
-    return (
-      <SystemMessage message={message} index={index} isFirst={isFirst} firstMessageRef={firstMessageRef} text={text} />
-    );
-  }
-
   const senderName =
     fetchedSender?.displayName ||
     fetchedSender?.username ||
@@ -155,6 +149,23 @@ export const MessageItem = ({
     message?.sender?.username ||
     message?.sender?.name ||
     "Unknown";
+
+  if (isSystem) {
+    let displaySystemText = text;
+    if (displaySystemText.includes("Unknown User")) {
+      const displaySender = mine ? "Bạn" : (senderName !== "Unknown" ? senderName : "Ai đó");
+      displaySystemText = displaySystemText.replace("Unknown User", displaySender);
+    }
+    return (
+      <SystemMessage
+        message={message}
+        index={index}
+        isFirst={isFirst}
+        firstMessageRef={firstMessageRef}
+        text={displaySystemText}
+      />
+    );
+  }
 
   const senderAvatar =
     fetchedSender?.avatarUrl ||

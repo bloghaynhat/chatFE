@@ -45,6 +45,46 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async addGroupMembers(groupId: string, memberIds: string[]) {
+    const response: any = await api.post(`/groups/${groupId}/members`, { memberIds });
+    return response.data || response;
+  },
+
+  async removeGroupMember(groupId: string, userId: string) {
+    const response: any = await api.delete(`/groups/${groupId}/members/${userId}`);
+    return response.data || response;
+  },
+
+  async leaveGroupConversation(groupId: string) {
+    try {
+      const response: any = await api.post(`/groups/${groupId}/leave`, {});
+      return response.data || response;
+    } catch (error: any) {
+      console.error("[leaveGroupConversation] Error details:", {
+        groupId,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+      });
+      throw error;
+    }
+  },
+
+  async deleteGroupConversation(groupId: string) {
+    const response: any = await api.delete(`/groups/${groupId}`);
+    return response.data || response;
+  },
+
+  async setGroupAdmin(groupId: string, targetUserId: string, isAdmin: boolean) {
+    const response: any = await api.post(`/groups/${groupId}/set-admin`, { targetUserId, isAdmin });
+    return response.data || response;
+  },
+
+  async transferGroupOwnership(groupId: string, newOwnerId: string) {
+    const response: any = await api.post(`/groups/${groupId}/transfer-owner`, { newOwnerId });
+    return response.data || response;
+  },
+
   async getGroupInfo(groupId: string) {
     const response: any = await api.get(`/groups/${groupId}/info`);
     return response.data || response;

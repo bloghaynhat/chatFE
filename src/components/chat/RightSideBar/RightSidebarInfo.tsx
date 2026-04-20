@@ -1,3 +1,5 @@
+import { MemberItem } from "./MemberItem";
+import { ContextMenuDropdown } from "./ContextMenuDropdown";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -28,6 +30,58 @@ export const RightSidebarInfo = ({
   onClose,
   onEditClick,
   canEdit,
+  currentUserRole,
+  currentUserId,
+  onRemoveMember,
+  onPromoteAdmin,
+  onSendMessage,
+  onLeaveGroup
+}: any) => {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent, member: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Position menu to avoid clipping
+    const x = Math.min(e.clientX, window.innerWidth - 220);
+    const y = Math.min(e.clientY, window.innerHeight - 200);
+    
+    setContextMenu({ x, y, member });
+  };
+
+  const handleAction = (action: string) => {
+    if (!contextMenu) return;
+
+    const { member } = contextMenu;
+    const memberId = member.userId || member.user?.id || member.user?._id;
+
+    switch (action) {
+      case "sendMessage":
+        if (onSendMessage) onSendMessage(member);
+        break;
+      case "promote":
+        if (onPromoteAdmin) onPromoteAdmin(memberId);
+        break;
+      case "restrict":
+        console.log("Restrict user functionality coming soon");
+        break;
+      case "remove":
+        if (onRemoveMember) onRemoveMember(memberId);
+        break;
+      case "leave":
+        if (onLeaveGroup) onLeaveGroup();
+        break;
+    }
+    setContextMenu(null);
+  };
+
   targetUserId,
 }: any) => {
   const [friendStatus, setFriendStatus] = useState("LOADING"); // PENDING, ACCEPTED, NONE, LOADING
@@ -153,7 +207,7 @@ export const RightSidebarInfo = ({
   }, [isMoreMenuOpen]);
 
   return (
-    <div className="w-1/2 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
+    <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
         <div className="flex items-center gap-3">
@@ -167,16 +221,14 @@ export const RightSidebarInfo = ({
             {isGroup ? "Group Info" : "User Info"}
           </span>
         </div>
-
-        <div className="flex items-center gap-1">
-          {isGroup && canEdit && (
-            <button
-              onClick={onEditClick}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 transition-colors"
-            >
-              <FiEdit2 className="text-[18px]" />
-            </button>
-          )}
+        {isGroup && (
+          <button
+            onClick={onEditClick}
+            className="p-2 -mr-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 transition-colors"
+          >
+            <FiEdit2 className="text-[18px]" />
+          </button>
+        )}
 
           {!isGroup && friendStatus === "ACCEPTED" && (
             <div ref={moreMenuRef} className="relative">
@@ -359,42 +411,26 @@ export const RightSidebarInfo = ({
                 <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
               </div>
             ) : (
-              members.map((member: any) => {
-                const participant = member.user || member;
-                const displayName = participant.displayName || participant.name || participant.username || "Unknown";
-                const isOwner = member.role === "admin" || member.role === "owner";
-
-                return (
-                  <div
-                    key={member._id || member.id || participant._id || participant.id}
-                    className="flex items-center px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-orange-400 font-semibold text-white flex items-center justify-center mr-3 overflow-hidden shrink-0">
-                      {participant.avatarUrl || participant.avatar ? (
-                        <img
-                          src={participant.avatarUrl || participant.avatar}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>{displayName.charAt(0).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {displayName}
-                      </div>
-                      <div className="text-[13px] text-gray-500 dark:text-gray-400 truncate">last seen recently</div>
-                    </div>
-                    {isOwner && <span className="text-[12px] text-gray-400 dark:text-gray-500 font-medium">owner</span>}
-                  </div>
-                );
-              })
+              members.map((member: any) => (
+                <MemberItem
+                  key={member._id || member.id || member.user?._id || member.user?.id}
+                  member={member}
+                  isSelected={contextMenu?.member === member}
+                  onContextMenu={handleContextMenu}
+                />
+              ))
             )}
           </div>
         )}
       </div>
 
+      {/* Context Menu Dropdown */}
+      <ContextMenuDropdown
+        contextMenu={contextMenu}
+        onAction={handleAction}
+        currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
+      />
       {/* Floating Add Button */}
       {isGroup && (
         <button className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30">
