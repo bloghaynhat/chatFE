@@ -275,6 +275,23 @@ const MainLayout = ({ children }: { children?: any }) => {
             });
           }
         });
+
+        // Handle group dissolution - this group has been deleted by an admin
+        socketService.onGroupDissolved((payload: any) => {
+          const { conversationId } = payload;
+          if (!conversationId) return;
+
+          // If the dissolved group is currently open, navigate away
+          if (String(conversationId) === String(selectedConversationId)) {
+            setSelectedChat(null);
+            setSelectedConversationId(null);
+            setMessages([]);
+            setChatError("This group has been deleted by an admin");
+          }
+
+          // Notify ChatList to refresh and remove the dissolved group
+          window.dispatchEvent(new Event("chatList:refresh"));
+        });
       }
     });
 
@@ -286,6 +303,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offMessageReaction();
       socketService.offMessageReactionRemove();
       socketService.off("conversation:updated");
+      socketService.offGroupDissolved();
       // Do not disconnect the socket here to preserve global connectivity
     };
   }, [selectedConversationId]);

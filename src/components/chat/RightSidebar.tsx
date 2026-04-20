@@ -317,11 +317,9 @@ export const RightSidebar = ({ isOpen, selectedChat, onClose, currentUserId, onG
       setIsLoading(true);
 
       if (deleteForAll) {
-        // Case 1: Delete for all members - delete the entire group
-        await conversationService.deleteGroupConversation(selectedChat.id);
-        if (socketService.messagesSocket?.connected) {
-          socketService.messagesSocket.emit("conversation:deleted", { conversationId: selectedChat.id });
-        }
+        // Case 1: Delete for all members - emit dissolveGroup socket event
+        // The server will delete the group and broadcast group:dissolved to all members
+        await socketService.dissolveGroup(selectedChat.id);
       } else {
         // Case 2: Regular member leaving (or admin after transfer)
         await conversationService.leaveGroupConversation(selectedChat.id);

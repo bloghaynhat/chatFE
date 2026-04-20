@@ -1,5 +1,30 @@
 import { io, Socket } from "socket.io-client";
 import { authStorage } from "../runtime/storage";
+import type {
+  ConversationCreatedPayload,
+  ConversationUpdatedPayload,
+  ConversationMembersAddedPayload,
+  ConversationMemberRemovedPayload,
+  ConversationPinToggledPayload,
+  ConversationArchivedToggledPayload,
+  ConversationMuteChangedPayload,
+  GroupMemberLeftPayload,
+  GroupDissolvedPayload,
+  GroupRenamedPayload,
+  GroupAvatarChangedPayload,
+  GroupAdminChangedPayload,
+  GroupOwnerTransferredPayload,
+  GroupMemberApprovedPayload,
+  GroupMemberRejectedPayload,
+  GroupSettings,
+  GroupSettingsUpdatedPayload,
+  EditMessagePayload,
+  DeleteMessagePayload,
+  PinMessagePayload,
+  UnpinMessagePayload,
+  TypingStartPayload,
+  TypingStopPayload,
+} from "../types/socket";
 
 class SocketService {
   messagesSocket: Socket | null = null;
@@ -83,6 +108,7 @@ class SocketService {
   setupMessageListeners() {
     if (!this.messagesSocket) return;
 
+    // Existing events
     this.messagesSocket.on("receiveMessage", (data) => {
       this.emit("receiveMessage", data);
     });
@@ -129,6 +155,81 @@ class SocketService {
 
     this.messagesSocket.on("message:reaction:remove", (data) => {
       this.emit("message:reaction:remove", data);
+    });
+
+    // New events to add - Message events
+    this.messagesSocket.on("message:deleted", (data) => {
+      this.emit("message:deleted", data);
+    });
+
+    this.messagesSocket.on("message:deleted_for_everyone", (data) => {
+      this.emit("message:deleted_for_everyone", data);
+    });
+
+    this.messagesSocket.on("message:reactions:clear", (data) => {
+      this.emit("message:reactions:clear", data);
+    });
+
+    this.messagesSocket.on("message:pinned", (data) => {
+      this.emit("message:pinned", data);
+    });
+
+    this.messagesSocket.on("message:unpinned", (data) => {
+      this.emit("message:unpinned", data);
+    });
+
+    // Conversation events
+    this.messagesSocket.on("conversation:created", (data) => {
+      this.emit("conversation:created", data);
+    });
+
+    this.messagesSocket.on("conversation:pin_toggled", (data) => {
+      this.emit("conversation:pin_toggled", data);
+    });
+
+    this.messagesSocket.on("conversation:archived_toggled", (data) => {
+      this.emit("conversation:archived_toggled", data);
+    });
+
+    this.messagesSocket.on("conversation:mute_changed", (data) => {
+      this.emit("conversation:mute_changed", data);
+    });
+
+    // Group events
+    this.messagesSocket.on("group:member_left", (data) => {
+      this.emit("group:member_left", data);
+    });
+
+    this.messagesSocket.on("group:dissolved", (data) => {
+      this.emit("group:dissolved", data);
+    });
+
+    this.messagesSocket.on("group:renamed", (data) => {
+      this.emit("group:renamed", data);
+    });
+
+    this.messagesSocket.on("group:avatar_changed", (data) => {
+      this.emit("group:avatar_changed", data);
+    });
+
+    this.messagesSocket.on("group:admin_changed", (data) => {
+      this.emit("group:admin_changed", data);
+    });
+
+    this.messagesSocket.on("group:owner_transferred", (data) => {
+      this.emit("group:owner_transferred", data);
+    });
+
+    this.messagesSocket.on("group:member_approved", (data) => {
+      this.emit("group:member_approved", data);
+    });
+
+    this.messagesSocket.on("group:member_rejected", (data) => {
+      this.emit("group:member_rejected", data);
+    });
+
+    this.messagesSocket.on("group:settings_updated", (data) => {
+      this.emit("group:settings_updated", data);
     });
   }
 
@@ -245,6 +346,153 @@ class SocketService {
 
   offMessageReactionRemove() {
     this.off("message:reaction:remove");
+  }
+
+  // ================= MESSAGE CONVENIENCE LISTENERS =================
+  onMessageDeleted(callback) {
+    return this.on("message:deleted", callback);
+  }
+
+  offMessageDeleted() {
+    this.off("message:deleted");
+  }
+
+  onMessageDeletedForEveryone(callback) {
+    return this.on("message:deleted_for_everyone", callback);
+  }
+
+  offMessageDeletedForEveryone() {
+    this.off("message:deleted_for_everyone");
+  }
+
+  onMessageReactionsCleared(callback) {
+    return this.on("message:reactions:clear", callback);
+  }
+
+  offMessageReactionsCleared() {
+    this.off("message:reactions:clear");
+  }
+
+  onMessagePinned(callback) {
+    return this.on("message:pinned", callback);
+  }
+
+  offMessagePinned() {
+    this.off("message:pinned");
+  }
+
+  onMessageUnpinned(callback) {
+    return this.on("message:unpinned", callback);
+  }
+
+  offMessageUnpinned() {
+    this.off("message:unpinned");
+  }
+
+  // ================= CONVERSATION CONVENIENCE LISTENERS =================
+  onConversationCreated(callback) {
+    return this.on("conversation:created", callback);
+  }
+
+  offConversationCreated() {
+    this.off("conversation:created");
+  }
+
+  onConversationPinToggled(callback) {
+    return this.on("conversation:pin_toggled", callback);
+  }
+
+  offConversationPinToggled() {
+    this.off("conversation:pin_toggled");
+  }
+
+  onConversationArchivedToggled(callback) {
+    return this.on("conversation:archived_toggled", callback);
+  }
+
+  offConversationArchivedToggled() {
+    this.off("conversation:archived_toggled");
+  }
+
+  onConversationMuteChanged(callback) {
+    return this.on("conversation:mute_changed", callback);
+  }
+
+  offConversationMuteChanged() {
+    this.off("conversation:mute_changed");
+  }
+
+  // ================= GROUP CONVENIENCE LISTENERS =================
+  onGroupMemberLeft(callback) {
+    return this.on("group:member_left", callback);
+  }
+
+  offGroupMemberLeft() {
+    this.off("group:member_left");
+  }
+
+  onGroupDissolved(callback) {
+    return this.on("group:dissolved", callback);
+  }
+
+  offGroupDissolved() {
+    this.off("group:dissolved");
+  }
+
+  onGroupRenamed(callback) {
+    return this.on("group:renamed", callback);
+  }
+
+  offGroupRenamed() {
+    this.off("group:renamed");
+  }
+
+  onGroupAvatarChanged(callback) {
+    return this.on("group:avatar_changed", callback);
+  }
+
+  offGroupAvatarChanged() {
+    this.off("group:avatar_changed");
+  }
+
+  onGroupAdminChanged(callback) {
+    return this.on("group:admin_changed", callback);
+  }
+
+  offGroupAdminChanged() {
+    this.off("group:admin_changed");
+  }
+
+  onGroupOwnerTransferred(callback) {
+    return this.on("group:owner_transferred", callback);
+  }
+
+  offGroupOwnerTransferred() {
+    this.off("group:owner_transferred");
+  }
+
+  onGroupMemberApproved(callback) {
+    return this.on("group:member_approved", callback);
+  }
+
+  offGroupMemberApproved() {
+    this.off("group:member_approved");
+  }
+
+  onGroupMemberRejected(callback) {
+    return this.on("group:member_rejected", callback);
+  }
+
+  offGroupMemberRejected() {
+    this.off("group:member_rejected");
+  }
+
+  onGroupSettingsUpdated(callback) {
+    return this.on("group:settings_updated", callback);
+  }
+
+  offGroupSettingsUpdated() {
+    this.off("group:settings_updated");
   }
 
   joinRoom(conversationId) {
@@ -372,6 +620,205 @@ class SocketService {
     });
   }
 
+  // ================= MESSAGE ACTIONS =================
+  editMessage(messageId, text) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("editMessage", { messageId, text }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Edit failed"));
+      });
+    });
+  }
+
+  deleteMessage(messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("deleteMessage", { messageId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Delete failed"));
+      });
+    });
+  }
+
+  pinMessage(messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("pinMessage", { messageId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Pin failed"));
+      });
+    });
+  }
+
+  unpinMessage(messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("unpinMessage", { messageId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Unpin failed"));
+      });
+    });
+  }
+
+  markAllSeen(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("markAllSeen", { conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Mark seen failed"));
+      });
+    });
+  }
+
+  forwardMessages(messageIds, toConversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("forwardMessages", { messageIds, toConversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Forward failed"));
+      });
+    });
+  }
+
+  quoteMessage(messageId, text, conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("quoteMessage", { messageId, text, conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Quote failed"));
+      });
+    });
+  }
+
+  // ================= CONVERSATION ACTIONS =================
+  pinConversation(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("pinConversation", { conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Pin conversation failed"));
+      });
+    });
+  }
+
+  unpinConversation(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("unpinConversation", { conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Unpin conversation failed"));
+      });
+    });
+  }
+
+  archiveConversation(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("archiveConversation", { conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Archive conversation failed"));
+      });
+    });
+  }
+
+  unarchiveConversation(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("unarchiveConversation", { conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Unarchive conversation failed"));
+      });
+    });
+  }
+
+  muteConversation(conversationId, duration) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      const payload = duration !== undefined ? { conversationId, duration } : { conversationId };
+      this.messagesSocket.emit("muteConversation", payload, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Mute conversation failed"));
+      });
+    });
+  }
+
+  unmuteConversation(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("unmuteConversation", { conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Unmute conversation failed"));
+      });
+    });
+  }
+
+  // ================= GROUP ACTIONS =================
+  dissolveGroup(conversationId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("dissolveGroup", { groupId: conversationId }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Dissolve group failed"));
+      });
+    });
+  }
+
+  updateGroupSettings(conversationId, settings) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit("updateGroupSettings", { conversationId, settings }, (res) => {
+        if (res?.success) resolve(res);
+        else reject(new Error(res?.error || "Update group settings failed"));
+      });
+    });
+  }
+
   // ================= CLEANUP =================
   disconnect() {
     if (this.messagesSocket) {
@@ -413,6 +860,45 @@ export const onMemberRemoved = (cb) => socketService.on("conversation:member_rem
 export const onMessageReaction = (cb) => socketService.on("message:reaction", cb);
 
 export const onMessageReactionRemove = (cb) => socketService.on("message:reaction:remove", cb);
+
+// Message - additional
+export const onMessageDeleted = (cb) => socketService.on("message:deleted", cb);
+
+export const onMessageDeletedForEveryone = (cb) => socketService.on("message:deleted_for_everyone", cb);
+
+export const onMessageReactionsCleared = (cb) => socketService.on("message:reactions:clear", cb);
+
+export const onMessagePinned = (cb) => socketService.on("message:pinned", cb);
+
+export const onMessageUnpinned = (cb) => socketService.on("message:unpinned", cb);
+
+// Conversation - additional
+export const onConversationCreated = (cb) => socketService.on("conversation:created", cb);
+
+export const onConversationPinToggled = (cb) => socketService.on("conversation:pin_toggled", cb);
+
+export const onConversationArchivedToggled = (cb) => socketService.on("conversation:archived_toggled", cb);
+
+export const onConversationMuteChanged = (cb) => socketService.on("conversation:mute_changed", cb);
+
+// Group
+export const onGroupMemberLeft = (cb) => socketService.on("group:member_left", cb);
+
+export const onGroupDissolved = (cb) => socketService.on("group:dissolved", cb);
+
+export const onGroupRenamed = (cb) => socketService.on("group:renamed", cb);
+
+export const onGroupAvatarChanged = (cb) => socketService.on("group:avatar_changed", cb);
+
+export const onGroupAdminChanged = (cb) => socketService.on("group:admin_changed", cb);
+
+export const onGroupOwnerTransferred = (cb) => socketService.on("group:owner_transferred", cb);
+
+export const onGroupMemberApproved = (cb) => socketService.on("group:member_approved", cb);
+
+export const onGroupMemberRejected = (cb) => socketService.on("group:member_rejected", cb);
+
+export const onGroupSettingsUpdated = (cb) => socketService.on("group:settings_updated", cb);
 
 // Friend
 export const onFriendRequest = (cb) => socketService.on("friend_request:received", cb);

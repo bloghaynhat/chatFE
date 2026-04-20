@@ -5,6 +5,7 @@ import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
 import { useAuth } from "../../hooks/useAuth";
+import type { Conversation } from "../../types/conversation";
 
 export const ChatList = ({
   searchQuery = "",
@@ -215,6 +216,62 @@ export const ChatList = ({
     });
     return () => unsubUpdated();
   }, [fetchChats]);
+
+  // Handle new conversation created (e.g., group creation)
+  useEffect(() => {
+    const handleConversationCreated = (payload: any) => {
+      const conversation = payload?.conversation || payload;
+      if (!conversation?.id) return;
+
+      // Add new conversation to the top if not already present
+      setChats((prev) => {
+        const exists = prev.some((c) => c.id === conversation.id);
+        if (exists) return prev;
+        return [conversation, ...prev];
+      });
+    };
+
+    const cleanup = socketService.on("conversation:created", handleConversationCreated);
+    return () => cleanup();
+  }, []);
+
+  // Handle members added to a conversation
+  useEffect(() => {
+    const handleMembersAdded = (data: any) => {
+      const { conversationId, memberIds } = data;
+      if (!conversationId || !Array.isArray(memberIds)) return;
+
+      setChats((prev) =>
+        prev.map((chat) => {
+          if (chat.id === conversationId) {
+            const currentCount = chat.membersCount || 0;
+            const newChat = {
+              ...chat,
+              membersCount: currentCount + memberIds.length,
+            };
+
+            // If the conversation has pendingMembers, add new members to pending list
+            if (chat.pendingMembers) {
+              const newPending = chat.pendingMembers.filter(
+                (pendingId: string) => !memberIds.includes(pendingId)
+              );
+              if (newPending.length > 0) {
+                newChat.pendingMembers = newPending;
+              } else {
+                delete newChat.pendingMembers;
+              }
+            }
+
+            return newChat;
+          }
+          return chat;
+        })
+      );
+    };
+
+    const cleanup = socketService.on("conversation:members_added", handleMembersAdded);
+    return () => cleanup();
+  }, []);
 
   const [globalUsers, setGlobalUsers] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);

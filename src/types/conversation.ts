@@ -7,6 +7,15 @@ export interface Message {
   status?: "sent" | "delivered" | "seen";
 }
 
+/**
+ * Group settings that control behavior of a group conversation
+ */
+export interface GroupSettings {
+  allowSendLink: boolean;
+  requireApproval: boolean;
+  allowMemberInvite: boolean;
+}
+
 export interface Conversation {
   admins: string[];
   id: string;
@@ -23,6 +32,15 @@ export interface Conversation {
   role: "member" | "admin";
   lastMessageStatus: "sent" | "delivered" | "seen";
   lastMessageTimeFormatted: string;
+  /**
+   * Group-specific fields (may be undefined for private conversations)
+   */
+  ownerId?: string;
+  settings?: GroupSettings;
+  isPinned?: boolean;
+  isArchived?: boolean;
+  description?: string;
+  pendingMembers?: string[]; // User IDs pending approval
 }
 
 export interface ConversationResponse {
