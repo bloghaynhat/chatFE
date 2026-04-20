@@ -39,7 +39,7 @@ const prefetchLottieData = async () => {
 prefetchLottieData();
 
 // Hàm xử lý tạo hiệu ứng "bay văng" (Detached DOM) nhưng chỉ giới hạn trong ActiveChatPane
-const playExplosionAnimation = (emoji: string, triggerElement: HTMLElement) => {
+const playExplosionAnimation = (emoji: string, triggerElement: HTMLElement, isMine: boolean = true) => {
   const assetUrl = EXPLOSION_EMOJI_ASSETS[emoji];
   if (!assetUrl) return; // Nếu không có asset nổ riêng thì không tạo detached overlay
 
@@ -88,10 +88,21 @@ const playExplosionAnimation = (emoji: string, triggerElement: HTMLElement) => {
 
     // Tọa độ top = căn giữa chiều dọc: mép trên emoji + nửa chiều cao emoji - nửa chiều cao detach
     const top = triggerRect.top - containerRect.top + chatContainer.scrollTop - SIZE / 2 + triggerRect.height / 2;
-    // Tọa độ left = emoji nằm ở center right của detach (mép phải detach canh bằng mép phải emoji)
-    const left = triggerRect.right - containerRect.left - SIZE;
 
-    animWrapper.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    let left;
+    let transform;
+
+    if (isMine) {
+      // Tọa độ left = emoji nằm ở center right của detach (mép phải detach canh bằng mép phải emoji)
+      left = triggerRect.right - containerRect.left - SIZE;
+      transform = `translate3d(${left}px, ${top}px, 0)`;
+    } else {
+      // Đảo ngược (Flip): emoji nằm ở center left của detach (mép trái canh mép trái)
+      left = triggerRect.left - containerRect.left;
+      transform = `translate3d(${left}px, ${top}px, 0) scaleX(-1)`;
+    }
+
+    animWrapper.style.transform = transform;
   };
 
   const cleanup = () => {
@@ -115,7 +126,15 @@ const playExplosionAnimation = (emoji: string, triggerElement: HTMLElement) => {
 // (do React StrictMode hoặc do quá trình thay đổi ID tạm của tin nhắn khi gửi socket)
 const recentAutoplays: { emoji: string; time: number }[] = [];
 
-export const AnimatedEmojiMessage = ({ emoji, isNew = false }: { emoji: string; isNew?: boolean }) => {
+export const AnimatedEmojiMessage = ({
+  emoji,
+  isNew = false,
+  isMine = true,
+}: {
+  emoji: string;
+  isNew?: boolean;
+  isMine?: boolean;
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<AnimationItem | null>(null);
   const playCountRef = useRef(0); // Biến đếm số lần detached đã được gọi trong lượt play hiện tại
@@ -181,7 +200,7 @@ export const AnimatedEmojiMessage = ({ emoji, isNew = false }: { emoji: string; 
       recentAutoplays.push({ emoji, time: now });
 
       if (EXPLOSION_EMOJI_ASSETS[emoji]) {
-        playExplosionAnimation(emoji, containerRef.current);
+        playExplosionAnimation(emoji, containerRef.current, isMine);
         playCountRef.current = 1; // Tính là 1 lần detached
       }
     }
@@ -203,13 +222,13 @@ export const AnimatedEmojiMessage = ({ emoji, isNew = false }: { emoji: string; 
       playCountRef.current = 1;
 
       if (containerRef.current) {
-        playExplosionAnimation(emoji, containerRef.current);
+        playExplosionAnimation(emoji, containerRef.current, isMine);
       }
     } else {
       // Nếu main emoji ĐANG CHẠY -> Được ấn thêm tối đa 3 lần detached (không replay main)
       if (playCountRef.current <= 3 && containerRef.current) {
         playCountRef.current += 1;
-        playExplosionAnimation(emoji, containerRef.current);
+        playExplosionAnimation(emoji, containerRef.current, isMine);
       }
     }
   };

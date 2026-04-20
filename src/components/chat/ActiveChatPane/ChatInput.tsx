@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import userService from "../../../services/userService";
 import {
   FiMessageCircle,
@@ -19,41 +19,9 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 
-const frequentEmojis = [
-  "🔥",
-  "❤️",
-  "😍",
-  "🥰",
-  "🤑",
-  "👻",
-  "😂",
-  "😎",
-  "😔",
-  "😄",
-  "😭",
-  "💋",
-  "😒",
-  "😳",
-  "😜",
-  "🙈",
-  "😉",
-  "😀",
-  "😥",
-  "😝",
-  "😱",
-  "😡",
-  "😏",
-  "😞",
-  "😅",
-  "😚",
-  "🙊",
-  "🤤",
-  "😃",
-  "😋",
-  "😆",
-  "👌",
-];
+// frequentEmojis removed
 
 export const ChatInput = ({
   draftMessage,
@@ -191,62 +159,15 @@ export const ChatInput = ({
 
           <div
             ref={emojiMenuRef}
-            className={`absolute left-0 bottom-14 w-[min(460px,88vw)] max-w-[88vw] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-2xl border border-white/70 dark:border-slate-700 z-50 overflow-hidden origin-bottom-left will-change-transform transition-all duration-200 ease-out ${isEmojiPickerOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
+            className={`absolute left-0 bottom-14 z-50 origin-bottom-left will-change-transform transition-all duration-200 ease-out ${isEmojiPickerOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
             aria-hidden={!isEmojiPickerOpen}
           >
-            <div className="px-4 py-2.5 border-b border-gray-200/80 dark:border-slate-700 flex items-center gap-3 text-gray-600 dark:text-gray-300">
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-white/80 dark:bg-slate-700/80">
-                <FiClock className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/60 dark:hover:bg-slate-700/60 transition">
-                <FiSmile className="text-lg" />
-              </button>
-            </div>
-
-            <div className="px-4 py-2.5 border-b border-gray-200/80 dark:border-slate-700">
-              <div className="h-10 rounded-xl bg-white/70 dark:bg-slate-700/70 flex items-center gap-2.5 px-3 text-gray-500 dark:text-gray-300">
-                <FiSearch className="text-base" />
-                <span className="text-sm font-medium text-gray-400 dark:text-gray-400">Search Emoji</span>
-                <div className="ml-auto flex items-center gap-2 text-gray-400 dark:text-gray-400">
-                  <FiHeart className="text-base" />
-                  <FiThumbsUp className="text-base" />
-                  <FiThumbsDown className="text-base" />
-                  <FiZap className="text-base" />
-                  <FiSmile className="text-base" />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-4 py-3">
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2.5">Frequently Used</p>
-
-              <div className="grid grid-cols-8 gap-1 pb-1">
-                {frequentEmojis.map((emoji, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setDraftMessage((prev) => `${prev}${emoji}`)}
-                    className="h-10 w-10 rounded-lg inline-flex items-center justify-center text-2xl hover:bg-white/70 dark:hover:bg-slate-700/70 transition"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="px-4 py-2.5 border-t border-gray-200/80 dark:border-slate-700 flex items-center justify-around text-gray-500 dark:text-gray-300">
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center bg-white/80 dark:bg-slate-700/80">
-                <FiSmile className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/70 dark:hover:bg-slate-700/70 transition">
-                <FiMessageCircle className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/70 dark:hover:bg-slate-700/70 transition">
-                <FiFilm className="text-lg" />
-              </button>
-              <button className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-white/70 dark:hover:bg-slate-700/70 transition">
-                <FiDelete className="text-lg" />
-              </button>
-            </div>
+            <EmojiPicker
+              onEmojiClick={(emojiData) => setDraftMessage((prev) => `${prev}${emojiData.emoji}`)}
+              theme={Theme.AUTO}
+              width={350}
+              height={400}
+            />
           </div>
 
           <button
