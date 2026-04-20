@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiArrowLeft, FiUserPlus, FiSearch } from "react-icons/fi";
-import { MemberItem } from "./MemberItem";
-import { ContextMenuDropdown } from "./ContextMenuDropdown";
+import { MemberItem } from "./RightSideBarTypes/MemberItem";
+import { ContextMenuDropdown } from "./RightSideBarTypes/ContextMenuDropdown";
 
 export const RightSidebarMembers = ({
   type, // "members" | "admins"
