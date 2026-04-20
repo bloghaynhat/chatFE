@@ -798,6 +798,10 @@ export const ActiveChatPane = ({
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
+                const textToCopy = getMessageText(contextMenu.message);
+                if (textToCopy) {
+                  navigator.clipboard.writeText(textToCopy).catch(err => console.error("Failed to copy text: ", err));
+                }
                 setContextMenu(null);
               }}
             >
