@@ -16,7 +16,7 @@ export const MessageText = ({ message, text, mine, isSeen }) => {
     <div className={`${isJumboEmoji ? "p-0" : `px-2.5 ${!!text ? "pt-1" : "pt-0"}`} cursor-default relative`}>
       {!!text &&
         (isJumboEmoji ? (
-          <AnimatedEmojiMessage emoji={trimmedText} isNew={isNewMsg} />
+          <AnimatedEmojiMessage emoji={trimmedText} isNew={isNewMsg} isMine={mine} />
         ) : (
           <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.3] pb-[8px]">
             {text}
