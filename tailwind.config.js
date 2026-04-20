@@ -8,6 +8,9 @@ export default {
         primary: "#3B82F6",
         secondary: "#10B981",
       },
+      fontFamily: {
+        sans: ['"Roboto"', "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "sans-serif"],
+      },
       keyframes: {
         fadeIn: {
           "0%": { opacity: "0" },
