@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { FiCheck, FiDownload, FiEye } from "react-icons/fi";
+import { PhotoView } from "react-photo-view";
+import { FiCheck, FiDownload, FiEye, FiMapPin } from "react-icons/fi";
 import { getMessageId, getMessageText, getMessageTime } from "../../../utils/chatUtils";
 import userService from "../../../services/userService";
 import { SystemMessage } from "./MessageTypes/SystemMessage";
@@ -224,6 +225,7 @@ export const MessageItem = ({
       )}
       <div
         ref={isFirst ? firstMessageRef : null}
+        id={`message-${message.id || message._id}`}
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
@@ -243,7 +245,7 @@ export const MessageItem = ({
           </span>
         )}
         {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
-        <QuotedMessageHeader message={message} messages={messages} mine={mine} />
+        <QuotedMessageHeader message={message} messages={messages} mine={mine} currentUserId={currentUserId} />
 
         {isMedia && (
           <MessageMedia
@@ -338,6 +340,9 @@ export const MessageItem = ({
                   : "text-gray-400 dark:text-gray-500 text-[10.5px]"
             }`}
           >
+            {message.pinnedAt && (
+              <FiMapPin className="text-[12px] text-blue-500 dark:text-blue-400" strokeWidth={2.5} />
+            )}
             {message.isEdited && (
               <span
                 className={`italic font-semibold ${(isJumboEmoji || onlyImagesOrVideos) && (!message.reactions || message.reactions.length === 0) ? "text-[10px]" : "opacity-75 text-[10px]"}`}

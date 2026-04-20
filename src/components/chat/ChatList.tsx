@@ -5,6 +5,8 @@ import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
 import { useAuth } from "../../hooks/useAuth";
+import type { Conversation } from "../../types/conversation";
+import type { GroupRenamedPayload, GroupAvatarChangedPayload } from "../../types/socket";
 
 export const ChatList = ({
   searchQuery = "",
@@ -81,6 +83,42 @@ export const ChatList = ({
     const cleanup = socketService.on("conversation:deleted", handleConversationDeleted);
     return () => cleanup();
   }, []);
+
+  // Handle group name/avatar updates
+  useEffect(() => {
+    const handleGroupRenamed = (data: GroupRenamedPayload) => {
+      const { conversationId, newName } = data;
+      if (!conversationId || !newName) return;
+
+      // Optimistic update: update name immediately in UI
+      setChats((prev) =>
+        prev.map((chat) => (chat.id === conversationId ? { ...chat, name: newName } : chat))
+      );
+
+      // Refetch to ensure consistency
+      fetchChats(false);
+    };
+
+    const handleGroupAvatarChanged = (data: GroupAvatarChangedPayload) => {
+      const { conversationId, avatarUrl } = data;
+      if (!conversationId || !avatarUrl) return;
+
+      // Optimistic update: update avatar immediately in UI
+      setChats((prev) =>
+        prev.map((chat) => (chat.id === conversationId ? { ...chat, avatarUrl } : chat))
+      );
+
+      fetchChats(false);
+    };
+
+    const cleanupRenamed = socketService.on("group:renamed", handleGroupRenamed);
+    const cleanupAvatar = socketService.on("group:avatar_changed", handleGroupAvatarChanged);
+
+    return () => {
+      if (cleanupRenamed) cleanupRenamed();
+      if (cleanupAvatar) cleanupAvatar();
+    };
+  }, [fetchChats]);
 
   // Reset unread count when chat is opened
   useEffect(() => {
@@ -215,6 +253,131 @@ export const ChatList = ({
     });
     return () => unsubUpdated();
   }, [fetchChats]);
+
+  // Handle new conversation created (e.g., group creation)
+  useEffect(() => {
+    const handleConversationCreated = (payload: any) => {
+      const conversation = payload?.conversation || payload;
+      if (!conversation?.id) return;
+
+      // Add new conversation to the top if not already present
+      setChats((prev) => {
+        const exists = prev.some((c) => c.id === conversation.id);
+        if (exists) return prev;
+        return [conversation, ...prev];
+      });
+    };
+
+    const cleanup = socketService.on("conversation:created", handleConversationCreated);
+    return () => cleanup();
+  }, []);
+
+  // Handle members added to a conversation
+  useEffect(() => {
+    const handleMembersAdded = (data: any) => {
+      const { conversationId, memberIds } = data;
+      if (!conversationId || !Array.isArray(memberIds)) return;
+
+      setChats((prev) =>
+        prev.map((chat) => {
+          if (chat.id === conversationId) {
+            const currentCount = chat.membersCount || 0;
+            const newChat = {
+              ...chat,
+              membersCount: currentCount + memberIds.length,
+            };
+
+            // If the conversation has pendingMembers, add new members to pending list
+            if (chat.pendingMembers) {
+              const newPending = chat.pendingMembers.filter(
+                (pendingId: string) => !memberIds.includes(pendingId)
+              );
+              if (newPending.length > 0) {
+                newChat.pendingMembers = newPending;
+              } else {
+                delete newChat.pendingMembers;
+              }
+            }
+
+            return newChat;
+          }
+          return chat;
+        })
+      );
+    };
+
+    const cleanup = socketService.on("conversation:members_added", handleMembersAdded);
+    return () => cleanup();
+  }, []);
+
+  // Handle conversation admin actions: pin, archive, mute
+  useEffect(() => {
+    const handlePinToggled = () => fetchChats(false);
+    const handleArchivedToggled = () => fetchChats(false);
+    const handleMuteChanged = () => fetchChats(false);
+
+    const cleanupPin = socketService.on("conversation:pin_toggled", handlePinToggled);
+    const cleanupArchive = socketService.on("conversation:archived_toggled", handleArchivedToggled);
+    const cleanupMute = socketService.on("conversation:mute_changed", handleMuteChanged);
+
+    return () => {
+      if (cleanupPin) cleanupPin();
+      if (cleanupArchive) cleanupArchive();
+      if (cleanupMute) cleanupMute();
+    };
+  }, [fetchChats]);
+
+  // Handle group admin actions: settings, approval/rejection, admin/owner changes
+  useEffect(() => {
+    const handleGroupSettingsUpdated = () => fetchChats(false);
+    const handleMemberApproved = () => fetchChats(false);
+    const handleMemberRejected = () => fetchChats(false);
+    const handleAdminChanged = () => fetchChats(false);
+    const handleOwnerTransferred = () => fetchChats(false);
+
+    const cleanupSettings = socketService.on("group:settings_updated", handleGroupSettingsUpdated);
+    const cleanupApproved = socketService.on("group:member_approved", handleMemberApproved);
+    const cleanupRejected = socketService.on("group:member_rejected", handleMemberRejected);
+    const cleanupAdmin = socketService.on("group:admin_changed", handleAdminChanged);
+    const cleanupOwner = socketService.on("group:owner_transferred", handleOwnerTransferred);
+
+    return () => {
+      if (cleanupSettings) cleanupSettings();
+      if (cleanupApproved) cleanupApproved();
+      if (cleanupRejected) cleanupRejected();
+      if (cleanupAdmin) cleanupAdmin();
+      if (cleanupOwner) cleanupOwner();
+    };
+  }, [fetchChats]);
+
+  // Handle group member left (kicked or voluntary leave)
+  useEffect(() => {
+    const handleMemberLeft = (data: any) => {
+      const { conversationId, userId } = data;
+
+      // If current user was removed/kicked, remove conversation from list
+      if (userId === user?.id) {
+        setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
+      } else {
+        // Other member left, refresh to update member count
+        fetchChats(false);
+      }
+    };
+
+    const cleanup = socketService.on("group:member_left", handleMemberLeft);
+    return () => cleanup();
+  }, [user?.id, fetchChats]);
+
+  // Handle group dissolved
+  useEffect(() => {
+    const handleGroupDissolved = (data: any) => {
+      const { conversationId } = data;
+      setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
+    };
+
+    const cleanup = socketService.on("group:dissolved", handleGroupDissolved);
+    return () => cleanup();
+  }, []);
 
   const [globalUsers, setGlobalUsers] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);

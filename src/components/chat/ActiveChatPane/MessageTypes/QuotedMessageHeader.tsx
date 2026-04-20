@@ -1,37 +1,52 @@
 import React, { useState, useEffect } from "react";
 import userService from "../../../../services/userService";
 
-export const QuotedMessageHeader = ({ message, messages = [], mine }) => {
-  const isQuoted = Boolean(message?.quotedMessageId || message?.quotedMessage);
+export const QuotedMessageHeader = ({ message, messages = [], mine, currentUserId }) => {
+  const isQuoted = Boolean(message?.quotedMessageId || message?.quotedMessage || message?.replyTo);
   
   const [fetchedSenderName, setFetchedSenderName] = useState("");
+  const [previewText, setPreviewText] = useState("Ghi âm/Hình ảnh");
 
   const targetSenderId = message?.quotedMessage?.senderId || message?.quotedMessage?.id_sender;
   const fallbackNameFromMsg = message?.quotedMessage?.sender?.name ||
     message?.quotedMessage?.senderName ||
     message?.quotedMessage?.sender?.displayName ||
     message?.quotedMessage?.sender?.username;
-  const quotedMessageId = message?.quotedMessageId || message?.quotedMessage?.id || message?.quotedMessage?._id;
+  const quotedMessageId = message?.quotedMessageId || message?.quotedMessage?.id || message?.quotedMessage?._id || message?.replyTo;
+
+  const [fetchedTargetId, setFetchedTargetId] = useState("");
 
   useEffect(() => {
     if (!isQuoted) return;
 
     let targetId = targetSenderId;
     let fallbackName = fallbackNameFromMsg;
+    let textPreview = message?.quotedMessagePreview || message?.quotedMessage?.text;
 
     // Nếu không có thông tin từ quotedMessage, fallback tìm trong mảng messages
-    if (!fallbackName && quotedMessageId) {
+    if ((!fallbackName || !textPreview) && quotedMessageId) {
       const originalMessage = messages?.find(m => String(m.id || m._id) === String(quotedMessageId));
       if (originalMessage) {
-        fallbackName = originalMessage.senderName || originalMessage.sender?.displayName || originalMessage.sender?.name;
-        targetId = originalMessage.senderId || originalMessage.id_sender;
+        if (!fallbackName) {
+           fallbackName = originalMessage.senderName || originalMessage.sender?.displayName || originalMessage.sender?.name;
+        }
+        if (!targetId) targetId = originalMessage.senderId || originalMessage.id_sender;
+        if (!textPreview) {
+           textPreview = originalMessage.text;
+        }
       }
+    }
+
+    if (textPreview) {
+        setPreviewText(textPreview);
     }
 
     if (fallbackName) {
       setFetchedSenderName(fallbackName);
-    } else if (targetId) {
-      // Fetch if we only have ID
+      setFetchedTargetId(targetId);
+    } else if (targetId && targetId !== fetchedTargetId && targetId !== "me") {
+      // Fetch if we only have ID and haven't fetched it yet
+      setFetchedTargetId(targetId); // Prevent duplicate calls immediately
       userService.getUserById(targetId)
         .then((res) => {
           if (res) {
@@ -39,18 +54,17 @@ export const QuotedMessageHeader = ({ message, messages = [], mine }) => {
           }
         })
         .catch(() => setFetchedSenderName("Unknown"));
-    } else {
+    } else if (!targetId) {
       setFetchedSenderName("Unknown");
     }
-  }, [isQuoted, targetSenderId, fallbackNameFromMsg, quotedMessageId, messages]);
+  }, [isQuoted, targetSenderId, fallbackNameFromMsg, quotedMessageId, messages, message, fetchedTargetId]);
 
   if (!isQuoted) return null;
 
-  const quotedMsg = message?.quotedMessage || {};
-  
-  const senderName = fetchedSenderName || "Unknown";
-
-  const previewText = message?.quotedMessagePreview || quotedMsg?.text || "Ghi âm/Hình ảnh";
+  let senderName = fetchedSenderName || "Unknown";
+  if (mine && currentUserId && (fetchedTargetId === currentUserId || targetSenderId === currentUserId || fetchedTargetId === "me")) {
+    senderName = "Bạn";
+  }
 
   return (
     <div className={`mx-2 mt-[6px] mb-1 px-3 py-[6px] rounded-[6px] relative overflow-hidden flex flex-col justify-center cursor-pointer ${

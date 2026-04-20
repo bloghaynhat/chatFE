@@ -148,11 +148,44 @@ export const RightSidebar = ({
 
     const cleanupOwnerTransfer = socketService.on("group:owner_transferred", handleOwnerTransferred);
 
+    const handleGroupRenamed = async (data: any) => {
+      if (data.conversationId === selectedChat?.id) {
+        try {
+          const infoData = await conversationService.getGroupInfo(selectedChat.id);
+          const actualInfo = infoData?.data || infoData;
+          if (isMounted) {
+            setInfo(actualInfo || null);
+          }
+        } catch (err) {
+          console.error("Failed to refresh group info after rename:", err);
+        }
+      }
+    };
+
+    const handleGroupAvatarChanged = async (data: any) => {
+      if (data.conversationId === selectedChat?.id) {
+        try {
+          const infoData = await conversationService.getGroupInfo(selectedChat.id);
+          const actualInfo = infoData?.data || infoData;
+          if (isMounted) {
+            setInfo(actualInfo || null);
+          }
+        } catch (err) {
+          console.error("Failed to refresh group info after avatar change:", err);
+        }
+      }
+    };
+
+    const cleanupGroupRenamed = socketService.on("group:renamed", handleGroupRenamed);
+    const cleanupGroupAvatarChanged = socketService.on("group:avatar_changed", handleGroupAvatarChanged);
+
     return () => {
       isMounted = false;
       if (cleanupRemoved) cleanupRemoved();
       if (cleanupAdded) cleanupAdded();
       if (cleanupOwnerTransfer) cleanupOwnerTransfer();
+      if (cleanupGroupRenamed) cleanupGroupRenamed();
+      if (cleanupGroupAvatarChanged) cleanupGroupAvatarChanged();
     };
   }, [selectedChat?.id, isGroup]);
 
@@ -225,6 +258,17 @@ export const RightSidebar = ({
           avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl,
         });
       }
+
+      // Emit socket event to notify other members
+      if (socketService.messagesSocket?.connected) {
+        socketService.messagesSocket.emit("conversation:updated", {
+          conversationId: selectedChat.id,
+          updates: {
+            name: actualInfo.conversation?.name || actualInfo.name,
+            avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl,
+          },
+        });
+      }
     } catch (err) {
       console.error("Failed to update group info:", err);
       setIsUploadingAvatar(false);
@@ -276,7 +320,10 @@ export const RightSidebar = ({
       setMembers((prev) => prev.filter((m: any) => (m.userId || m.user?.id || m.user?._id) !== userId));
 
       if (socketService.messagesSocket?.connected) {
-        socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+        socketService.messagesSocket.emit("conversation:updated", {
+          conversationId: selectedChat.id,
+          updates: {},
+        });
       }
     } catch (error) {
       console.error("Failed to remove member", error);
@@ -299,7 +346,10 @@ export const RightSidebar = ({
       );
 
       if (socketService.messagesSocket?.connected) {
-        socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+        socketService.messagesSocket.emit("conversation:updated", {
+          conversationId: selectedChat.id,
+          updates: {},
+        });
       }
     } catch (error) {
       console.error("Failed to promote to admin", error);
@@ -313,7 +363,10 @@ export const RightSidebar = ({
       setIsLoading(true);
       await conversationService.leaveGroupConversation(selectedChat.id);
       if (socketService.messagesSocket?.connected) {
-        socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+        socketService.messagesSocket.emit("conversation:updated", {
+          conversationId: selectedChat.id,
+          updates: {},
+        });
       }
       onClose();
       // Notify ChatList to refresh and remove the conversation
@@ -341,16 +394,17 @@ export const RightSidebar = ({
       setIsLoading(true);
 
       if (deleteForAll) {
-        // Case 1: Delete for all members - delete the entire group
-        await conversationService.deleteGroupConversation(selectedChat.id);
-        if (socketService.messagesSocket?.connected) {
-          socketService.messagesSocket.emit("conversation:deleted", { conversationId: selectedChat.id });
-        }
+        // Case 1: Delete for all members - emit dissolveGroup socket event
+        // The server will delete the group and broadcast group:dissolved to all members
+        await socketService.dissolveGroup(selectedChat.id);
       } else {
         // Case 2: Regular member leaving (or admin after transfer)
         await conversationService.leaveGroupConversation(selectedChat.id);
         if (socketService.messagesSocket?.connected) {
-          socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+          socketService.messagesSocket.emit("conversation:updated", {
+            conversationId: selectedChat.id,
+            updates: {},
+          });
         }
       }
 
@@ -378,7 +432,10 @@ export const RightSidebar = ({
       await conversationService.leaveGroupConversation(selectedChat.id);
 
       if (socketService.messagesSocket?.connected) {
-        socketService.messagesSocket.emit("conversation:updated", { conversationId: selectedChat.id });
+        socketService.messagesSocket.emit("conversation:updated", {
+          conversationId: selectedChat.id,
+          updates: {},
+        });
       }
 
       setIsSelectAdminModalOpen(false);

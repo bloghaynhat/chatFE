@@ -4,6 +4,7 @@ import { FiArrowLeft, FiArrowRight, FiCamera, FiX } from "react-icons/fi";
 import { useFriendManagement } from "../../hooks";
 import { conversationService } from "../../services/conversationService";
 import { mediaService } from "../../services/mediaService";
+import { socketService } from "../../services/socketService";
 
 // Helper to get consistent background colors based on name string
 const getAvatarBgColor = (name: string) => {
@@ -114,11 +115,19 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
         avatarUrl
       );
 
-      // TODO: Optionally emit socket event to join the group conversation
-      // socketService.joinConversation(result.conversationId);
+      // Join the newly created group room to receive real-time messages
+      try {
+        await socketService.joinGroup(result.conversationId);
+        console.log("[CreateGroupModal] Joined group room:", result.conversationId);
+      } catch (joinErr) {
+        console.error("[CreateGroupModal] Failed to join group room:", joinErr);
+        // Continue anyway - user can still manually join later
+      }
+
+      // Notify chat list to refresh
+      window.dispatchEvent(new Event("chatList:refresh"));
 
       onClose();
-      // TODO: Notify parent to navigate to the new conversation or refresh list
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create group");
       setStep("select"); // Go back to name step to retry

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { conversationService } from "../../services/conversationService";
+import { userService } from "../../services/userService";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -10,7 +11,10 @@ import { MessageList } from "./ActiveChatPane/MessageList";
 import { ChatInput } from "./ActiveChatPane/ChatInput";
 import { ForwardModal } from "./ActiveChatPane/ForwardModal";
 import { CalendarModal } from "./ActiveChatPane/CalendarModal";
+import { PinnedBar } from "./ActiveChatPane/PinnedBar";
+import { PinnedList } from "./ActiveChatPane/PinnedList";
 import { getDateLabel, getMessageTime, getMessageText } from "../../utils/chatUtils";
+import type { Message } from "../../types/conversation";
 import {
   FiImage,
   FiFile,
@@ -45,6 +49,8 @@ export const ActiveChatPane = ({
   onClearForwarding,
   isRightSidebarOpen,
   setIsRightSidebarOpen,
+  onPinMessage,
+  onUnpinMessage,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -55,8 +61,9 @@ export const ActiveChatPane = ({
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
   const [draftMessage, setDraftMessage] = useState("");
-  const [editingMessage, setEditingMessage] = useState(null);
-  const [replyingMessage, setReplyingMessage] = useState(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
+  const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -68,6 +75,7 @@ export const ActiveChatPane = ({
   const firstMessageRef = useRef(null);
   const photoVideoInputRef = useRef(null);
   const documentInputRef = useRef(null);
+  const userCache = useRef<Map<string, any>>(new Map());
 
   const [displayCount, setDisplayCount] = useState(20);
 
@@ -78,9 +86,33 @@ export const ActiveChatPane = ({
 
   const [previewVideoUrl, setPreviewVideoUrl] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
-
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
+
+  // Computed pinned messages from messages (real-time from socket)
+  const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<Message[]>([]);
+
+  // Enrich pinned messages with sender info whenever messages change
+  useEffect(() => {
+    const updatePinnedMessages = async () => {
+      if (!messages || messages.length === 0) {
+        setEnrichedPinnedMessages([]);
+        return;
+      }
+
+      const pinned = messages.filter((m) => m.pinnedAt);
+      if (pinned.length === 0) {
+        setEnrichedPinnedMessages([]);
+        return;
+      }
+
+      const enriched = await enrichMessagesWithSenderInfo(pinned);
+      setEnrichedPinnedMessages(enriched);
+    };
+
+    updatePinnedMessages();
+  }, [messages]);
+
   const { friends, fetchFriends } = useFriendManagement();
 
   useEffect(() => {
@@ -88,6 +120,43 @@ export const ActiveChatPane = ({
       fetchFriends();
     }
   }, [forwardModalVisible]);
+
+  // Socket-based pin/unpin handlers (now from parent via props)
+  const handlePinMessage = async (messageId: string) => {
+    if (onPinMessage) {
+      await onPinMessage(messageId);
+    }
+  };
+
+  const handleUnpinMessage = async (messageId: string) => {
+    if (onUnpinMessage) {
+      await onUnpinMessage(messageId);
+    }
+  };
+
+  // Navigate to a specific message
+  const handleNavigateToMessage = (messageId: string) => {
+    // Find the message index in the full messages array
+    const messageIndex = messages.findIndex(m => (m.id || m._id) === messageId);
+    if (messageIndex !== -1) {
+      // Calculate required displayCount to ensure this message is visible
+      const requiredDisplayCount = messages.length - messageIndex;
+      setDisplayCount(prev => Math.max(prev, requiredDisplayCount));
+    }
+
+    // Scroll after a short delay to allow DOM update
+    setTimeout(() => {
+      const messageElement = document.getElementById(`message-${messageId}`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Add highlight effect
+        messageElement.classList.add("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+        setTimeout(() => {
+          messageElement.classList.remove("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+        }, 2000);
+      }
+    }, 100);
+  };
 
   const handleOpenForwardModal = (message) => {
     setMessageToForward(message);
@@ -170,6 +239,57 @@ export const ActiveChatPane = ({
     previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
     setPreviewFiles([]);
     setDragType(null);
+  };
+
+  // Enrich messages with sender user data using cache
+  const enrichMessagesWithSenderInfo = async (messages: Message[]): Promise<Message[]> => {
+    if (!messages || messages.length === 0) return messages;
+
+    // Extract unique senderIds
+    const senderIds = [...new Set(messages.map(msg => msg.senderId).filter(Boolean))] as string[];
+
+    if (senderIds.length === 0) return messages;
+
+    try {
+      // Separate cached and uncached senderIds
+      const uncachedSenderIds = senderIds.filter(id => !userCache.current.has(id));
+
+      // Fetch uncached users in parallel
+      if (uncachedSenderIds.length > 0) {
+        const userPromises = uncachedSenderIds.map(senderId =>
+          userService.getUserById(senderId).catch(error => {
+            console.warn(`Failed to fetch user ${senderId}:`, error);
+            return null;
+          })
+        );
+
+        const users = await Promise.all(userPromises);
+
+        // Update cache with fetched users (extract data from response)
+        uncachedSenderIds.forEach((senderId, index) => {
+          const userRes = users[index];
+          if (userRes) {
+            const userData = userRes.data || userRes;
+            userCache.current.set(senderId, userData);
+          }
+        });
+      }
+
+      // Attach user data to messages from cache
+      return messages.map(msg => {
+        const senderId = msg.senderId;
+        if (senderId && userCache.current.has(senderId)) {
+          return {
+            ...msg,
+            sender: userCache.current.get(senderId)
+          };
+        }
+        return msg;
+      });
+    } catch (error) {
+      console.error("Error enriching messages with sender info:", error);
+      return messages;
+    }
   };
 
   const scrollToBottom = (behavior = "smooth") => {
@@ -532,6 +652,7 @@ export const ActiveChatPane = ({
       )}
 
       <ChatHeader
+        selectedConversationId={selectedConversationId}
         selectedChat={selectedChat}
         currentUserId={currentUserId}
         isLoading={isLoading}
@@ -550,7 +671,19 @@ export const ActiveChatPane = ({
         headerSearchInputRef={headerSearchInputRef}
         isRightSidebarOpen={isRightSidebarOpen}
         setIsRightSidebarOpen={setIsRightSidebarOpen}
+        pinnedCount={enrichedPinnedMessages.length}
       />
+
+      {/* Pinned Messages Bar */}
+      {selectedConversationId && enrichedPinnedMessages.length > 0 && (
+        <PinnedBar
+          pinnedMessages={enrichedPinnedMessages}
+          currentUserId={currentUserId}
+          onUnpin={handleUnpinMessage}
+          onOpenList={() => setIsPinnedListOpen(true)}
+          onNavigateToMessage={handleNavigateToMessage}
+        />
+      )}
 
       <MessageList
         isLoading={isLoading}
@@ -662,10 +795,28 @@ export const ActiveChatPane = ({
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
               onClick={() => {
+                const msgId = contextMenu.message?.id || contextMenu.message?._id;
+                if (msgId) {
+                  // Check pinned state directly from messages prop (always up-to-date)
+                  const message = messages.find((m) => (m.id || m._id) === msgId);
+                  const isPinned = !!message?.pinnedAt;
+                  if (isPinned) {
+                    handleUnpinMessage(msgId).catch(console.error);
+                  } else {
+                    handlePinMessage(msgId).catch(console.error);
+                  }
+                }
                 setContextMenu(null);
               }}
             >
-              <FiMapPin className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Pin</span>
+              <FiMapPin className="text-[18px]" strokeWidth={2} />
+              <span className="font-medium">
+                {(() => {
+                  const msgId = contextMenu.message?.id || contextMenu.message?._id;
+                  const message = messages.find((m) => (m.id || m._id) === msgId);
+                  return !!message?.pinnedAt ? "Unpin" : "Pin";
+                })()}
+              </span>
             </button>
             <button
               className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
@@ -737,6 +888,16 @@ export const ActiveChatPane = ({
         selectedCalendarDate={selectedCalendarDate}
         setSelectedCalendarDate={setSelectedCalendarDate}
         setHeaderSearchValue={setHeaderSearchValue}
+      />
+
+      {/* Pinned List Sidebar */}
+      <PinnedList
+        pinnedMessages={enrichedPinnedMessages}
+        currentUserId={currentUserId}
+        isOpen={isPinnedListOpen}
+        onClose={() => setIsPinnedListOpen(false)}
+        onUnpin={handleUnpinMessage}
+        onNavigateToMessage={handleNavigateToMessage}
       />
 
       <ChatInput
