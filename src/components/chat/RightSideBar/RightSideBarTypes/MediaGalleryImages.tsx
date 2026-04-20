@@ -123,6 +123,8 @@ export const MediaGalleryImages: React.FC<MediaGalleryImagesProps> = ({
               <a
                 href={selectedImage.url}
                 download={selectedImage.name}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="absolute top-4 left-4 bg-blue-500 hover:bg-blue-600 rounded-full p-2 z-10 transition-colors active:scale-95"
                 onClick={(e) => e.stopPropagation()}
               >

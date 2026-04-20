@@ -106,6 +106,8 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
                 <a
                   href={voice.url}
                   download={voice.name}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex-shrink-0 opacity-0 hover:opacity-100 transition-opacity"
                 >
                   <svg

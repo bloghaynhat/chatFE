@@ -511,6 +511,15 @@ const MainLayout = ({ children }: { children?: any }) => {
         if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
           const conversation = await conversationService.createPrivateConversation(chat.targetUserId);
           conversationId = resolveConversationId(conversation);
+          setSelectedChat((prev: any) => ({
+            ...prev,
+            ...conversation,
+            id: conversationId,
+            conversationId: conversationId,
+            name: chat.name || prev?.name || conversation?.name,
+            avatarUrl: chat.avatarUrl || prev?.avatarUrl || conversation?.avatarUrl,
+            displayName: chat.name || prev?.displayName || (conversation as any)?.displayName
+          }));
         }
 
         if (!conversationId) {
@@ -1134,6 +1143,20 @@ const MainLayout = ({ children }: { children?: any }) => {
           }}
           onShowInChat={handleShowInChat}
           messages={messages}
+          onSendMessage={(member: any) => {
+            const memberId = member.userId || member.user?.id || member.user?._id || member._id || member.id;
+            const participant = member.user || member;
+            const name = participant.displayName || participant.name || participant.username || "Unknown";
+            
+            if (memberId) {
+              openChatByRow({ 
+                id: `temp-${memberId}`, 
+                targetUserId: memberId,
+                name: name,
+                avatarUrl: participant.avatarUrl
+              });
+            }
+          }}
         />
       </div>
     </div>

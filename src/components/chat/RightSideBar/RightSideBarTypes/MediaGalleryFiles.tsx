@@ -83,6 +83,8 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
                 key={file.messageId}
                 href={file.url}
                 download={file.name}
+                target="_blank"
+                rel="noopener noreferrer"
                 onContextMenu={(e) => handleContextMenu(e, file)}
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors border-b border-gray-100 dark:border-slate-700 cursor-pointer group"
               >

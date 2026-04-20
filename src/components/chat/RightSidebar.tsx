@@ -15,6 +15,7 @@ export const RightSidebar = ({
   onGroupUpdated,
   onShowInChat,
   messages,
+  onSendMessage,
 }: any) => {
   const [members, setMembers] = useState<any[]>([]);
   const [info, setInfo] = useState<any>(null);
@@ -489,6 +490,7 @@ export const RightSidebar = ({
             currentUserId={currentUserId}
             onRemoveMember={handleRemoveMember}
             onPromoteAdmin={handlePromoteAdmin}
+            onSendMessage={onSendMessage}
             onLeaveGroup={handleLeaveGroup}
             targetUserId={!isGroup ? selectedChat?.targetUserId || selectedChat?.participantId : null}
             conversationId={selectedChat?.id}
@@ -530,6 +532,7 @@ export const RightSidebar = ({
             currentUserId={currentUserId}
             onRemoveMember={handleRemoveMember}
             onPromoteAdmin={handlePromoteAdmin}
+            onSendMessage={onSendMessage}
             onLeaveGroup={handleLeaveGroup}
           />
 
