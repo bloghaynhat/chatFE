@@ -594,17 +594,22 @@ const MainLayout = ({ children }: { children?: any }) => {
         return f;
       });
 
-      const optimisticMessage = {
-        id: tempId,
-        text: txt,
-        media: previewMedias,
-        createdAt: new Date().toISOString(),
-        isMine: true,
-        senderId: "me",
-        status: "sending",
-      };
-
-      setMessages((prev) => [...prev, optimisticMessage]);
+      setMessages((prev) => {
+        const optimisticMessage: any = {
+          id: tempId,
+          text: txt,
+          media: previewMedias,
+          createdAt: new Date().toISOString(),
+          isMine: true,
+          senderId: user?.id || "me",
+          status: "sending",
+        };
+        if (replyMsg) {
+          optimisticMessage.quotedMessageId = replyMsg.id || replyMsg._id;
+          optimisticMessage.quotedMessage = replyMsg;
+        }
+        return [...prev, optimisticMessage];
+      });
 
       try {
         let finalMedia = [];
@@ -696,7 +701,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           const messageId = replyMsg.id || replyMsg._id;
           apiResponse = await conversationService.quoteMessage(messageId, {
             text: txt || " ",
-            media: validMedia,
+            media: validMedia
           });
         } else {
           apiResponse = await conversationService.sendMessage(conversationId, {
@@ -724,7 +729,7 @@ const MainLayout = ({ children }: { children?: any }) => {
             const existingIndex = updatedMessages.findIndex((m) => String(m.id || m._id) === String(msgId));
 
             if (existingIndex !== -1) {
-              updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], status: "sent", id: msgId };
+              updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], ...sMsg, status: "sent", id: msgId };
             } else {
               updatedMessages.push({ ...sMsg, id: msgId, status: "sent" });
             }

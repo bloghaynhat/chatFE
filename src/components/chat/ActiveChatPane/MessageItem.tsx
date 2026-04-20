@@ -231,7 +231,7 @@ export const MessageItem = ({
           </span>
         )}
         {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
-        <QuotedMessageHeader message={message} messages={messages} mine={mine} />
+        <QuotedMessageHeader message={message} messages={messages} mine={mine} currentUserId={currentUserId} />
 
         {isMedia && (
           <MessageMedia

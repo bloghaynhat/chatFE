@@ -25,6 +25,7 @@ import type {
   TypingStartPayload,
   TypingStopPayload,
 } from "../types/socket";
+import { SocketEvent } from "../../docs/socket-events";
 
 class SocketService {
   messagesSocket: Socket | null = null;
@@ -699,15 +700,25 @@ class SocketService {
     });
   }
 
-  quoteMessage(messageId, text, conversationId) {
+  quoteMessage(messageId, text, conversationId, media = []) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("quoteMessage", { messageId, text, conversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Quote failed"));
+      const payload: any = { 
+        quotedMessageId: messageId, 
+        text, 
+        conversationId
+      };
+      if (media && media.length > 0) payload.media = media;
+      
+      this.messagesSocket.emit(SocketEvent.QUOTE_MESSAGE, payload, (res: any) => {
+        if (res?.success || res?.status === "success") {
+          resolve(res.message || res.data || res);
+        } else {
+          reject(new Error(res?.error || res?.msg || "Quote failed"));
+        }
       });
     });
   }
