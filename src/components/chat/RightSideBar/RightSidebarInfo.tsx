@@ -5,6 +5,7 @@ import { RightSidebarSettings } from "./RightSideBarTypes/RightSidebarSettings";
 import { RightSidebarMemberList } from "./RightSideBarTypes/RightSidebarMemberList";
 import { MoreMenu } from "./RightSideBarTypes/MoreMenu";
 import { DeleteContactModal } from "./RightSideBarTypes/DeleteContactModal";
+import { MediaGallery } from "./MediaGallery";
 import React, { useState, useEffect, useCallback } from "react";
 import { useContactsSocketListeners } from "../../../hooks";
 import { removeFriend, checkFriendRequestStatus, sendFriendRequest, acceptFriendRequest } from "../../../services";
@@ -29,6 +30,7 @@ interface RightSidebarInfoProps {
   onSendMessage?: (member: any) => void;
   onLeaveGroup?: () => void;
   targetUserId?: string | null;
+  conversationId?: string;
 }
 
 export const RightSidebarInfo = ({
@@ -50,6 +52,7 @@ export const RightSidebarInfo = ({
   onSendMessage,
   onLeaveGroup,
   targetUserId,
+  conversationId,
 }: RightSidebarInfoProps) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
@@ -60,6 +63,7 @@ export const RightSidebarInfo = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<"members" | "media">(isGroup ? "members" : "media");
 
   // Fetch user details for non-group view
   useEffect(() => {
@@ -202,7 +206,7 @@ export const RightSidebarInfo = ({
         )}
       </RightSidebarHeader>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
         <RightSidebarAvatar
           avatarUrl={isGroup ? groupAvatar : targetUserDetails?.avatarUrl}
           name={displayName}
@@ -222,13 +226,52 @@ export const RightSidebarInfo = ({
           onAcceptRequest={handleAcceptRequest}
         />
 
-        {isGroup && (
-          <RightSidebarMemberList
-            members={members}
-            isLoading={isLoading}
-            contextMenu={contextMenu}
-            onContextMenu={handleContextMenu}
-          />
+        {/* Tab Navigation */}
+        {(isGroup || conversationId) && (
+          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0 overflow-x-auto scrollbar-hide">
+            {isGroup && (
+              <button
+                onClick={() => setActiveTab("members")}
+                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+                  activeTab === "members"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                Members ({membersCount || 0})
+              </button>
+            )}
+            {conversationId && (
+              <button
+                onClick={() => setActiveTab("media")}
+                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+                  activeTab === "media"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                Media
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Content Area */}
+        {activeTab === "members" && isGroup && (
+          <div className="flex-1 overflow-y-auto">
+            <RightSidebarMemberList
+              members={members}
+              isLoading={isLoading}
+              contextMenu={contextMenu}
+              onContextMenu={handleContextMenu}
+            />
+          </div>
+        )}
+
+        {activeTab === "media" && conversationId && (
+          <div className="flex-1 overflow-hidden">
+            <MediaGallery conversationId={conversationId} isGroup={isGroup} currentUserId={currentUserId} />
+          </div>
         )}
       </div>
 
