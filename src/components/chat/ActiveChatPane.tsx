@@ -49,6 +49,8 @@ export const ActiveChatPane = ({
   onClearForwarding,
   isRightSidebarOpen,
   setIsRightSidebarOpen,
+  onPinMessage,
+  onUnpinMessage,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -61,10 +63,7 @@ export const ActiveChatPane = ({
   const [draftMessage, setDraftMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
-  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
-  const [pinnedMessagesLoading, setPinnedMessagesLoading] = useState(false);
-  const [pinnedMessagesError, setPinnedMessagesError] = useState<string | null>(null);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -87,9 +86,33 @@ export const ActiveChatPane = ({
 
   const [previewVideoUrl, setPreviewVideoUrl] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
-
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
+
+  // Computed pinned messages from messages (real-time from socket)
+  const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<Message[]>([]);
+
+  // Enrich pinned messages with sender info whenever messages change
+  useEffect(() => {
+    const updatePinnedMessages = async () => {
+      if (!messages || messages.length === 0) {
+        setEnrichedPinnedMessages([]);
+        return;
+      }
+
+      const pinned = messages.filter((m) => m.pinnedAt);
+      if (pinned.length === 0) {
+        setEnrichedPinnedMessages([]);
+        return;
+      }
+
+      const enriched = await enrichMessagesWithSenderInfo(pinned);
+      setEnrichedPinnedMessages(enriched);
+    };
+
+    updatePinnedMessages();
+  }, [messages]);
+
   const { friends, fetchFriends } = useFriendManagement();
 
   useEffect(() => {
@@ -98,78 +121,16 @@ export const ActiveChatPane = ({
     }
   }, [forwardModalVisible]);
 
-  useEffect(() => {
-    if (!selectedConversationId) return;
-
-    const fetchPinnedMessages = async () => {
-      try {
-        setPinnedMessagesLoading(true);
-        setPinnedMessagesError(null);
-        const messages = await conversationService.getPinnedMessages(selectedConversationId);
-
-        // Enrich messages with sender user data
-        const enrichedMessages = await enrichMessagesWithSenderInfo(messages);
-        setPinnedMessages(enrichedMessages);
-      } catch (error) {
-        console.error("Failed to fetch pinned messages:", error);
-        setPinnedMessagesError(error instanceof Error ? error.message : "Failed to load pinned messages");
-      } finally {
-        setPinnedMessagesLoading(false);
-      }
-    };
-
-    fetchPinnedMessages();
-  }, [selectedConversationId]);
-
-  useEffect(() => {
-    if (!selectedConversationId) return;
-
-    const handlePinned = async (data: any) => {
-      const msg = data?.message || data;
-      if (msg && (msg.conversationId === selectedConversationId || data.conversationId === selectedConversationId)) {
-        // Enrich the message with sender info
-        const enrichedMsg = await enrichMessagesWithSenderInfo([msg]);
-        setPinnedMessages((prev) => {
-          if (prev.find((m) => m._id === msg._id || m.id === msg.id)) return prev;
-          return [...prev, enrichedMsg[0]];
-        });
-      }
-    };
-
-    const handleUnpinned = (data: any) => {
-      const unpinnedId = data?.messageId || data?.message?._id || data?.message?.id || data?._id || data?.id;
-      if (unpinnedId) {
-        setPinnedMessages((prev) => prev.filter((m) => m._id !== unpinnedId && m.id !== unpinnedId));
-      }
-    };
-
-    const unsubscribePinned = socketService.on("message:pinned", handlePinned);
-    const unsubscribeUnpinned = socketService.on("message:unpinned", handleUnpinned);
-
-    return () => {
-      if (unsubscribePinned) unsubscribePinned();
-      if (unsubscribeUnpinned) unsubscribeUnpinned();
-    };
-  }, [selectedConversationId]);
-
-  // Socket-based pin/unpin handlers - now using HTTP API
+  // Socket-based pin/unpin handlers (now from parent via props)
   const handlePinMessage = async (messageId: string) => {
-    try {
-      await conversationService.pinMessage(messageId);
-      // The socket event will update the pinnedMessages state automatically
-    } catch (error) {
-      console.error("Failed to pin message:", error);
-      throw error;
+    if (onPinMessage) {
+      await onPinMessage(messageId);
     }
   };
 
   const handleUnpinMessage = async (messageId: string) => {
-    try {
-      await conversationService.unpinMessage(messageId);
-      // The socket event will update the pinnedMessages state automatically
-    } catch (error) {
-      console.error("Failed to unpin message:", error);
-      throw error;
+    if (onUnpinMessage) {
+      await onUnpinMessage(messageId);
     }
   };
 
@@ -710,12 +671,13 @@ export const ActiveChatPane = ({
         headerSearchInputRef={headerSearchInputRef}
         isRightSidebarOpen={isRightSidebarOpen}
         setIsRightSidebarOpen={setIsRightSidebarOpen}
+        pinnedCount={enrichedPinnedMessages.length}
       />
 
       {/* Pinned Messages Bar */}
-      {selectedConversationId && pinnedMessages.length > 0 && (
+      {selectedConversationId && enrichedPinnedMessages.length > 0 && (
         <PinnedBar
-          pinnedMessages={pinnedMessages}
+          pinnedMessages={enrichedPinnedMessages}
           currentUserId={currentUserId}
           onUnpin={handleUnpinMessage}
           onOpenList={() => setIsPinnedListOpen(true)}
@@ -835,8 +797,9 @@ export const ActiveChatPane = ({
               onClick={() => {
                 const msgId = contextMenu.message?.id || contextMenu.message?._id;
                 if (msgId) {
-                  const isPinned = pinnedMessages.some((m) => (m.id || m._id) === msgId);
-                  console.log(isPinned)
+                  // Check pinned state directly from messages prop (always up-to-date)
+                  const message = messages.find((m) => (m.id || m._id) === msgId);
+                  const isPinned = !!message?.pinnedAt;
                   if (isPinned) {
                     handleUnpinMessage(msgId).catch(console.error);
                   } else {
@@ -848,7 +811,11 @@ export const ActiveChatPane = ({
             >
               <FiMapPin className="text-[18px]" strokeWidth={2} />
               <span className="font-medium">
-                {pinnedMessages.some((m) => (m.id || m._id) === (contextMenu.message?.id || contextMenu.message?._id)) ? "Unpin" : "Pin"}
+                {(() => {
+                  const msgId = contextMenu.message?.id || contextMenu.message?._id;
+                  const message = messages.find((m) => (m.id || m._id) === msgId);
+                  return !!message?.pinnedAt ? "Unpin" : "Pin";
+                })()}
               </span>
             </button>
             <button
@@ -925,7 +892,7 @@ export const ActiveChatPane = ({
 
       {/* Pinned List Sidebar */}
       <PinnedList
-        pinnedMessages={pinnedMessages}
+        pinnedMessages={enrichedPinnedMessages}
         currentUserId={currentUserId}
         isOpen={isPinnedListOpen}
         onClose={() => setIsPinnedListOpen(false)}

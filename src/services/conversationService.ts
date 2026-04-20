@@ -178,10 +178,6 @@ export const conversationService = {
     return api.delete(`/messages/${messageId}/pin`, {});
   },
 
-  async quoteMessage(messageId: string, data: any): Promise<any> {
-    return api.post(`/messages/${messageId}/quote`, data);
-  },
-
   async forwardMessages(data: any): Promise<Message[]> {
     const response: any = await api.post(`/messages/forward`, data);
     return response.data || response;

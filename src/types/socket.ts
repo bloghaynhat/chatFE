@@ -3,7 +3,7 @@
  * These interfaces define the data structures for socket.io events
  */
 
-import { Conversation } from "./conversation";
+import { Conversation, Message } from "./conversation";
 
 // ========== MESSAGE EVENTS ==========
 
@@ -25,6 +25,12 @@ export interface PinMessagePayload {
 
 export interface UnpinMessagePayload {
   messageId: string;
+}
+
+export interface QuotedMessagePayload {
+  conversationId: string;
+  message: Message;
+  quotedMessageId: string;
 }
 
 // ========== CONVERSATION EVENTS ==========

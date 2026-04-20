@@ -37,6 +37,7 @@ export interface Message {
   // Reply/quote
   quotedMessageId?: string;
   quotedMessage?: Message;
+  quotedMessagePreview?: string;
 
   // Pin-related fields
   pinnedAt?: string;

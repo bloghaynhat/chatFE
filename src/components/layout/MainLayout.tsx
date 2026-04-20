@@ -5,6 +5,7 @@ import { ActiveChatPane } from "../chat";
 import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
+import type { PinMessagePayload, UnpinMessagePayload } from "../../types/socket";
 
 const MainLayout = ({ children }: { children?: any }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
@@ -23,6 +24,9 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const { user } = useAuth();
+
+  // Track pending pin/unpin operations to prevent duplicate requests
+  const pendingPinOperations = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -70,6 +74,39 @@ const MainLayout = ({ children }: { children?: any }) => {
               }
               return [...prev, message];
             }
+            return prev;
+          });
+        });
+
+        // Handle quoted message (reply with quote)
+        socketService.onMessageQuoted((payload) => {
+          console.log("[Socket] Received message:quoted:", payload);
+          const message = payload?.message || payload;
+          if (!message) {
+            console.warn("[Socket] message:quoted payload has no message:", payload);
+            return;
+          }
+
+          setMessages((prev) => {
+            const msgId = message._id || message.id;
+            if (!msgId) {
+              console.warn("[Socket] message:quoted message has no id:", message);
+              return prev;
+            }
+            if (prev.some((m) => String(m._id || m.id) === String(msgId))) {
+              console.log("[Socket] message:quoted already exists, skipping:", msgId);
+              return prev;
+            }
+
+            let msgConvId = message.conversationId || payload?.conversationId;
+            if (msgConvId && typeof msgConvId === "object") {
+              msgConvId = msgConvId._id || msgConvId.id;
+            }
+            if (String(msgConvId) === String(selectedConversationId)) {
+              console.log("[Socket] Adding quoted message to state:", msgId);
+              return [...prev, message];
+            }
+            console.log("[Socket] message:quoted conversationId mismatch. msgConvId:", msgConvId, "selected:", selectedConversationId);
             return prev;
           });
         });
@@ -260,6 +297,34 @@ const MainLayout = ({ children }: { children?: any }) => {
           );
         });
 
+        // Handle message pin
+        socketService.on("message:pinned", (payload: PinMessagePayload) => {
+          const { messageId, pinnedAt, pinnedBy } = payload;
+          if (!messageId) return;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m._id || m.id) === String(messageId)
+                ? { ...m, pinnedAt, pinnedBy }
+                : m
+            )
+          );
+        });
+
+        // Handle message unpin
+        socketService.on("message:unpinned", (payload: UnpinMessagePayload) => {
+          const { messageId } = payload;
+          if (!messageId) return;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              String(m._id || m.id) === String(messageId)
+                ? { ...m, pinnedAt: undefined, pinnedBy: undefined }
+                : m
+            )
+          );
+        });
+
         socketService.on("conversation:updated", (payload: any) => {
           const { conversationId, updates } = payload;
           if (!conversationId || !updates) return;
@@ -327,6 +392,9 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offMessageEdited();
       socketService.offMessageReaction();
       socketService.offMessageReactionRemove();
+      socketService.offMessagePinned();
+      socketService.offMessageUnpinned();
+      socketService.offMessageQuoted();
       socketService.off("conversation:updated");
       socketService.offGroupDissolved();
       socketService.offGroupRenamed();
@@ -699,10 +767,12 @@ const MainLayout = ({ children }: { children?: any }) => {
         let apiResponse: any;
         if (replyMsg) {
           const messageId = replyMsg.id || replyMsg._id;
-          apiResponse = await conversationService.quoteMessage(messageId, {
-            text: txt || " ",
-            media: validMedia
-          });
+          apiResponse = await socketService.quoteMessage(
+            messageId,
+            txt || " ",
+            selectedConversationId,
+            validMedia
+          );
         } else {
           apiResponse = await conversationService.sendMessage(conversationId, {
             text: txt || " ",
@@ -840,6 +910,116 @@ const MainLayout = ({ children }: { children?: any }) => {
     }
   };
 
+  const handlePinMessage = async (messageId: string) => {
+    // Prevent duplicate requests
+    const operationKey = `pin-${messageId}`;
+    if (pendingPinOperations.current.has(operationKey)) {
+      console.warn(`Pin operation already pending for message ${messageId}`);
+      return;
+    }
+
+    if (!selectedConversationId) {
+      console.error("Cannot pin message: no conversation selected", { selectedConversationId, messageId });
+      return;
+    }
+
+    pendingPinOperations.current.add(operationKey);
+
+    console.log("[Pin] Pinning message:", { conversationId: selectedConversationId, messageId });
+
+    // Get current pinned state before optimistic update (for potential rollback)
+    const currentMessage = messages.find((m) => String(m.id || m._id) === String(messageId));
+    const originalPinnedAt = currentMessage?.pinnedAt;
+    const originalPinnedBy = currentMessage?.pinnedBy;
+
+    // Optimistic update - add pinnedAt immediately
+    setMessages((prev) =>
+      prev.map((msg) =>
+        String(msg.id || msg._id) === String(messageId)
+          ? { ...msg, pinnedAt: new Date().toISOString(), pinnedBy: user?.id || user?._id }
+          : msg
+      )
+    );
+
+    try {
+      const res: any = await conversationService.pinMessage(messageId);
+      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+        console.log("[Pin] Success:", { conversationId: selectedConversationId, messageId });
+        // Server will broadcast back to other clients, but we already updated optimistically
+      } else {
+        throw new Error(res?.error || res?.message || "Pin failed");
+      }
+    } catch (error) {
+      // Rollback on error
+      console.error("Failed to pin message:", error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          String(msg.id || msg._id) === String(messageId)
+            ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
+            : msg
+        )
+      );
+      throw error;
+    } finally {
+      pendingPinOperations.current.delete(operationKey);
+    }
+  };
+
+  const handleUnpinMessage = async (messageId: string) => {
+    // Prevent duplicate requests
+    const operationKey = `unpin-${messageId}`;
+    if (pendingPinOperations.current.has(operationKey)) {
+      console.warn(`Unpin operation already pending for message ${messageId}`);
+      return;
+    }
+
+    if (!selectedConversationId) {
+      console.error("Cannot unpin message: no conversation selected", { selectedConversationId, messageId });
+      return;
+    }
+
+    pendingPinOperations.current.add(operationKey);
+
+    console.log("[Unpin] Unpinning message:", { conversationId: selectedConversationId, messageId });
+
+    // Get current pinned state before optimistic update (for potential rollback)
+    const currentMessage = messages.find((m) => String(m.id || m._id) === String(messageId));
+    const originalPinnedAt = currentMessage?.pinnedAt;
+    const originalPinnedBy = currentMessage?.pinnedBy;
+
+    // Optimistic update - remove pinnedAt immediately
+    setMessages((prev) =>
+      prev.map((msg) =>
+        String(msg.id || msg._id) === String(messageId)
+          ? { ...msg, pinnedAt: undefined, pinnedBy: undefined }
+          : msg
+      )
+    );
+
+    try {
+      const res: any = await conversationService.unpinMessage(messageId);
+      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+        console.log("[Unpin] Success:", { conversationId: selectedConversationId, messageId });
+        // Server will broadcast back to other clients, but we already updated optimistically
+      } else {
+        throw new Error(res?.error || res?.message || "Unpin failed");
+      }
+    } catch (error) {
+      // Rollback on error - restore original pinned state
+      console.error("Failed to unpin message:", error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          String(msg.id || msg._id) === String(messageId)
+            ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
+            : msg
+        )
+      );
+      throw error;
+    } finally {
+      pendingPinOperations.current.delete(operationKey);
+    }
+  };
+
   return (
     <div className={darkMode ? "dark" : ""}>
       <div className="flex h-screen bg-white dark:bg-slate-900">
@@ -872,6 +1052,8 @@ const MainLayout = ({ children }: { children?: any }) => {
               onClearForwarding={clearForwardingMessage}
               isRightSidebarOpen={isRightSidebarOpen}
               setIsRightSidebarOpen={setIsRightSidebarOpen}
+              onPinMessage={handlePinMessage}
+              onUnpinMessage={handleUnpinMessage}
             />
           )}
         </div>

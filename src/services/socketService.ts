@@ -1,31 +1,5 @@
 import { io, Socket } from "socket.io-client";
 import { authStorage } from "../runtime/storage";
-import type {
-  ConversationCreatedPayload,
-  ConversationUpdatedPayload,
-  ConversationMembersAddedPayload,
-  ConversationMemberRemovedPayload,
-  ConversationPinToggledPayload,
-  ConversationArchivedToggledPayload,
-  ConversationMuteChangedPayload,
-  GroupMemberLeftPayload,
-  GroupDissolvedPayload,
-  GroupRenamedPayload,
-  GroupAvatarChangedPayload,
-  GroupAdminChangedPayload,
-  GroupOwnerTransferredPayload,
-  GroupMemberApprovedPayload,
-  GroupMemberRejectedPayload,
-  GroupSettings,
-  GroupSettingsUpdatedPayload,
-  EditMessagePayload,
-  DeleteMessagePayload,
-  PinMessagePayload,
-  UnpinMessagePayload,
-  TypingStartPayload,
-  TypingStopPayload,
-} from "../types/socket";
-import { SocketEvent } from "../../docs/socket-events";
 
 class SocketService {
   messagesSocket: Socket | null = null;
@@ -177,6 +151,10 @@ class SocketService {
 
     this.messagesSocket.on("message:unpinned", (data) => {
       this.emit("message:unpinned", data);
+    });
+
+    this.messagesSocket.on("message:quoted", (data) => {
+      this.emit("message:quoted", data);
     });
 
     // Conversation events
@@ -388,6 +366,14 @@ class SocketService {
 
   offMessageUnpinned() {
     this.off("message:unpinned");
+  }
+
+  onMessageQuoted(callback) {
+    return this.on("message:quoted", callback);
+  }
+
+  offMessageQuoted() {
+    this.off("message:quoted");
   }
 
   // ================= CONVERSATION CONVENIENCE LISTENERS =================
@@ -648,26 +634,26 @@ class SocketService {
     });
   }
 
-  pinMessage(messageId) {
+  pinMessage(conversationId: string, messageId: string) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("pinMessage", { messageId }, (res) => {
+      this.messagesSocket.emit("pinMessage", { conversationId, messageId }, (res) => {
         if (res?.success) resolve(res);
         else reject(new Error(res?.error || "Pin failed"));
       });
     });
   }
 
-  unpinMessage(messageId) {
+  unpinMessage(conversationId: string, messageId: string) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("unpinMessage", { messageId }, (res) => {
+      this.messagesSocket.emit("unpinMessage", { conversationId, messageId }, (res) => {
         if (res?.success) resolve(res);
         else reject(new Error(res?.error || "Unpin failed"));
       });
@@ -713,7 +699,7 @@ class SocketService {
       };
       if (media && media.length > 0) payload.media = media;
       
-      this.messagesSocket.emit(SocketEvent.QUOTE_MESSAGE, payload, (res: any) => {
+      this.messagesSocket.emit("quoteMessage", payload, (res: any) => {
         if (res?.success || res?.status === "success") {
           resolve(res.message || res.data || res);
         } else {
@@ -882,6 +868,8 @@ export const onMessageReactionsCleared = (cb) => socketService.on("message:react
 export const onMessagePinned = (cb) => socketService.on("message:pinned", cb);
 
 export const onMessageUnpinned = (cb) => socketService.on("message:unpinned", cb);
+
+export const onMessageQuoted = (cb) => socketService.on("message:quoted", cb);
 
 // Conversation - additional
 export const onConversationCreated = (cb) => socketService.on("conversation:created", cb);
