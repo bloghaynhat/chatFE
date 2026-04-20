@@ -187,16 +187,20 @@ export const RightSidebarInfo = ({
 
   // Determine display name
   const displayName = isGroup
-    ? (groupName || "Group")
-    : (targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || "User");
+    ? groupName || "Group"
+    : targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || "User";
 
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
-      <RightSidebarHeader
-        isGroup={isGroup}
-        onClose={onClose}
-        onEditClick={onEditClick}
-      />
+      <RightSidebarHeader isGroup={isGroup} onClose={onClose} onEditClick={onEditClick}>
+        {!isGroup && (
+          <MoreMenu
+            isOpen={isMoreMenuOpen}
+            onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+            onDeleteClick={() => setShowDeleteConfirm(true)}
+          />
+        )}
+      </RightSidebarHeader>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <RightSidebarAvatar
@@ -240,14 +244,6 @@ export const RightSidebarInfo = ({
           {/* FiUserPlus icon would go here if imported */}
           <span className="text-2xl">+</span>
         </button>
-      )}
-
-      {!isGroup && (
-        <MoreMenu
-          isOpen={isMoreMenuOpen}
-          onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-          onDeleteClick={() => setShowDeleteConfirm(true)}
-        />
       )}
 
       <DeleteContactModal

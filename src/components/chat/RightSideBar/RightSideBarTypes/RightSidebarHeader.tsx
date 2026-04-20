@@ -5,13 +5,10 @@ interface RightSidebarHeaderProps {
   isGroup: boolean;
   onClose: () => void;
   onEditClick?: () => void;
+  children?: React.ReactNode;
 }
 
-export const RightSidebarHeader: React.FC<RightSidebarHeaderProps> = ({
-  isGroup,
-  onClose,
-  onEditClick,
-}) => {
+export const RightSidebarHeader: React.FC<RightSidebarHeaderProps> = ({ isGroup, onClose, onEditClick, children }) => {
   return (
     <div className="flex items-center justify-between px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
       <div className="flex items-center gap-3">
@@ -25,14 +22,17 @@ export const RightSidebarHeader: React.FC<RightSidebarHeaderProps> = ({
           {isGroup ? "Group Info" : "User Info"}
         </span>
       </div>
-      {isGroup && (
-        <button
-          onClick={onEditClick}
-          className="p-2 -mr-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 transition-colors"
-        >
-          <FiEdit2 className="text-[18px]" />
-        </button>
-      )}
+      <div className="flex items-center gap-2">
+        {isGroup && (
+          <button
+            onClick={onEditClick}
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 transition-colors"
+          >
+            <FiEdit2 className="text-[18px]" />
+          </button>
+        )}
+        {children}
+      </div>
     </div>
   );
 };
