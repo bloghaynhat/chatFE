@@ -21,10 +21,38 @@ import {
 } from "react-icons/fi";
 
 const frequentEmojis = [
-  "😂", "😘", "❤️", "😍", "😊", "😁", "👍", "😌",
-  "😔", "😄", "😭", "💋", "😒", "😳", "😜", "🙈",
-  "😉", "😀", "😥", "😝", "😱", "😡", "😏", "😞",
-  "😅", "😚", "🙊", "🤤", "😃", "😋", "😆", "👌",
+  "🔥",
+  "❤️",
+  "😍",
+  "🥰",
+  "🤑",
+  "👻",
+  "😂",
+  "😎",
+  "😔",
+  "😄",
+  "😭",
+  "💋",
+  "😒",
+  "😳",
+  "😜",
+  "🙈",
+  "😉",
+  "😀",
+  "😥",
+  "😝",
+  "😱",
+  "😡",
+  "😏",
+  "😞",
+  "😅",
+  "😚",
+  "🙊",
+  "🤤",
+  "😃",
+  "😋",
+  "😆",
+  "👌",
 ];
 
 export const ChatInput = ({
@@ -56,15 +84,18 @@ export const ChatInput = ({
       if (!replyingMessage.sender?.name && !replyingMessage.senderName && !replyingMessage.sender?.displayName) {
         const senderId = replyingMessage.senderId || replyingMessage.id_sender;
         if (senderId && senderId !== currentUserId) {
-          userService.getUserById(senderId).then(res => {
-            if (res) {
-              setFetchedReplyingSender(res);
-            }
-          }).catch(err => console.error("Error fetching sender info:", err));
+          userService
+            .getUserById(senderId)
+            .then((res) => {
+              if (res) {
+                setFetchedReplyingSender(res);
+              }
+            })
+            .catch((err) => console.error("Error fetching sender info:", err));
         }
       }
     } else {
-       setFetchedReplyingSender(null);
+      setFetchedReplyingSender(null);
     }
   }, [replyingMessage, currentUserId]);
 
@@ -82,15 +113,17 @@ export const ChatInput = ({
                 <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
               )}
               <span className="text-[14.5px] tracking-tight">
-                {editingMessage ? "Editing" : replyingMessage ? `Reply to ${replyingMessage?.senderId === currentUserId ? "You" : (fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || "Unknown")}` : "Forward Message"}
+                {editingMessage
+                  ? "Editing"
+                  : replyingMessage
+                    ? `Reply to ${replyingMessage?.senderId === currentUserId ? "You" : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || "Unknown"}`
+                    : "Forward Message"}
               </span>
             </span>
             <p className="text-[13.5px] text-gray-500/90 dark:text-gray-400 truncate leading-none flex gap-1 items-center pb-0.5">
               {editingMessage || replyingMessage ? null : (
                 <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {forwardingMessage?.senderId === currentUserId
-                    ? "You"
-                    : forwardingMessage?.sender?.name || "Someone"}
+                  {forwardingMessage?.senderId === currentUserId ? "You" : forwardingMessage?.sender?.name || "Someone"}
                   :
                 </span>
               )}
@@ -108,7 +141,7 @@ export const ChatInput = ({
             </p>
           </div>
           <button
-             onClick={() => {
+            onClick={() => {
               if (editingMessage) {
                 setEditingMessage(null);
                 setDraftMessage("");
@@ -122,11 +155,7 @@ export const ChatInput = ({
             }}
             className="absolute right-3 text-gray-400 hover:text-[#2ea6f3] transition-colors p-[8px]"
           >
-            <FiX
-              className="text-[#3e3e3e]"
-              strokeWidth={1}
-              style={{ fontSize: "22px" }}
-            />
+            <FiX className="text-[#3e3e3e]" strokeWidth={1} style={{ fontSize: "22px" }} />
           </button>
           <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-[#2ea6f3] rounded-[5px]"></div>
         </div>
@@ -154,9 +183,7 @@ export const ChatInput = ({
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none text-gray-900 dark:text-gray-100 hover:bg-white/75 dark:hover:bg-slate-700/80 transition"
                 >
                   <ActionIcon className="text-[18px] shrink-0" />
-                  <span className="font-semibold tracking-tight">
-                    {action.label}
-                  </span>
+                  <span className="font-semibold tracking-tight">{action.label}</span>
                 </button>
               );
             })}
@@ -179,9 +206,7 @@ export const ChatInput = ({
             <div className="px-4 py-2.5 border-b border-gray-200/80 dark:border-slate-700">
               <div className="h-10 rounded-xl bg-white/70 dark:bg-slate-700/70 flex items-center gap-2.5 px-3 text-gray-500 dark:text-gray-300">
                 <FiSearch className="text-base" />
-                <span className="text-sm font-medium text-gray-400 dark:text-gray-400">
-                  Search Emoji
-                </span>
+                <span className="text-sm font-medium text-gray-400 dark:text-gray-400">Search Emoji</span>
                 <div className="ml-auto flex items-center gap-2 text-gray-400 dark:text-gray-400">
                   <FiHeart className="text-base" />
                   <FiThumbsUp className="text-base" />
@@ -193,17 +218,13 @@ export const ChatInput = ({
             </div>
 
             <div className="px-4 py-3">
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2.5">
-                Frequently Used
-              </p>
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2.5">Frequently Used</p>
 
               <div className="grid grid-cols-8 gap-1 pb-1">
                 {frequentEmojis.map((emoji, index) => (
                   <button
                     key={index}
-                    onClick={() =>
-                      setDraftMessage((prev) => `${prev}${emoji}`)
-                    }
+                    onClick={() => setDraftMessage((prev) => `${prev}${emoji}`)}
                     className="h-10 w-10 rounded-lg inline-flex items-center justify-center text-2xl hover:bg-white/70 dark:hover:bg-slate-700/70 transition"
                   >
                     {emoji}

@@ -3,20 +3,40 @@ import lottie, { AnimationItem } from "lottie-web";
 
 // Cấu hình Asset S3 map Emoji ký tự sang Animation URL dạng JSON
 export const JUMBO_EMOJI_ASSETS: Record<string, string> = {
-  "❤️": "https://assets9.lottiefiles.com/packages/lf20_U6OKyK.json",
-  "👍": "https://assets1.lottiefiles.com/packages/lf20_aPFFXf.json",
   "😂": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Laugh.json",
-  "😮": "https://assets8.lottiefiles.com/packages/lf20_tB7dY7.json",
-  "😢": "https://assets8.lottiefiles.com/packages/lf20_R1BEM1.json",
-  "😡": "https://assets8.lottiefiles.com/packages/lf20_sJ7B8n.json",
-  "🔥": "https://assets3.lottiefiles.com/packages/lf20_vmf1y0.json",
+  "😎": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Cool.json",
+  "❤️": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Heart.json",
+  "🔥": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Fire.json",
+  "🥰": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/HeartFace.json",
+  "😍": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/HeartEyes.json",
+  "😔": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/SadEmoji.json",
+  "🤑": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Money.json",
+  "👻": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Ghost.json",
 };
 
 // Cấu hình hiệu ứng bay văng (Detached Explosions) riêng biệt
 export const EXPLOSION_EMOJI_ASSETS: Record<string, string> = {
   // Thêm các link JSON lottie riêng cho hiệu ứng nổ/bay ra màn hình ở đây
-  "😂": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Laugh-detached.json",
+  "❤️": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Heart-Detach.json",
 };
+
+// Cache dữ liệu Lottie JSON trên RAM để tránh flicker (trắng màn hình chờ parse HTTP) khi React re-render Optimistic Update
+const LOCAL_ANIM_CACHE: Record<string, any> = {};
+const prefetchLottieData = async () => {
+  const allUrls = [...Object.values(JUMBO_EMOJI_ASSETS), ...Object.values(EXPLOSION_EMOJI_ASSETS)];
+  for (const url of allUrls) {
+    if (!LOCAL_ANIM_CACHE[url]) {
+      fetch(url)
+        .then((r) => r.json())
+        .then((d) => {
+          LOCAL_ANIM_CACHE[url] = d;
+        })
+        .catch(() => {});
+    }
+  }
+};
+// Gọi ngay một lần khi module load
+prefetchLottieData();
 
 // Hàm xử lý tạo hiệu ứng "bay văng" (Detached DOM) nhưng chỉ giới hạn trong ActiveChatPane
 const playExplosionAnimation = (emoji: string, triggerElement: HTMLElement) => {
@@ -45,17 +65,21 @@ const playExplosionAnimation = (emoji: string, triggerElement: HTMLElement) => {
 
   const animWrapper = document.createElement("div");
   // Kích thước siêu to khi nổ/click trên màn hình
-  const SIZE = 320;
+  const SIZE = 360;
   animWrapper.style.cssText = `position: absolute; width: ${SIZE}px; height: ${SIZE}px; will-change: transform; transition: none;`;
   overlayContainer.appendChild(animWrapper);
 
-  const animItem = lottie.loadAnimation({
+  const animData = LOCAL_ANIM_CACHE[assetUrl];
+  const config: any = {
     container: animWrapper,
     renderer: "canvas",
     loop: false,
     autoplay: true,
-    path: assetUrl,
-  });
+  };
+  if (animData) config.animationData = animData;
+  else config.path = assetUrl;
+
+  const animItem = lottie.loadAnimation(config);
 
   const setupPosition = () => {
     // Tọa độ chuẩn xác khi overlayContainer nằm bên trong phần tử có thể cuộn (chatContainer)
@@ -106,36 +130,50 @@ export const AnimatedEmojiMessage = ({ emoji, isNew = false }: { emoji: string; 
     const isAlreadyPlayedQuickly = recentIndex !== -1;
     const shouldAutoplay = isNew && !isAlreadyPlayedQuickly;
 
+    const animData = LOCAL_ANIM_CACHE[assetUrl];
+
     // Bước 2: Hiển thị emoji lớn (Jumbo), render Lottie thông qua Canvas
-    animRef.current = lottie.loadAnimation({
+    // Nếu đã cache data, sử dụng `animationData` thay vì `path` để lottie render đồng bộ ngay lập tức (loại bỏ flicker giật trắng màn hình)
+    const config: any = {
       container: containerRef.current,
       renderer: "canvas",
       loop: false, // Chạy 1 lần rồi kết thúc để thành tĩnh
       autoplay: shouldAutoplay,
-      path: assetUrl,
-    });
+    };
+    if (animData) config.animationData = animData;
+    else config.path = assetUrl;
+
+    animRef.current = lottie.loadAnimation(config);
+
+    const onComplete = () => {
+      // Logic sau khi chạy xong: Reset lại bộ đếm click khi emoji chính kết thúc
+      playCountRef.current = 0;
+    };
+    animRef.current.addEventListener("complete", onComplete);
 
     if (!isNew) {
       // Tin nhắn lịch sử: Tiến thẳng đến frame cuối
-      animRef.current.addEventListener("DOMLoaded", () => {
-        if (animRef.current) {
-          animRef.current.goToAndStop(animRef.current.totalFrames - 1, true);
-        }
-      });
+      const jumpToLast = () => {
+        if (animRef.current) animRef.current.goToAndStop(animRef.current.totalFrames - 1, true);
+      };
+      if (animRef.current.isLoaded) jumpToLast();
+      else animRef.current.addEventListener("DOMLoaded", jumpToLast);
     } else if (isAlreadyPlayedQuickly) {
       // Tin nhắn mới báo render lại vì đổi ID -> Resume mượt mà dựa trên thời gian đã trôi qua thay vì dừng hẳn
       const elapsedMs = now - recentAutoplays[recentIndex].time;
-      animRef.current.addEventListener("DOMLoaded", () => {
+      const jumpToResume = () => {
         if (animRef.current) {
           const frameRate = animRef.current.frameRate || 30;
           const targetFrame = (elapsedMs / 1000) * frameRate;
           if (targetFrame < animRef.current.totalFrames) {
-            animRef.current.goToAndPlay(targetFrame, true); // Play tiếp theo phần đang dở
+            animRef.current.goToAndPlay(Math.max(0, targetFrame), true); // Play tiếp theo phần đang dở
           } else {
             animRef.current.goToAndStop(animRef.current.totalFrames - 1, true); // Kết thúc
           }
         }
-      });
+      };
+      if (animRef.current.isLoaded) jumpToResume();
+      else animRef.current.addEventListener("DOMLoaded", jumpToResume);
     }
 
     // Khi gửi / nhận tin nhắn mới (render lần đầu gốc không trùng lặp)
@@ -147,12 +185,6 @@ export const AnimatedEmojiMessage = ({ emoji, isNew = false }: { emoji: string; 
         playCountRef.current = 1; // Tính là 1 lần detached
       }
     }
-
-    const onComplete = () => {
-      // Logic sau khi chạy xong: Reset lại bộ đếm click khi emoji chính kết thúc
-      playCountRef.current = 0;
-    };
-    animRef.current.addEventListener("complete", onComplete);
 
     return () => {
       animRef.current?.removeEventListener("complete", onComplete);
