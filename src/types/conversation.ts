@@ -1,5 +1,10 @@
 import { User } from "./user";
 
+export interface Reaction {
+  emoji: string;
+  users: (User | { _id: string; id: string })[];
+}
+
 export interface Message {
   // ID fields (backend may use either)
   messageId?: string;
@@ -50,6 +55,10 @@ export interface Message {
   // Delete status
   isRevoked?: boolean;
   revokedAt?: string;
+
+  // Additional fields used in codebase
+  reactions?: Reaction[];
+  id_sender?: string;
 }
 
 export interface MediaFile {

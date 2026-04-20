@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
-import { conversationService } from "../../services/conversationService";
 import { userService } from "../../services/userService";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
@@ -13,7 +12,8 @@ import { ForwardModal } from "./ActiveChatPane/ForwardModal";
 import { CalendarModal } from "./ActiveChatPane/CalendarModal";
 import { PinnedBar } from "./ActiveChatPane/PinnedBar";
 import { PinnedList } from "./ActiveChatPane/PinnedList";
-import { getDateLabel, getMessageTime, getMessageText } from "../../utils/chatUtils";
+import { MessageContextMenu } from "./ActiveChatPane/MessageContextMenu";
+import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
 import {
   FiImage,
@@ -22,13 +22,6 @@ import {
   FiCheckCircle,
   FiX,
   FiMoreVertical,
-  FiCornerUpLeft,
-  FiEdit2,
-  FiCopy,
-  FiMapPin,
-  FiCornerUpRight,
-  FiRotateCcw,
-  FiTrash2,
   FiDownload,
 } from "react-icons/fi";
 
@@ -156,12 +149,6 @@ export const ActiveChatPane = ({
         }, 2000);
       }
     }, 100);
-  };
-
-  const handleOpenForwardModal = (message) => {
-    setMessageToForward(message);
-    setForwardModalVisible(true);
-    setContextMenu(null);
   };
 
   useEffect(() => {
@@ -749,171 +736,30 @@ export const ActiveChatPane = ({
       />
 
       {contextMenu && (
-        <div
-          className="fixed z-[9999] flex flex-col gap-2"
-          style={{ top: Math.max(contextMenu.y - 50, 10), left: contextMenu.x }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Reaction Picker above menu */}
-          <div className="bg-white dark:bg-slate-800 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_15px_rgba(0,0,0,0.3)] flex items-center px-1.5 py-1 gap-0.5 border border-gray-100 dark:border-slate-700 w-max">
-            {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => {
-              const msgId = contextMenu.message?._id || contextMenu.message?.id;
-              const hasMyReaction = contextMenu.message?.reactions
-                ?.find((r: any) => r.emoji === emoji)
-                ?.users?.some((u: any) => String(u._id || u.id) === String(currentUserId));
-
-              return (
-                <div
-                  key={emoji}
-                  onClick={() => {
-                    if (hasMyReaction) {
-                      conversationService.removeReactionMessage(msgId, emoji).catch(console.error);
-                    } else {
-                      conversationService.reactMessage(msgId, emoji).catch(console.error);
-                    }
-                    setContextMenu(null);
-                  }}
-                  className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full w-9 h-9 flex items-center justify-center text-[22px] transition-transform hover:scale-125 origin-bottom ${hasMyReaction ? "bg-blue-50 dark:bg-blue-900/30" : ""}`}
-                >
-                  {emoji}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="w-[200px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
-            {contextMenu.message?.senderId === currentUserId ||
-            contextMenu.message?.sender?.id === currentUserId ||
-            contextMenu.message?.id_sender === currentUserId ? (
-              <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
-                <div className="flex -space-x-[4px] text-blue-500">
-                  <FiCheckCircle className="text-sm" />
-                  <FiCheckCircle className="text-sm" />
-                </div>
-                <span>
-                  {getDateLabel(contextMenu.message?.createdAt || contextMenu.message?.updatedAt)} at{" "}
-                  {getMessageTime(contextMenu.message)}
-                </span>
-              </div>
-            ) : null}
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-              onClick={() => {
-                setReplyingMessage(contextMenu.message);
-                setContextMenu(null);
-              }}
-            >
-              <FiCornerUpLeft className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Reply</span>
-            </button>
-            {(contextMenu.message?.senderId === currentUserId ||
-              contextMenu.message?.sender?.id === currentUserId ||
-              contextMenu.message?.id_sender === currentUserId) && (
-              <button
-                className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-                onClick={() => {
-                  setEditingMessage(contextMenu.message);
-                  setDraftMessage(getMessageText(contextMenu.message));
-                  setContextMenu(null);
-                }}
-              >
-                <FiEdit2 className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Edit</span>
-              </button>
-            )}
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-              onClick={() => {
-                const textToCopy = getMessageText(contextMenu.message);
-                if (textToCopy) {
-                  navigator.clipboard.writeText(textToCopy).catch(err => console.error("Failed to copy text: ", err));
-                }
-                setContextMenu(null);
-              }}
-            >
-              <FiCopy className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Copy</span>
-            </button>
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-              onClick={() => {
-                setContextMenu(null);
-              }}
-            >
-              <div className="relative flex items-center text-[18px] w-[18px] h-[18px] justify-center font-bold">
-                <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">A</span>
-                <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">文</span>
-              </div>
-              <span className="font-medium">Translate</span>
-            </button>
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-              onClick={() => {
-                const msgId = contextMenu.message?.id || contextMenu.message?._id;
-                if (msgId) {
-                  // Check pinned state directly from messages prop (always up-to-date)
-                  const message = messages.find((m) => (m.id || m._id) === msgId);
-                  const isPinned = !!message?.pinnedAt;
-                  if (isPinned) {
-                    handleUnpinMessage(msgId).catch(console.error);
-                  } else {
-                    handlePinMessage(msgId).catch(console.error);
-                  }
-                }
-                setContextMenu(null);
-              }}
-            >
-              <FiMapPin className="text-[18px]" strokeWidth={2} />
-              <span className="font-medium">
-                {(() => {
-                  const msgId = contextMenu.message?.id || contextMenu.message?._id;
-                  const message = messages.find((m) => (m.id || m._id) === msgId);
-                  return !!message?.pinnedAt ? "Unpin" : "Pin";
-                })()}
-              </span>
-            </button>
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-              onClick={() => handleOpenForwardModal(contextMenu.message)}
-            >
-              <FiCornerUpRight className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Forward</span>
-            </button>
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-              onClick={() => {
-                setContextMenu(null);
-              }}
-            >
-              <FiCheckCircle className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Select</span>
-            </button>
-
-            {(contextMenu.message?.senderId === currentUserId ||
-              contextMenu.message?.sender?.id === currentUserId ||
-              contextMenu.message?.id_sender === currentUserId) && (
-              <button
-                className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
-                onClick={() => {
-                  if (onRevokeMessage && contextMenu.message) {
-                    onRevokeMessage(contextMenu.message);
-                  }
-                  setContextMenu(null);
-                }}
-              >
-                <FiRotateCcw className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Recall</span>
-              </button>
-            )}
-
-            <button
-              className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
-              onClick={() => {
-                if (onDeleteMessageForMe && contextMenu.message) {
-                  onDeleteMessageForMe(contextMenu.message);
-                }
-                setContextMenu(null);
-              }}
-            >
-              <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
-              <span className="font-medium">Delete for me only</span>
-            </button>
-          </div>
-        </div>
+        <MessageContextMenu
+          contextMenu={contextMenu}
+          messages={messages}
+          currentUserId={currentUserId}
+          onClose={() => setContextMenu(null)}
+          onReply={(message) => {
+            setReplyingMessage(message);
+            setContextMenu(null);
+          }}
+          onEdit={(message) => {
+            setEditingMessage(message);
+            setDraftMessage(getMessageText(message));
+            setContextMenu(null);
+          }}
+          onPinMessage={handlePinMessage}
+          onUnpinMessage={handleUnpinMessage}
+          onOpenForwardModal={(message) => {
+            setMessageToForward(message);
+            setForwardModalVisible(true);
+            setContextMenu(null);
+          }}
+          onRevokeMessage={onRevokeMessage}
+          onDeleteMessageForMe={onDeleteMessageForMe}
+        />
       )}
 
       <ForwardModal
