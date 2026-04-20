@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { conversationService } from "../../services/conversationService";
+import { userService } from "../../services/userService";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -13,6 +14,7 @@ import { CalendarModal } from "./ActiveChatPane/CalendarModal";
 import { PinnedBar } from "./ActiveChatPane/PinnedBar";
 import { PinnedList } from "./ActiveChatPane/PinnedList";
 import { getDateLabel, getMessageTime, getMessageText } from "../../utils/chatUtils";
+import type { Message } from "../../types/conversation";
 import {
   FiImage,
   FiFile,
@@ -57,10 +59,12 @@ export const ActiveChatPane = ({
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
   const [draftMessage, setDraftMessage] = useState("");
-  const [editingMessage, setEditingMessage] = useState(null);
-  const [replyingMessage, setReplyingMessage] = useState(null);
-  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
+  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
+  const [pinnedMessagesLoading, setPinnedMessagesLoading] = useState(false);
+  const [pinnedMessagesError, setPinnedMessagesError] = useState<string | null>(null);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -72,6 +76,7 @@ export const ActiveChatPane = ({
   const firstMessageRef = useRef(null);
   const photoVideoInputRef = useRef(null);
   const documentInputRef = useRef(null);
+  const userCache = useRef<Map<string, any>>(new Map());
 
   const [displayCount, setDisplayCount] = useState(20);
 
@@ -96,12 +101,37 @@ export const ActiveChatPane = ({
   useEffect(() => {
     if (!selectedConversationId) return;
 
-    const handlePinned = (data: any) => {
+    const fetchPinnedMessages = async () => {
+      try {
+        setPinnedMessagesLoading(true);
+        setPinnedMessagesError(null);
+        const messages = await conversationService.getPinnedMessages(selectedConversationId);
+
+        // Enrich messages with sender user data
+        const enrichedMessages = await enrichMessagesWithSenderInfo(messages);
+        setPinnedMessages(enrichedMessages);
+      } catch (error) {
+        console.error("Failed to fetch pinned messages:", error);
+        setPinnedMessagesError(error instanceof Error ? error.message : "Failed to load pinned messages");
+      } finally {
+        setPinnedMessagesLoading(false);
+      }
+    };
+
+    fetchPinnedMessages();
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+
+    const handlePinned = async (data: any) => {
       const msg = data?.message || data;
       if (msg && (msg.conversationId === selectedConversationId || data.conversationId === selectedConversationId)) {
+        // Enrich the message with sender info
+        const enrichedMsg = await enrichMessagesWithSenderInfo([msg]);
         setPinnedMessages((prev) => {
           if (prev.find((m) => m._id === msg._id || m.id === msg.id)) return prev;
-          return [...prev, msg];
+          return [...prev, enrichedMsg[0]];
         });
       }
     };
@@ -122,10 +152,10 @@ export const ActiveChatPane = ({
     };
   }, [selectedConversationId]);
 
-  // Socket-based pin/unpin handlers
+  // Socket-based pin/unpin handlers - now using HTTP API
   const handlePinMessage = async (messageId: string) => {
     try {
-      await socketService.pinMessage(messageId);
+      await conversationService.pinMessage(messageId);
       // The socket event will update the pinnedMessages state automatically
     } catch (error) {
       console.error("Failed to pin message:", error);
@@ -135,7 +165,7 @@ export const ActiveChatPane = ({
 
   const handleUnpinMessage = async (messageId: string) => {
     try {
-      await socketService.unpinMessage(messageId);
+      await conversationService.unpinMessage(messageId);
       // The socket event will update the pinnedMessages state automatically
     } catch (error) {
       console.error("Failed to unpin message:", error);
@@ -145,15 +175,26 @@ export const ActiveChatPane = ({
 
   // Navigate to a specific message
   const handleNavigateToMessage = (messageId: string) => {
-    const messageElement = document.getElementById(`message-${messageId}`);
-    if (messageElement) {
-      messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Add highlight effect
-      messageElement.classList.add("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
-      setTimeout(() => {
-        messageElement.classList.remove("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
-      }, 2000);
+    // Find the message index in the full messages array
+    const messageIndex = messages.findIndex(m => (m.id || m._id) === messageId);
+    if (messageIndex !== -1) {
+      // Calculate required displayCount to ensure this message is visible
+      const requiredDisplayCount = messages.length - messageIndex;
+      setDisplayCount(prev => Math.max(prev, requiredDisplayCount));
     }
+
+    // Scroll after a short delay to allow DOM update
+    setTimeout(() => {
+      const messageElement = document.getElementById(`message-${messageId}`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Add highlight effect
+        messageElement.classList.add("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+        setTimeout(() => {
+          messageElement.classList.remove("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+        }, 2000);
+      }
+    }, 100);
   };
 
   const handleOpenForwardModal = (message) => {
@@ -237,6 +278,57 @@ export const ActiveChatPane = ({
     previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
     setPreviewFiles([]);
     setDragType(null);
+  };
+
+  // Enrich messages with sender user data using cache
+  const enrichMessagesWithSenderInfo = async (messages: Message[]): Promise<Message[]> => {
+    if (!messages || messages.length === 0) return messages;
+
+    // Extract unique senderIds
+    const senderIds = [...new Set(messages.map(msg => msg.senderId).filter(Boolean))] as string[];
+
+    if (senderIds.length === 0) return messages;
+
+    try {
+      // Separate cached and uncached senderIds
+      const uncachedSenderIds = senderIds.filter(id => !userCache.current.has(id));
+
+      // Fetch uncached users in parallel
+      if (uncachedSenderIds.length > 0) {
+        const userPromises = uncachedSenderIds.map(senderId =>
+          userService.getUserById(senderId).catch(error => {
+            console.warn(`Failed to fetch user ${senderId}:`, error);
+            return null;
+          })
+        );
+
+        const users = await Promise.all(userPromises);
+
+        // Update cache with fetched users (extract data from response)
+        uncachedSenderIds.forEach((senderId, index) => {
+          const userRes = users[index];
+          if (userRes) {
+            const userData = userRes.data || userRes;
+            userCache.current.set(senderId, userData);
+          }
+        });
+      }
+
+      // Attach user data to messages from cache
+      return messages.map(msg => {
+        const senderId = msg.senderId;
+        if (senderId && userCache.current.has(senderId)) {
+          return {
+            ...msg,
+            sender: userCache.current.get(senderId)
+          };
+        }
+        return msg;
+      });
+    } catch (error) {
+      console.error("Error enriching messages with sender info:", error);
+      return messages;
+    }
   };
 
   const scrollToBottom = (behavior = "smooth") => {
@@ -743,7 +835,13 @@ export const ActiveChatPane = ({
               onClick={() => {
                 const msgId = contextMenu.message?.id || contextMenu.message?._id;
                 if (msgId) {
-                  handlePinMessage(msgId).catch(console.error);
+                  const isPinned = pinnedMessages.some((m) => (m.id || m._id) === msgId);
+                  console.log(isPinned)
+                  if (isPinned) {
+                    handleUnpinMessage(msgId).catch(console.error);
+                  } else {
+                    handlePinMessage(msgId).catch(console.error);
+                  }
                 }
                 setContextMenu(null);
               }}

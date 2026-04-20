@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { FiSearch, FiX, FiMapPin, FiChevronRight, FiClock } from "react-icons/fi";
 import { getMessageText } from "../../../utils/chatUtils";
+import type { Message } from "../../../types/conversation";
 
 // Simple Vietnamese relative time function
 const getRelativeTime = (timestamp: string): string => {
@@ -35,7 +36,7 @@ const getRelativeTime = (timestamp: string): string => {
 };
 
 interface PinnedListProps {
-  pinnedMessages: any[];
+  pinnedMessages: Message[];
   currentUserId: string;
   isOpen: boolean;
   onClose: () => void;

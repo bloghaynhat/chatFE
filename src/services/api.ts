@@ -74,6 +74,6 @@ export const api = {
     apiCall<T>("PATCH", endpoint, data, config),
   put: async <T = any>(endpoint: string, data: any = null, config: any = {}): Promise<T> =>
     apiCall<T>("PUT", endpoint, data, config),
-  delete: async <T = any>(endpoint: string, config: any = {}): Promise<T> =>
-    apiCall<T>("DELETE", endpoint, undefined, config),
+  delete: async <T = any>(endpoint: string, data: any = null, config: any = {}): Promise<T> =>
+    apiCall<T>("DELETE", endpoint, data, config),
 };

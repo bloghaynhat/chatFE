@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { FiMapPin, FiList, FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { getMessageText } from "../../../utils/chatUtils";
+import type { Message } from "../../../types/conversation";
 
 interface PinnedBarProps {
-  pinnedMessages: any[];
+  pinnedMessages: Message[];
   currentUserId: string;
   onUnpin: (messageId: string) => Promise<void>;
   onOpenList: () => void;
@@ -26,7 +27,12 @@ export const PinnedBar: React.FC<PinnedBarProps> = ({
     setCurrentIndex(0);
   }, [pinnedMessages.length]);
 
+  const getSenderName = (msg: Message) => {
+    return msg?.sender?.displayName || msg?.senderName || "Unknown";
+  };
+
   const activePin = pinnedMessages[currentIndex];
+  const senderName = activePin ? getSenderName(activePin) : "";
 
   const handlePinClick = () => {
     if (activePin) {
@@ -119,15 +125,20 @@ export const PinnedBar: React.FC<PinnedBarProps> = ({
         </div>
 
         {/* Preview Content */}
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <FiMapPin className="text-blue-500 dark:text-blue-400 shrink-0" strokeWidth={2.5} />
-          <div className="flex flex-col min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <FiMapPin className="text-blue-500 dark:text-blue-400 shrink-0" strokeWidth={2.5} />
             <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide">
               Pinned {totalPinned > 1 ? `(${currentIndex + 1}/${totalPinned})` : ""}
             </span>
-            <span className="text-[13px] text-gray-700 dark:text-gray-200 truncate leading-tight">
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium truncate">
+              {senderName}
+            </p>
+            <p className="text-[13px] text-gray-700 dark:text-gray-200 truncate leading-tight">
               {activePin ? getMessageText(activePin) : ""}
-            </span>
+            </p>
           </div>
         </div>
 
