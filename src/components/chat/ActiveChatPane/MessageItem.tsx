@@ -261,7 +261,7 @@ export const MessageItem = ({
           />
         )}
 
-        {isAudio && <MessageAudio audios={audios} mine={mine} hasText={hasText} />}
+        {isAudio && <MessageAudio audios={audios} mine={mine} />}
 
         {isDocument && <MessageDocument message={message} messageFiles={messageFiles} mine={mine} />}
 

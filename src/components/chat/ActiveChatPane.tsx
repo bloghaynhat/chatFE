@@ -522,6 +522,16 @@ export const ActiveChatPane = ({
     }
   };
 
+  const handleSendVoice = (voiceFile: any) => {
+    if (onSendMessage) {
+      const fileWithPreview = Object.assign(voiceFile, {
+        preview: URL.createObjectURL(voiceFile),
+        isImageMode: false,
+      });
+      onSendMessage("", [fileWithPreview], { compress: false });
+    }
+  };
+
   if (!selectedChat) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -934,6 +944,7 @@ export const ActiveChatPane = ({
         forwardingMessage={forwardingMessage}
         onClearForwarding={onClearForwarding}
         currentUserId={currentUserId}
+        handleSendVoice={handleSendVoice}
       />
 
       {previewVideoUrl && (
