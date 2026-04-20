@@ -173,8 +173,10 @@ class SocketService {
     // unsubscribe
     return () => {
       const arr = this.listeners.get(eventName);
-      const index = arr.indexOf(callback);
-      if (index !== -1) arr.splice(index, 1);
+      if (arr) {
+        const index = arr.indexOf(callback);
+        if (index !== -1) arr.splice(index, 1);
+      }
     };
   }
 

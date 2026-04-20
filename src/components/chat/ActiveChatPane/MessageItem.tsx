@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { FiCheck, FiDownload, FiEye } from "react-icons/fi";
-import { PhotoView } from "react-photo-view";
 import { getMessageId, getMessageText, getMessageTime } from "../../../utils/chatUtils";
 import userService from "../../../services/userService";
 import { SystemMessage } from "./MessageTypes/SystemMessage";
@@ -11,11 +10,8 @@ import { MessageDocument } from "./MessageTypes/MessageDocument";
 import { MessageText } from "./MessageTypes/MessageText";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
-import { socketService } from "../../../services/socketService";
 import { conversationService } from "../../../services/conversationService";
-import { useAuth } from "../../../hooks";
-
-const DEFAULT_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+import { JUMBO_EMOJI_ASSETS } from "./MessageTypes/AnimatedEmojiMessage";
 
 export const MessageItem = ({
   message,
@@ -139,6 +135,10 @@ export const MessageItem = ({
   const isSystem = message?.type === "system" || message?.type === "SYSTEM";
 
   const hasText = !!text && text.trim() !== "";
+  
+  const trimmedText = text ? text.trim() : "";
+  const isJumboEmoji = !!JUMBO_EMOJI_ASSETS[trimmedText] && text.replace(/\s+/g, '') === trimmedText && !isMedia && !isDocument && !isAudio && !isForwarded && !isSystem;
+
   const onlyImagesOrVideos = isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
 
   const senderName =
@@ -153,7 +153,7 @@ export const MessageItem = ({
   if (isSystem) {
     let displaySystemText = text;
     if (displaySystemText.includes("Unknown User")) {
-      const displaySender = mine ? "Bạn" : (senderName !== "Unknown" ? senderName : "Ai đó");
+      const displaySender = mine ? "Bạn" : senderName !== "Unknown" ? senderName : "Ai đó";
       displaySystemText = displaySystemText.replace("Unknown User", displaySender);
     }
     return (
@@ -219,13 +219,15 @@ export const MessageItem = ({
         ref={isFirst ? firstMessageRef : null}
         key={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm shadow-sm flex flex-col relative ${
-          mine
-            ? "self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"
-            : "self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"
+        className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm flex flex-col relative ${
+          isJumboEmoji 
+            ? (mine ? "self-end bg-transparent" : "self-start bg-transparent")
+            : mine
+              ? "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"
+              : "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"
         }`}
       >
-        {isGroup && !mine && isFirstInSequence && !isForwarded && (
+        {isGroup && !mine && isFirstInSequence && !isForwarded && !isJumboEmoji && (
           <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[5px] pb-0 block leading-tight">
             {senderName}
           </span>
@@ -319,8 +321,8 @@ export const MessageItem = ({
           {/* Render Timestamp */}
           <div
             className={`shrink-0 flex items-center justify-end gap-[4px] font-medium tracking-tight ml-auto ${
-              onlyImagesOrVideos && (!message.reactions || message.reactions.length === 0)
-                ? "px-1.5 py-0.5 bg-black/40 rounded-full text-white pointer-events-none text-[11px]"
+              isJumboEmoji || (onlyImagesOrVideos && (!message.reactions || message.reactions.length === 0))
+                ? "px-[6px] py-[2px] bg-black/25 dark:bg-black/35 backdrop-blur-sm rounded-full text-white pointer-events-none text-[11px] shadow-sm ml-auto z-20"
                 : mine
                   ? "text-emerald-700/80 dark:text-emerald-200/80 text-[10.5px]"
                   : "text-gray-400 dark:text-gray-500 text-[10.5px]"
@@ -328,7 +330,7 @@ export const MessageItem = ({
           >
             {message.isEdited && (
               <span
-                className={`italic font-semibold ${onlyImagesOrVideos && (!message.reactions || message.reactions.length === 0) ? "text-[10px]" : "opacity-75 text-[10px]"}`}
+                className={`italic font-semibold ${(isJumboEmoji || onlyImagesOrVideos) && (!message.reactions || message.reactions.length === 0) ? "text-[10px]" : "opacity-75 text-[10px]"}`}
               >
                 edited
               </span>
