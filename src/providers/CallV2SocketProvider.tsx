@@ -427,10 +427,6 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "SET_BUSY", busyUserIds: res.busyUserIds });
         }
         callV2Socket.joinCallRoom(res.call.callId);
-        const joinRes = await callV2Service.joinCall(res.call.callId);
-        if (joinRes.token && joinRes.wsUrl && joinRes.roomName) {
-          await connectFromJoin(joinRes.token, joinRes.wsUrl, joinRes.roomName, type, false, joinRes.call.answeredAt);
-        }
       } catch (err: unknown) {
         toast.error(formatErrorMessage(err, "Cannot start the call"));
         dispatch({ type: "RESET" });
@@ -439,7 +435,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         isStartingRef.current = false;
       }
     },
-    [state.status, clearIncomingTimer, connectFromJoin],
+    [state.status, clearIncomingTimer],
   );
 
   const joinCallV2 = useCallback(async () => {
@@ -640,11 +636,33 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         data.userId !== user?.id &&
         stateRef.current.roomName
       ) {
-        dispatch({
-          type: "SET_ACTIVE",
-          roomName: stateRef.current.roomName,
-          startedAt: (data as any).answeredAt || data.participant?.joinedAt,
-        });
+        if (isJoiningRef.current) return;
+        isJoiningRef.current = true;
+        void callV2Service
+          .joinCall(data.callId)
+          .then((res) => {
+            callV2Socket.joinCallRoom(data.callId);
+            const callType = res.call.type ?? stateRef.current.type;
+            currentTypeRef.current = callType;
+            if (res.token && res.wsUrl && res.roomName) {
+              return connectFromJoin(
+                res.token,
+                res.wsUrl,
+                res.roomName,
+                callType,
+                true,
+                res.call.answeredAt || (data as any).answeredAt || data.participant?.joinedAt,
+              );
+            }
+          })
+          .catch((err: unknown) => {
+            toast.error(formatErrorMessage(err, "Cannot join the call"));
+            dispatch({ type: "RESET" });
+            currentCallIdRef.current = null;
+          })
+          .finally(() => {
+            isJoiningRef.current = false;
+          });
       }
     });
 
