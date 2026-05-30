@@ -110,14 +110,28 @@ export const authService = {
     return payload;
   },
 
+  introspect: async (accessToken?: string) => {
+    try {
+      const payload = { token: accessToken };
+      // introspect should be skipAuth (we pass the token in body)
+      const response = await api.post("/auth/introspect", payload, {
+        skipAuth: true,
+      });
+      return response;
+    } catch (err) {
+      // Normalized caller will handle failures
+      throw err;
+    }
+  },
+
   getProfile: async (token?: string): Promise<User> => {
     return token
-      ? await api.get<User>("/users/profile", {
+      ? await api.get<User>("/users/me/profile", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
-      : await api.get<User>("/users/profile");
+      : await api.get<User>("/users/me/profile");
   },
 
   saveToken: async (token) => {

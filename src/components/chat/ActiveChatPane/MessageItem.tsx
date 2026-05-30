@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { PhotoView } from "react-photo-view";
 import { FiCheck, FiDownload, FiEye, FiMapPin } from "react-icons/fi";
-import { getMessageId, getMessageText, getMessageTime } from "../../../utils/chatUtils";
+import {
+  getMessageId,
+  getMessageText,
+  getMessageTime,
+} from "../../../utils/chatUtils";
 import userService from "../../../services/userService";
 import { SystemMessage } from "./MessageTypes/SystemMessage";
 import { RevokedMessage } from "./MessageTypes/RevokedMessage";
@@ -13,6 +17,7 @@ import { CallMessageBubble, parseCallMessage } from "./MessageTypes/CallMessageB
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
 import { conversationService } from "../../../services/conversationService";
+import { socketService } from "../../../services/socketService";
 import { JUMBO_EMOJI_ASSETS } from "./MessageTypes/AnimatedEmojiMessage";
 
 export const MessageItem = ({
@@ -34,7 +39,13 @@ export const MessageItem = ({
   const [reactionView, setReactionView] = useState(null);
 
   useEffect(() => {
-    if (isGroup && !mine && message?.senderId && !message?.senderName && !message?.sender?.displayName) {
+    if (
+      isGroup &&
+      !mine &&
+      message?.senderId &&
+      !message?.senderName &&
+      !message?.sender?.displayName
+    ) {
       userService
         .getUserById(message.senderId)
         .then((res) => {
@@ -44,12 +55,21 @@ export const MessageItem = ({
         })
         .catch((err) => console.error("Failed to fetch sender", err));
     }
-  }, [isGroup, mine, message?.senderId, message?.senderName, message?.sender?.displayName]);
+  }, [
+    isGroup,
+    mine,
+    message?.senderId,
+    message?.senderName,
+    message?.sender?.displayName,
+  ]);
 
   const rawText = getMessageText(message);
 
   // Determine if message is seen by recipient
-  const isSeen = message?.status === "seen" || message?.isSeen === true || message?.readAt !== undefined;
+  const isSeen =
+    message?.status === "seen" ||
+    message?.isSeen === true ||
+    message?.readAt !== undefined;
 
   // Parse forwarded message
   let isForwarded = Boolean(message?.originalMessageId);
@@ -73,7 +93,11 @@ export const MessageItem = ({
         message?.originalMessage?.sender?.username ||
         "Unknown",
       senderAvatarStr: "U",
-      text: message?.originalMessage?.text || message?.originalMessage?.content || rawText || "Forwarded Message",
+      text:
+        message?.originalMessage?.text ||
+        message?.originalMessage?.content ||
+        rawText ||
+        "Forwarded Message",
     };
     if (fwData.senderName !== "Unknown") {
       fwData.senderAvatarStr = fwData.senderName.charAt(0).toUpperCase();
@@ -152,7 +176,8 @@ export const MessageItem = ({
     !isSystem &&
     !isCallMessage;
 
-  const onlyImagesOrVideos = isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
+  const onlyImagesOrVideos =
+    isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
 
   const senderName =
     fetchedSender?.displayName ||
@@ -166,8 +191,15 @@ export const MessageItem = ({
   if (isSystem) {
     let displaySystemText = text;
     if (displaySystemText.includes("Unknown User")) {
-      const displaySender = mine ? "Bạn" : senderName !== "Unknown" ? senderName : "Ai đó";
-      displaySystemText = displaySystemText.replace("Unknown User", displaySender);
+      const displaySender = mine
+        ? "Bạn"
+        : senderName !== "Unknown"
+          ? senderName
+          : "Ai đó";
+      displaySystemText = displaySystemText.replace(
+        "Unknown User",
+        displaySender,
+      );
     }
     return (
       <SystemMessage
@@ -189,7 +221,8 @@ export const MessageItem = ({
     message?.sender?.profilePicture ||
     null;
 
-  const senderAvatarStr = senderName !== "Unknown" ? senderName.charAt(0).toUpperCase() : "?";
+  const senderAvatarStr =
+    senderName !== "Unknown" ? senderName.charAt(0).toUpperCase() : "?";
 
   if (message.isRevoked || message.deletedAt) {
     return (
@@ -219,7 +252,11 @@ export const MessageItem = ({
         >
           {isLastInSequence ? (
             senderAvatar ? (
-              <img src={senderAvatar} alt={senderName} className="w-full h-full object-cover" />
+              <img
+                src={senderAvatar}
+                alt={senderName}
+                className="w-full h-full object-cover"
+              />
             ) : (
               senderAvatarStr
             )
@@ -244,13 +281,23 @@ export const MessageItem = ({
               : `shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50 ${isCallMessage ? "min-w-[242px]" : ""}`
         }`}
       >
-        {isGroup && !mine && isFirstInSequence && !isForwarded && !isJumboEmoji && (
-          <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[5px] pb-0 block leading-tight">
-            {senderName}
-          </span>
-        )}
+        {isGroup &&
+          !mine &&
+          isFirstInSequence &&
+          !isForwarded &&
+          !isJumboEmoji && (
+            <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[5px] pb-0 block leading-tight">
+              {senderName}
+            </span>
+          )}
         {isForwarded && fwData && <ForwardedMessageHeader fwData={fwData} />}
-        <QuotedMessageHeader message={message} messages={messages} mine={mine} currentUserId={currentUserId} onNavigateToMessage={onNavigateToMessage} />
+        <QuotedMessageHeader
+          message={message}
+          messages={messages}
+          mine={mine}
+          currentUserId={currentUserId}
+          onNavigateToMessage={onNavigateToMessage}
+        />
 
         {isMedia && (
           <MessageMedia
@@ -267,7 +314,13 @@ export const MessageItem = ({
 
         {isAudio && <MessageAudio audios={audios} mine={mine} />}
 
-        {isDocument && <MessageDocument message={message} messageFiles={messageFiles} mine={mine} />}
+        {isDocument && (
+          <MessageDocument
+            message={message}
+            messageFiles={messageFiles}
+            mine={mine}
+          />
+        )}
 
         {isCallMessage ? (
           <CallMessageBubble message={message} text={text} mine={mine} />
@@ -287,7 +340,9 @@ export const MessageItem = ({
           {message?.reactions && message.reactions.length > 0 && (
             <div className={`flex flex-wrap gap-1 max-w-[390px] justify-start`}>
               {message.reactions.map((r, i) => {
-                const hasMyReaction = r.users?.some((u) => String(u._id || u.id) === String(currentUserId));
+                const hasMyReaction = r.users?.some(
+                  (u) => String(u._id || u.id) === String(currentUserId),
+                );
                 return (
                   <div
                     key={i}
@@ -295,15 +350,24 @@ export const MessageItem = ({
                       e.stopPropagation();
                       const msgId = message._id || message.id;
                       if (hasMyReaction) {
-                        conversationService.removeReactionMessage(msgId, r.emoji).catch(console.error);
+                        socketService
+                          .removeReaction(msgId, r.emoji)
+                          .catch(console.error);
                       } else {
-                        conversationService.reactMessage(msgId, r.emoji).catch(console.error);
+                        socketService
+                          .addReaction(msgId, r.emoji)
+                          .catch(console.error);
                       }
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setReactionView({ emoji: r.emoji, users: r.users, x: e.clientX, y: e.clientY });
+                      setReactionView({
+                        emoji: r.emoji,
+                        users: r.users,
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
                     }}
                     className={`rounded-[100px] px-2 py-[3px] flex items-center space-x-1 cursor-pointer border shadow-sm transition-colors ${hasMyReaction ? (mine ? "bg-[#55b25f] border-[#55b25f] dark:bg-[#489951] dark:border-[#489951]" : "bg-[#3895e6] border-[#3895e6] dark:bg-[#307bbd] dark:border-[#307bbd]") : "bg-gray-50/90 border-gray-200 dark:bg-slate-700 dark:border-slate-600"}`}
                     style={{ fontSize: "12.5px", lineHeight: "20px" }}
@@ -326,12 +390,16 @@ export const MessageItem = ({
                           >
                             {u.avatar || u.avatarUrl || u.profilePicture ? (
                               <img
-                                src={u.avatar || u.avatarUrl || u.profilePicture}
+                                src={
+                                  u.avatar || u.avatarUrl || u.profilePicture
+                                }
                                 alt="User"
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              (u.displayName || u.username || u.name || "?").charAt(0).toUpperCase()
+                              (u.displayName || u.username || u.name || "?")
+                                .charAt(0)
+                                .toUpperCase()
                             )}
                           </div>
                         ))}
@@ -346,7 +414,9 @@ export const MessageItem = ({
           {/* Render Timestamp */}
           <div
             className={`shrink-0 flex items-center justify-end gap-[4px] font-medium tracking-tight ml-auto ${
-              isJumboEmoji || (onlyImagesOrVideos && (!message.reactions || message.reactions.length === 0))
+              isJumboEmoji ||
+              (onlyImagesOrVideos &&
+                (!message.reactions || message.reactions.length === 0))
                 ? "px-[6px] py-[2px] bg-black/25 dark:bg-black/35 backdrop-blur-sm rounded-full text-white pointer-events-none text-[11px] shadow-sm ml-auto z-20"
                 : mine
                   ? "text-emerald-700/80 dark:text-emerald-200/80 text-[10.5px]"
@@ -354,7 +424,10 @@ export const MessageItem = ({
             }`}
           >
             {message.pinnedAt && (
-              <FiMapPin className="text-[14px] text-blue-500 dark:text-blue-400" strokeWidth={2.5} />
+              <FiMapPin
+                className="text-[14px] text-blue-500 dark:text-blue-400"
+                strokeWidth={2.5}
+              />
             )}
             {message.isEdited && (
               <span
@@ -364,7 +437,15 @@ export const MessageItem = ({
               </span>
             )}
             <span>{getMessageTime(message)}</span>
-            {mine && <>{isSeen ? <FiEye className="text-[12px]" /> : <FiCheck className="text-[12px]" />}</>}
+            {mine && (
+              <>
+                {isSeen ? (
+                  <FiEye className="text-[12px]" />
+                ) : (
+                  <FiCheck className="text-[12px]" />
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -393,7 +474,9 @@ export const MessageItem = ({
           >
             <div className="text-[13px] font-semibold mb-2 px-1 border-b border-gray-100 dark:border-slate-700/60 pb-1.5 dark:text-gray-200 flex items-center gap-1.5">
               <span>{reactionView.emoji}</span>
-              <span className="text-gray-500 font-normal ml-1">Đã thả cảm xúc ({reactionView.users?.length || 0})</span>
+              <span className="text-gray-500 font-normal ml-1">
+                Đã thả cảm xúc ({reactionView.users?.length || 0})
+              </span>
             </div>
             <div className="max-h-[160px] overflow-y-auto w-full custom-scrollbar pr-1">
               {reactionView.users?.map((u, idx) => (
@@ -410,7 +493,9 @@ export const MessageItem = ({
                       />
                     ) : (
                       <span className="text-[11px] font-bold text-gray-500">
-                        {(u.displayName || u.username || u.name || "?").charAt(0).toUpperCase()}
+                        {(u.displayName || u.username || u.name || "?")
+                          .charAt(0)
+                          .toUpperCase()}
                       </span>
                     )}
                   </div>

@@ -18,6 +18,8 @@ export const JUMBO_EMOJI_ASSETS: Record<string, string> = {
 export const EXPLOSION_EMOJI_ASSETS: Record<string, string> = {
   // Thêm các link JSON lottie riêng cho hiệu ứng nổ/bay ra màn hình ở đây
   "❤️": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Heart-Detach.json",
+  "👻": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Ghost-Detach.json",
+  "🔥": "https://chatchitcnm.s3.ap-southeast-1.amazonaws.com/Fire-Detach.json",
 };
 
 // Cache dữ liệu Lottie JSON trên RAM để tránh flicker (trắng màn hình chờ parse HTTP) khi React re-render Optimistic Update

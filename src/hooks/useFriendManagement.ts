@@ -15,7 +15,7 @@ export const useFriendManagement = () => {
       const userStr = localStorage.getItem("user");
       if (!userStr) return null;
       const user = JSON.parse(userStr);
-      return user?.id || user?._id;
+      return user?.id;
     } catch (err) {
       console.error("[useFriendManagement] Failed to get currentUserId:", err);
       return null;
@@ -95,7 +95,7 @@ export const useFriendManagement = () => {
             const userResponse = await searchUserById(friendUserId);
             const userInfo = unwrapUser(userResponse);
             return {
-              ...friendship,
+              ...raw,
               friendUserId,
               displayName: userInfo?.displayName,
               name: userInfo?.name,
@@ -113,8 +113,50 @@ export const useFriendManagement = () => {
               ...friendship,
               friendUserId,
               displayName: "Unknown",
+              avatarUrl,
             };
           }
+
+          // Fallback: try to fetch user info when we have an id and no displayName
+          if (friendUserId) {
+            try {
+              const userResponse = await searchUserById(friendUserId);
+              const userInfo = userResponse?.data || userResponse || {};
+              return {
+                ...raw,
+                friendUserId,
+                displayName:
+                  userInfo.displayName ||
+                  userInfo.name ||
+                  displayName ||
+                  "Unknown",
+                name: userInfo.name || raw.name,
+                username: userInfo.username || raw.username,
+                phone: userInfo.phone || raw.phone,
+                avatarUrl: userInfo.avatarUrl || avatarUrl,
+              };
+            } catch (err) {
+              console.error(
+                "[useFriendManagement] Failed to fetch user info for friendship:",
+                raw.id,
+                err,
+              );
+              return {
+                ...raw,
+                friendUserId,
+                displayName: displayName || "Unknown",
+                avatarUrl,
+              };
+            }
+          }
+
+          // Last resort: return a minimal normalized object
+          return {
+            ...raw,
+            friendUserId: friendUserId || raw.id,
+            displayName: displayName || "Unknown",
+            avatarUrl,
+          };
         }),
       );
 

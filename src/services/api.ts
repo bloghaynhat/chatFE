@@ -7,7 +7,10 @@ interface ApiError extends Error {
   payload?: any;
 }
 
-const appendQueryParams = (endpoint: string, params?: Record<string, any>): string => {
+const appendQueryParams = (
+  endpoint: string,
+  params?: Record<string, any>,
+): string => {
   if (!params || typeof params !== "object") {
     return endpoint;
   }
@@ -25,7 +28,12 @@ const appendQueryParams = (endpoint: string, params?: Record<string, any>): stri
 
 const normalizeError = (error: any): ApiError => {
   const payload = error?.response?.data || error;
-  const message = payload?.msg || payload?.message || payload?.error?.message || error?.message || "Request failed";
+  const message =
+    payload?.msg ||
+    payload?.message ||
+    payload?.error?.message ||
+    error?.message ||
+    "Request failed";
 
   const normalized = new Error(message) as ApiError;
   normalized.code = payload?.code || error?.code;
@@ -34,9 +42,15 @@ const normalizeError = (error: any): ApiError => {
   normalized.payload = payload;
 
   if (payload?.details) {
-    console.error("DEBUG_VALIDATION_DETAILS =>", JSON.stringify(payload.details, null, 2));
+    console.error(
+      "DEBUG_VALIDATION_DETAILS =>",
+      JSON.stringify(payload.details, null, 2),
+    );
   } else {
-    console.error("DEBUG_VALIDATION_ERROR =>", JSON.stringify(payload, null, 2));
+    console.error(
+      "DEBUG_VALIDATION_ERROR =>",
+      JSON.stringify(payload, null, 2),
+    );
   }
 
   return normalized;
@@ -46,7 +60,7 @@ export const apiCall = async <T = any>(
   method: string,
   endpoint: string,
   data?: any,
-  config: any = {}
+  config: any = {},
 ): Promise<T> => {
   try {
     const { params, ...axiosConfig } = config;
@@ -59,6 +73,7 @@ export const apiCall = async <T = any>(
       ...axiosConfig,
     });
 
+    // axiosInstance interceptor đã trả về response.data (hoặc payload)
     return response as T;
   } catch (error: any) {
     throw normalizeError(error);

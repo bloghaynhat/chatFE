@@ -2,14 +2,13 @@ import { User } from "./user";
 
 export interface Reaction {
   emoji: string;
-  users: (User | { _id: string; id: string })[];
+  users: (User | { id: string })[];
 }
 
 export interface Message {
   // ID fields (backend may use either)
   messageId?: string;
   id?: string;
-  _id?: string;
 
   createdAt: string;
   updatedAt?: string;
