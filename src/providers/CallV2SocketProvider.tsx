@@ -52,6 +52,7 @@ interface CallV2State {
   participants: Record<string, CallV2ParticipantInfo>;
   busyUserIds: string[];
   remotePeer: CallV2PeerInfo | null;
+  activeStartedAt: number | null;
 }
 
 type CallV2Action =
@@ -68,7 +69,7 @@ type CallV2Action =
     }
   | { type: "SET_INCOMING"; payload: CallV2IncomingPayload }
   | { type: "SET_ONGOING"; payload: CallV2OngoingPayload }
-  | { type: "SET_ACTIVE"; roomName: string }
+  | { type: "SET_ACTIVE"; roomName: string; startedAt?: number | string | null }
   | { type: "SET_ENDED" }
   | { type: "UPDATE_PARTICIPANT"; callId: string; userId: string; participant: CallV2ParticipantInfo }
   | { type: "REMOVE_PARTICIPANT"; callId: string; userId: string }
@@ -93,6 +94,7 @@ const initialState: CallV2State = {
   participants: {},
   busyUserIds: [],
   remotePeer: null,
+  activeStartedAt: null,
 };
 
 const formatErrorMessage = (error: unknown, fallback: string) => {
@@ -115,6 +117,13 @@ const normalizeUserInfo = (payload: any, fallbackId?: string | null): CallV2Peer
     name: data.displayName || data.fullName || data.name || data.username || data.phone || null,
     avatarUrl: data.avatarUrl || data.avatar || data.profilePicture || null,
   };
+};
+
+const normalizeCallTimestamp = (value?: number | string | null): number | null => {
+  if (!value) return null;
+  const timestamp = typeof value === "string" ? Date.parse(value) : value;
+  if (!Number.isFinite(timestamp)) return null;
+  return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
 };
 
 function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
@@ -170,7 +179,12 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         localVideoEnabled: action.payload.type === "video",
       };
     case "SET_ACTIVE":
-      return { ...state, status: "active", roomName: action.roomName };
+      return {
+        ...state,
+        status: "active",
+        roomName: action.roomName,
+        activeStartedAt: normalizeCallTimestamp(action.startedAt) ?? state.activeStartedAt ?? Date.now(),
+      };
     case "SET_ENDED":
       return { ...state, status: "ended" };
     case "UPDATE_PARTICIPANT":
@@ -264,6 +278,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       roomName: string,
       callType: "audio" | "video",
       activateOnConnect = true,
+      activeStartedAt?: number | string | null,
     ) => {
       cleanupRoom();
       const room = new Room({
@@ -280,7 +295,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
 
       room.on(RoomEvent.ParticipantConnected, (participant) => {
         console.log("[CallV2SocketProvider] Participant connected:", participant.identity);
-        dispatch({ type: "SET_ACTIVE", roomName });
+        dispatch({ type: "SET_ACTIVE", roomName, startedAt: activeStartedAt });
       });
 
       room.on(RoomEvent.ParticipantDisconnected, (participant) => {
@@ -310,7 +325,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       try {
         await room.connect(wsUrl, token);
         if (activateOnConnect) {
-          dispatch({ type: "SET_ACTIVE", roomName });
+          dispatch({ type: "SET_ACTIVE", roomName, startedAt: activeStartedAt });
         }
       } catch (err) {
         console.error("[CallV2SocketProvider] Failed to connect to LiveKit room:", err);
@@ -357,6 +372,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       roomName: string,
       callType: "audio" | "video",
       activateOnConnect = true,
+      activeStartedAt?: number | string | null,
     ) => {
       if (roomRef.current?.state === "connected" || isConnectingRef.current) {
         return;
@@ -364,7 +380,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       isConnectingRef.current = true;
       clearIncomingTimer();
       try {
-        await connectToRoom(token, wsUrl, roomName, callType, activateOnConnect);
+        await connectToRoom(token, wsUrl, roomName, callType, activateOnConnect, activeStartedAt);
       } finally {
         isConnectingRef.current = false;
       }
@@ -413,7 +429,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         callV2Socket.joinCallRoom(res.call.callId);
         const joinRes = await callV2Service.joinCall(res.call.callId);
         if (joinRes.token && joinRes.wsUrl && joinRes.roomName) {
-          await connectFromJoin(joinRes.token, joinRes.wsUrl, joinRes.roomName, type, false);
+          await connectFromJoin(joinRes.token, joinRes.wsUrl, joinRes.roomName, type, false, joinRes.call.answeredAt);
         }
       } catch (err: unknown) {
         toast.error(formatErrorMessage(err, "Cannot start the call"));
@@ -435,7 +451,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       const res = await callV2Service.joinCall(state.callId);
       callV2Socket.joinCallRoom(state.callId);
       if (res.token && res.wsUrl && res.roomName) {
-        await connectFromJoin(res.token, res.wsUrl, res.roomName, currentTypeRef.current);
+        await connectFromJoin(res.token, res.wsUrl, res.roomName, currentTypeRef.current, true, res.call.answeredAt);
       }
     } catch (err: unknown) {
       toast.error(formatErrorMessage(err, "Cannot join the call"));
@@ -473,7 +489,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         });
         callV2Socket.joinCallRoom(callId);
         if (res.token && res.wsUrl && res.roomName) {
-          await connectFromJoin(res.token, res.wsUrl, res.roomName, callType);
+          await connectFromJoin(res.token, res.wsUrl, res.roomName, callType, true, res.call.answeredAt);
         }
       } catch (err: unknown) {
         toast.error(formatErrorMessage(err, "Cannot join the call"));
@@ -624,7 +640,11 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         data.userId !== user?.id &&
         stateRef.current.roomName
       ) {
-        dispatch({ type: "SET_ACTIVE", roomName: stateRef.current.roomName });
+        dispatch({
+          type: "SET_ACTIVE",
+          roomName: stateRef.current.roomName,
+          startedAt: (data as any).answeredAt || data.participant?.joinedAt,
+        });
       }
     });
 

@@ -203,12 +203,13 @@ export default function ActiveCallView() {
       setDuration(0);
       return;
     }
-    const startTime = Date.now();
+    const startTime = state.activeStartedAt || Date.now();
+    setDuration(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
     const interval = setInterval(() => {
-      setDuration(Math.floor((Date.now() - startTime) / 1000));
+      setDuration(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
     }, 1000);
     return () => clearInterval(interval);
-  }, [state.status]);
+  }, [state.activeStartedAt, state.status]);
 
   useEffect(() => {
     if (state.status !== "active") {

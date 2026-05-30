@@ -121,6 +121,7 @@ export interface CallV2JoinedPayload {
   callId: string;
   conversationId?: string;
   userId?: string;
+  answeredAt?: number;
   status?: CallV2ParticipantStatus | CallV2SessionStatus;
   participant?: CallV2Participant;
   socketOnly?: boolean;
