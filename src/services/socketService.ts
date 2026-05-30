@@ -21,7 +21,9 @@ class SocketService {
     const token = await authStorage.getItem("token");
     if (!token) return null;
 
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
 
     this.messagesSocket = io(`${serverUrl}/messages`, {
       auth: { token },
@@ -56,7 +58,9 @@ class SocketService {
     const token = await authStorage.getItem("token");
     if (!token) return null;
 
-    const serverUrl = import.meta.env.VITE_API_URL?.replace("/v1", "") || "http://localhost:3000";
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
 
     this.friendsSocket = io(`${serverUrl}/friends`, {
       auth: { token },
@@ -534,10 +538,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("removeReaction", { messageId, emoji }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Remove reaction failed"));
-      });
+      this.messagesSocket.emit(
+        "removeReaction",
+        { messageId, emoji },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Remove reaction failed"));
+        },
+      );
     });
   }
 
@@ -580,7 +588,9 @@ class SocketService {
   startTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 
-    const payload = isGroup ? { groupId: conversationId } : { toUserId: conversationId };
+    const payload = isGroup
+      ? { groupId: conversationId }
+      : { toUserId: conversationId };
 
     this.messagesSocket.emit("typing:start", payload);
   }
@@ -588,7 +598,9 @@ class SocketService {
   stopTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 
-    const payload = isGroup ? { groupId: conversationId } : { toUserId: conversationId };
+    const payload = isGroup
+      ? { groupId: conversationId }
+      : { toUserId: conversationId };
 
     this.messagesSocket.emit("typing:stop", payload);
   }
@@ -636,6 +648,23 @@ class SocketService {
     });
   }
 
+  deleteMessageForEveryone(messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit(
+        "deleteMessageForEveryone",
+        { messageId },
+        (res) => {
+          if (res?.success || res?.status === "success") resolve(res);
+          else reject(new Error(res?.error || "Delete for everyone failed"));
+        },
+      );
+    });
+  }
+
   pinMessage(messageId: string) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
@@ -662,6 +691,40 @@ class SocketService {
     });
   }
 
+  markSeen(conversationId, messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit(
+        "markSeen",
+        { conversationId, messageId },
+        (res) => {
+          if (res?.success || res?.status === "success") resolve(res);
+          else reject(new Error(res?.error || "Mark seen failed"));
+        },
+      );
+    });
+  }
+
+  markDelivered(conversationId, messageId) {
+    if (!this.messagesSocket?.connected) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.messagesSocket.emit(
+        "markDelivered",
+        { conversationId, messageId },
+        (res) => {
+          if (res?.success || res?.status === "success") resolve(res);
+          else reject(new Error(res?.error || "Mark delivered failed"));
+        },
+      );
+    });
+  }
+
   markAllSeen(conversationId) {
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
@@ -681,10 +744,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("forwardMessages", { messageIds, toConversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Forward failed"));
-      });
+      this.messagesSocket.emit(
+        "forwardMessages",
+        { messageIds, toConversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Forward failed"));
+        },
+      );
     });
   }
 
@@ -694,13 +761,13 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      const payload: any = { 
-        quotedMessageId: messageId, 
-        text, 
-        conversationId
+      const payload: any = {
+        quotedMessageId: messageId,
+        text,
+        conversationId,
       };
       if (media && media.length > 0) payload.media = media;
-      
+
       this.messagesSocket.emit("quoteMessage", payload, (res: any) => {
         if (res?.success || res?.status === "success") {
           resolve(res.message || res.data || res);
@@ -731,10 +798,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("unpinConversation", { conversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Unpin conversation failed"));
-      });
+      this.messagesSocket.emit(
+        "unpinConversation",
+        { conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Unpin conversation failed"));
+        },
+      );
     });
   }
 
@@ -744,10 +815,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("archiveConversation", { conversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Archive conversation failed"));
-      });
+      this.messagesSocket.emit(
+        "archiveConversation",
+        { conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Archive conversation failed"));
+        },
+      );
     });
   }
 
@@ -757,10 +832,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("unarchiveConversation", { conversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Unarchive conversation failed"));
-      });
+      this.messagesSocket.emit(
+        "unarchiveConversation",
+        { conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Unarchive conversation failed"));
+        },
+      );
     });
   }
 
@@ -770,7 +849,10 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      const payload = duration !== undefined ? { conversationId, duration } : { conversationId };
+      const payload =
+        duration !== undefined
+          ? { conversationId, duration }
+          : { conversationId };
       this.messagesSocket.emit("muteConversation", payload, (res) => {
         if (res?.success) resolve(res);
         else reject(new Error(res?.error || "Mute conversation failed"));
@@ -784,10 +866,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("unmuteConversation", { conversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Unmute conversation failed"));
-      });
+      this.messagesSocket.emit(
+        "unmuteConversation",
+        { conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Unmute conversation failed"));
+        },
+      );
     });
   }
 
@@ -798,10 +884,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("dissolveGroup", { groupId: conversationId }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Dissolve group failed"));
-      });
+      this.messagesSocket.emit(
+        "dissolveGroup",
+        { groupId: conversationId },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Dissolve group failed"));
+        },
+      );
     });
   }
 
@@ -811,10 +901,14 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
-      this.messagesSocket.emit("updateGroupSettings", { conversationId, settings }, (res) => {
-        if (res?.success) resolve(res);
-        else reject(new Error(res?.error || "Update group settings failed"));
-      });
+      this.messagesSocket.emit(
+        "updateGroupSettings",
+        { conversationId, settings },
+        (res) => {
+          if (res?.success) resolve(res);
+          else reject(new Error(res?.error || "Update group settings failed"));
+        },
+      );
     });
   }
 
@@ -851,61 +945,83 @@ export const onTypingStart = (cb) => socketService.on("typing:start", cb);
 
 export const onTypingStop = (cb) => socketService.on("typing:stop", cb);
 
-export const onConversationUpdated = (cb) => socketService.on("conversation:updated", cb);
+export const onConversationUpdated = (cb) =>
+  socketService.on("conversation:updated", cb);
 
-export const onMembersAdded = (cb) => socketService.on("conversation:members_added", cb);
+export const onMembersAdded = (cb) =>
+  socketService.on("conversation:members_added", cb);
 
-export const onMemberRemoved = (cb) => socketService.on("conversation:member_removed", cb);
-export const onMessageReaction = (cb) => socketService.on("message:reaction", cb);
+export const onMemberRemoved = (cb) =>
+  socketService.on("conversation:member_removed", cb);
+export const onMessageReaction = (cb) =>
+  socketService.on("message:reaction", cb);
 
-export const onMessageReactionRemove = (cb) => socketService.on("message:reaction:remove", cb);
+export const onMessageReactionRemove = (cb) =>
+  socketService.on("message:reaction:remove", cb);
 
 // Message - additional
 export const onMessageDeleted = (cb) => socketService.on("message:deleted", cb);
 
-export const onMessageDeletedForEveryone = (cb) => socketService.on("message:deleted_for_everyone", cb);
+export const onMessageDeletedForEveryone = (cb) =>
+  socketService.on("message:deleted_for_everyone", cb);
 
-export const onMessageReactionsCleared = (cb) => socketService.on("message:reactions:clear", cb);
+export const onMessageReactionsCleared = (cb) =>
+  socketService.on("message:reactions:clear", cb);
 
 export const onMessagePinned = (cb) => socketService.on("message:pinned", cb);
 
-export const onMessageUnpinned = (cb) => socketService.on("message:unpinned", cb);
+export const onMessageUnpinned = (cb) =>
+  socketService.on("message:unpinned", cb);
 
 export const onMessageQuoted = (cb) => socketService.on("message:quoted", cb);
 
 // Conversation - additional
-export const onConversationCreated = (cb) => socketService.on("conversation:created", cb);
+export const onConversationCreated = (cb) =>
+  socketService.on("conversation:created", cb);
 
-export const onConversationPinToggled = (cb) => socketService.on("conversation:pin_toggled", cb);
+export const onConversationPinToggled = (cb) =>
+  socketService.on("conversation:pin_toggled", cb);
 
-export const onConversationArchivedToggled = (cb) => socketService.on("conversation:archived_toggled", cb);
+export const onConversationArchivedToggled = (cb) =>
+  socketService.on("conversation:archived_toggled", cb);
 
-export const onConversationMuteChanged = (cb) => socketService.on("conversation:mute_changed", cb);
+export const onConversationMuteChanged = (cb) =>
+  socketService.on("conversation:mute_changed", cb);
 
 // Group
-export const onGroupMemberLeft = (cb) => socketService.on("group:member_left", cb);
+export const onGroupMemberLeft = (cb) =>
+  socketService.on("group:member_left", cb);
 
 export const onGroupDissolved = (cb) => socketService.on("group:dissolved", cb);
 
 export const onGroupRenamed = (cb) => socketService.on("group:renamed", cb);
 
-export const onGroupAvatarChanged = (cb) => socketService.on("group:avatar_changed", cb);
+export const onGroupAvatarChanged = (cb) =>
+  socketService.on("group:avatar_changed", cb);
 
-export const onGroupAdminChanged = (cb) => socketService.on("group:admin_changed", cb);
+export const onGroupAdminChanged = (cb) =>
+  socketService.on("group:admin_changed", cb);
 
-export const onGroupOwnerTransferred = (cb) => socketService.on("group:owner_transferred", cb);
+export const onGroupOwnerTransferred = (cb) =>
+  socketService.on("group:owner_transferred", cb);
 
-export const onGroupMemberApproved = (cb) => socketService.on("group:member_approved", cb);
+export const onGroupMemberApproved = (cb) =>
+  socketService.on("group:member_approved", cb);
 
-export const onGroupMemberRejected = (cb) => socketService.on("group:member_rejected", cb);
+export const onGroupMemberRejected = (cb) =>
+  socketService.on("group:member_rejected", cb);
 
-export const onGroupSettingsUpdated = (cb) => socketService.on("group:settings_updated", cb);
+export const onGroupSettingsUpdated = (cb) =>
+  socketService.on("group:settings_updated", cb);
 
 // Friend
-export const onFriendRequest = (cb) => socketService.on("friend_request:received", cb);
+export const onFriendRequest = (cb) =>
+  socketService.on("friend_request:received", cb);
 
-export const onFriendRequestAccepted = (cb) => socketService.on("friend_request:accepted", cb);
+export const onFriendRequestAccepted = (cb) =>
+  socketService.on("friend_request:accepted", cb);
 
-export const onFriendRequestRejected = (cb) => socketService.on("friend_request:rejected", cb);
+export const onFriendRequestRejected = (cb) =>
+  socketService.on("friend_request:rejected", cb);
 
 export const onUnfriend = (cb) => socketService.on("friendship:unfriended", cb);

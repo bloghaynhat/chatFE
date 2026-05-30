@@ -5,7 +5,10 @@ import { ActiveChatPane } from "../chat";
 import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
-import type { PinMessagePayload, UnpinMessagePayload } from "../../types/socket";
+import type {
+  PinMessagePayload,
+  UnpinMessagePayload,
+} from "../../types/socket";
 
 const MainLayout = ({ children }: { children?: any }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
@@ -43,7 +46,6 @@ const MainLayout = ({ children }: { children?: any }) => {
             const sender =
               message?.senderId ||
               message?.sender?.id ||
-              message?.sender?._id ||
               message?.id_sender ||
               (typeof message?.sender === "string" ? message.sender : null);
             if (sender && prev.has(sender)) {
@@ -55,22 +57,25 @@ const MainLayout = ({ children }: { children?: any }) => {
           });
 
           setMessages((prev) => {
-            if (!message || (!message._id && !message.id)) return prev;
+            if (!message || !message.id) return prev;
             // Prevent duplicate messages
-            const msgId = message._id || message.id;
-            if (prev.some((m) => String(m._id || m.id) === String(msgId))) return prev;
+            const msgId = message.id;
+            if (prev.some((m) => String(m.id) === String(msgId))) return prev;
 
             // Only add if it belongs to currently open conversation
             let msgConvId = message.conversationId || payload?.conversationId;
             if (msgConvId && typeof msgConvId === "object") {
-              msgConvId = msgConvId._id || msgConvId.id;
+              msgConvId = msgConvId.id;
             }
             if (String(msgConvId) === String(selectedConversationId)) {
               // Auto mark as seen when message is received in current conversation
-              const senderId = message?.senderId || message?.sender?.id || message?.sender?._id || message?.id_sender;
+              const senderId =
+                message?.senderId || message?.sender?.id || message?.id_sender;
               if (senderId && senderId !== user?.id) {
                 // Only mark seen if message is from someone else, not from current user
-                conversationService.markSeen(selectedConversationId, msgId).catch(() => {});
+                socketService
+                  .markSeen(selectedConversationId, msgId)
+                  .catch(() => {});
               }
               return [...prev, message];
             }
@@ -83,30 +88,44 @@ const MainLayout = ({ children }: { children?: any }) => {
           console.log("[Socket] Received message:quoted:", payload);
           const message = payload?.message || payload;
           if (!message) {
-            console.warn("[Socket] message:quoted payload has no message:", payload);
+            console.warn(
+              "[Socket] message:quoted payload has no message:",
+              payload,
+            );
             return;
           }
 
           setMessages((prev) => {
-            const msgId = message._id || message.id;
+            const msgId = message.id;
             if (!msgId) {
-              console.warn("[Socket] message:quoted message has no id:", message);
+              console.warn(
+                "[Socket] message:quoted message has no id:",
+                message,
+              );
               return prev;
             }
-            if (prev.some((m) => String(m._id || m.id) === String(msgId))) {
-              console.log("[Socket] message:quoted already exists, skipping:", msgId);
+            if (prev.some((m) => String(m.id) === String(msgId))) {
+              console.log(
+                "[Socket] message:quoted already exists, skipping:",
+                msgId,
+              );
               return prev;
             }
 
             let msgConvId = message.conversationId || payload?.conversationId;
             if (msgConvId && typeof msgConvId === "object") {
-              msgConvId = msgConvId._id || msgConvId.id;
+              msgConvId = msgConvId.id;
             }
             if (String(msgConvId) === String(selectedConversationId)) {
               console.log("[Socket] Adding quoted message to state:", msgId);
               return [...prev, message];
             }
-            console.log("[Socket] message:quoted conversationId mismatch. msgConvId:", msgConvId, "selected:", selectedConversationId);
+            console.log(
+              "[Socket] message:quoted conversationId mismatch. msgConvId:",
+              msgConvId,
+              "selected:",
+              selectedConversationId,
+            );
             return prev;
           });
         });
@@ -127,7 +146,11 @@ const MainLayout = ({ children }: { children?: any }) => {
         socketService.onMessageRevoked((payload) => {
           console.log("Socket message revoked payload:", payload);
           const revokedId =
-            payload?.messageId || payload?.message?._id || payload?.message?.id || payload?.id || payload?._id;
+            payload?.messageId ||
+            payload?.message?._id ||
+            payload?.message?.id ||
+            payload?.id ||
+            payload?._id;
           if (!revokedId) return;
 
           setMessages((prev) =>
@@ -186,11 +209,13 @@ const MainLayout = ({ children }: { children?: any }) => {
           if (payload?.groupId) {
             if (payload.groupId !== selectedConversationId) return;
           } else {
-            const isGroup = currentChat?.type === "group" || currentChat?.type === "GROUP";
+            const isGroup =
+              currentChat?.type === "group" || currentChat?.type === "GROUP";
             if (isGroup) return;
           }
 
-          const uId = payload?.userId || payload?.senderId || payload?.id_sender;
+          const uId =
+            payload?.userId || payload?.senderId || payload?.id_sender;
           if (uId) {
             setTypingUsers((prev) => {
               const newSet = new Set(prev);
@@ -201,7 +226,8 @@ const MainLayout = ({ children }: { children?: any }) => {
         });
 
         socketService.onTypingStop((payload) => {
-          const uId = payload?.userId || payload?.senderId || payload?.id_sender;
+          const uId =
+            payload?.userId || payload?.senderId || payload?.id_sender;
           if (uId) {
             setTypingUsers((prev) => {
               const newSet = new Set(prev);
@@ -222,7 +248,9 @@ const MainLayout = ({ children }: { children?: any }) => {
               if (String(m._id || m.id) === String(messageId)) {
                 const currentReactions = m.reactions ? [...m.reactions] : [];
                 // Find if an object for this emoji already exists
-                const existingIndex = currentReactions.findIndex((r) => r.emoji === reaction.emoji);
+                const existingIndex = currentReactions.findIndex(
+                  (r) => r.emoji === reaction.emoji,
+                );
                 const userObj = {
                   _id: reaction.userId,
                   id: reaction.userId,
@@ -233,13 +261,19 @@ const MainLayout = ({ children }: { children?: any }) => {
                 if (existingIndex !== -1) {
                   const existingReaction = currentReactions[existingIndex];
                   const hasUser = existingReaction.users?.some(
-                    (u: any) => String(u._id || u.id) === String(reaction.userId),
+                    (u: any) =>
+                      String(u._id || u.id) === String(reaction.userId),
                   );
                   if (!hasUser) {
                     currentReactions[existingIndex] = {
                       ...existingReaction,
-                      users: existingReaction.users ? [...existingReaction.users, userObj] : [userObj],
-                      count: (existingReaction.count || existingReaction.users?.length || 0) + 1,
+                      users: existingReaction.users
+                        ? [...existingReaction.users, userObj]
+                        : [userObj],
+                      count:
+                        (existingReaction.count ||
+                          existingReaction.users?.length ||
+                          0) + 1,
                     };
                   }
                 } else {
@@ -268,14 +302,19 @@ const MainLayout = ({ children }: { children?: any }) => {
                 let newReactions = [...m.reactions];
 
                 if (emoji) {
-                  const index = newReactions.findIndex((r) => r.emoji === emoji);
+                  const index = newReactions.findIndex(
+                    (r) => r.emoji === emoji,
+                  );
                   if (index !== -1) {
                     newReactions[index] = {
                       ...newReactions[index],
                       users:
-                        newReactions[index].users?.filter((u: any) => String(u._id || u.id) !== String(userId)) || [],
+                        newReactions[index].users?.filter(
+                          (u: any) => String(u._id || u.id) !== String(userId),
+                        ) || [],
                     };
-                    newReactions[index].count = newReactions[index].users.length;
+                    newReactions[index].count =
+                      newReactions[index].users.length;
                     if (newReactions[index].count <= 0) {
                       newReactions.splice(index, 1);
                     }
@@ -284,7 +323,10 @@ const MainLayout = ({ children }: { children?: any }) => {
                   newReactions = newReactions
                     .map((r) => ({
                       ...r,
-                      users: r.users?.filter((u: any) => String(u._id || u.id) !== String(userId)) || [],
+                      users:
+                        r.users?.filter(
+                          (u: any) => String(u._id || u.id) !== String(userId),
+                        ) || [],
                     }))
                     .map((r) => ({ ...r, count: r.users.length }))
                     .filter((r) => r.count > 0);
@@ -309,13 +351,18 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (msgConvId && typeof msgConvId === "object") {
               msgConvId = msgConvId._id || msgConvId.id;
             }
-            if (String(msgConvId) !== String(selectedConversationId)) return prev;
+            if (String(msgConvId) !== String(selectedConversationId))
+              return prev;
 
             return prev.map((m) =>
               String(m._id || m.id) === String(msgId)
-                ? { ...m, ...message, pinnedAt: message.pinnedAt || new Date().toISOString() }
-                : m
-            )
+                ? {
+                    ...m,
+                    ...message,
+                    pinnedAt: message.pinnedAt || new Date().toISOString(),
+                  }
+                : m,
+            );
           });
         });
 
@@ -331,13 +378,14 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (msgConvId && typeof msgConvId === "object") {
               msgConvId = msgConvId._id || msgConvId.id;
             }
-            if (String(msgConvId) !== String(selectedConversationId)) return prev;
+            if (String(msgConvId) !== String(selectedConversationId))
+              return prev;
 
             return prev.map((m) =>
               String(m._id || m.id) === String(msgId)
                 ? { ...m, ...message, pinnedAt: undefined, pinnedBy: undefined }
-                : m
-            )
+                : m,
+            );
           });
         });
 
@@ -496,7 +544,9 @@ const MainLayout = ({ children }: { children?: any }) => {
         processedChat.type !== "GROUP" &&
         processedChat.pairKey
       ) {
-        processedChat.targetUserId = processedChat.pairKey.split("_").find((id) => id !== user?.id && id !== user?._id);
+        processedChat.targetUserId = processedChat.pairKey
+          .split("_")
+          .find((id) => id !== user?.id);
       }
 
       setSelectedChat(processedChat);
@@ -509,7 +559,10 @@ const MainLayout = ({ children }: { children?: any }) => {
         let conversationId = chat.id;
 
         if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
-          const conversation = await conversationService.createPrivateConversation(chat.targetUserId);
+          const conversation =
+            await conversationService.createPrivateConversation(
+              chat.targetUserId,
+            );
           conversationId = resolveConversationId(conversation);
           setSelectedChat((prev: any) => ({
             ...prev,
@@ -517,8 +570,12 @@ const MainLayout = ({ children }: { children?: any }) => {
             id: conversationId,
             conversationId: conversationId,
             name: chat.name || prev?.name || conversation?.name,
-            avatarUrl: chat.avatarUrl || prev?.avatarUrl || conversation?.avatarUrl,
-            displayName: chat.name || prev?.displayName || (conversation as any)?.displayName
+            avatarUrl:
+              chat.avatarUrl || prev?.avatarUrl || conversation?.avatarUrl,
+            displayName:
+              chat.name ||
+              prev?.displayName ||
+              (conversation as any)?.displayName,
           }));
         }
 
@@ -532,10 +589,12 @@ const MainLayout = ({ children }: { children?: any }) => {
         setSelectedConversationId(conversationId);
 
         // Nếu là group chat, fetch thông tin nhóm mới nhất và update selectedChat
-        const isGroupChat = processedChat.type === 'group' || processedChat.type === 'GROUP';
+        const isGroupChat =
+          processedChat.type === "group" || processedChat.type === "GROUP";
         if (isGroupChat) {
           try {
-            const infoResult: any = await conversationService.getGroupInfo(conversationId);
+            const infoResult: any =
+              await conversationService.getGroupInfo(conversationId);
             const infoData = infoResult?.data || infoResult;
             const groupData = infoData?.conversation || infoData;
             if (groupData) {
@@ -547,11 +606,12 @@ const MainLayout = ({ children }: { children?: any }) => {
               }));
             }
           } catch (e) {
-            console.warn('Failed to fetch group info on open', e);
+            console.warn("Failed to fetch group info on open", e);
           }
         }
 
-        const messageResult = await conversationService.getConversationMessages(conversationId);
+        const messageResult =
+          await conversationService.getConversationMessages(conversationId);
 
         // Sort messages by createdAt in ascending order (oldest first)
         const sortedMessages = (messageResult.messages || []).sort((a, b) => {
@@ -565,9 +625,13 @@ const MainLayout = ({ children }: { children?: any }) => {
         // fire-and-forget status sync with last message ID
         const lastMessage = sortedMessages[sortedMessages.length - 1];
         if (lastMessage) {
-          const lastMessageId = lastMessage.id || lastMessage._id;
-          conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
-          conversationService.markSeen(conversationId, lastMessageId).catch(() => {});
+          const lastMessageId = lastMessage.id;
+          conversationService
+            .markDelivered(conversationId, lastMessageId)
+            .catch(() => {});
+          conversationService
+            .markSeen(conversationId, lastMessageId)
+            .catch(() => {});
         }
       } catch (error) {
         setMessages([]);
@@ -635,9 +699,7 @@ const MainLayout = ({ children }: { children?: any }) => {
             ),
           );
 
-          await conversationService.editMessage(payloadOrText.id, {
-            text: payloadOrText.text,
-          });
+          await socketService.editMessage(payloadOrText.id, payloadOrText.text);
         } catch (error) {
           console.error("Failed to edit message", error);
           // Ideally revert UI state here, but logging is minimum.
@@ -647,7 +709,9 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       if (payloadOrText instanceof File || Array.isArray(payloadOrText)) {
         payloadText = "";
-        payloadMedia = Array.isArray(payloadOrText) ? payloadOrText : [payloadOrText];
+        payloadMedia = Array.isArray(payloadOrText)
+          ? payloadOrText
+          : [payloadOrText];
       } else {
         payloadText = payloadOrText.text || "";
         payloadMedia = payloadOrText.media || [];
@@ -713,7 +777,11 @@ const MainLayout = ({ children }: { children?: any }) => {
           const uploadedMedia = await Promise.all(
             filesToUpload.map(async (file) => {
               // 1. Lấy Pre-signed URL
-              const reqResponse: any = await mediaService.requestUploadUrl(file.name, file.type, file.size);
+              const reqResponse: any = await mediaService.requestUploadUrl(
+                file.name,
+                file.type,
+                file.size,
+              );
               // Phụ thuộc vào dữ liệu trả về từ backend, fix triệt để các format có thể trả về:
               const uploadUrl =
                 reqResponse?.uploadUrl ||
@@ -724,11 +792,16 @@ const MainLayout = ({ children }: { children?: any }) => {
                 reqResponse?.data?.url ||
                 reqResponse?.data?.presignedUrl;
               const fileId =
-                reqResponse?.fileId || reqResponse?.id || reqResponse?.data?.fileId || reqResponse?.data?.id;
+                reqResponse?.fileId ||
+                reqResponse?.id ||
+                reqResponse?.data?.fileId ||
+                reqResponse?.data?.id;
 
               if (!uploadUrl) {
                 console.error("Missing uploadUrl in response:", reqResponse);
-                throw new Error("Không lấy được pre-signed upload URL từ server");
+                throw new Error(
+                  "Không lấy được pre-signed upload URL từ server",
+                );
               }
 
               // 2. Upload file trực tiếp lên S3 qua Pre-signed URL
@@ -738,13 +811,20 @@ const MainLayout = ({ children }: { children?: any }) => {
               const uploadedUrlClean = uploadUrl.split("?")[0];
 
               // 3. Confirm quá trình upload với backend
-              const confirmResponse: any = await mediaService.confirmUpload(fileId, uploadedUrlClean);
+              const confirmResponse: any = await mediaService.confirmUpload(
+                fileId,
+                uploadedUrlClean,
+              );
 
               const finalUrl =
-                confirmResponse?.url || confirmResponse?.fileUrl || confirmResponse?.data?.url || uploadedUrlClean;
+                confirmResponse?.url ||
+                confirmResponse?.fileUrl ||
+                confirmResponse?.data?.url ||
+                uploadedUrlClean;
 
               return {
-                fileId: confirmResponse?.fileId || confirmResponse?._id || fileId,
+                fileId:
+                  confirmResponse?.fileId || confirmResponse?._id || fileId,
                 type: file.type?.startsWith("image/")
                   ? "image"
                   : file.type?.startsWith("video/")
@@ -769,7 +849,12 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Strict normalization for API compliance
         const validMedia = finalMedia.map((m: any) => {
-          const rawType = (m.type || m.mimeType || m.mimetype || "").toLowerCase();
+          const rawType = (
+            m.type ||
+            m.mimeType ||
+            m.mimetype ||
+            ""
+          ).toLowerCase();
           const pType = rawType.startsWith("image")
             ? "image"
             : rawType.startsWith("video")
@@ -784,8 +869,10 @@ const MainLayout = ({ children }: { children?: any }) => {
             thumbnailUrl: m.thumbnailUrl || m.preview || m.url || "",
             filename: m.filename || m.name || "unknown",
             size: Number(m.size) || 0,
-            mimetype: m.mimeType || m.mimetype || rawType || "application/octet-stream",
-            mimeType: m.mimeType || m.mimetype || rawType || "application/octet-stream",
+            mimetype:
+              m.mimeType || m.mimetype || rawType || "application/octet-stream",
+            mimeType:
+              m.mimeType || m.mimetype || rawType || "application/octet-stream",
           };
         });
 
@@ -796,13 +883,14 @@ const MainLayout = ({ children }: { children?: any }) => {
             messageId,
             txt || " ",
             selectedConversationId,
-            validMedia
+            validMedia,
           );
         } else {
-          apiResponse = await conversationService.sendMessage(conversationId, {
-            text: txt || " ",
-            media: validMedia,
-          });
+          apiResponse = await socketService.sendMessage(
+            conversationId,
+            txt || " ",
+            validMedia,
+          );
         }
 
         const responseData = apiResponse?.data || apiResponse;
@@ -821,10 +909,17 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (!sMsg || (!sMsg._id && !sMsg.id)) continue;
 
             const msgId = sMsg._id || sMsg.id;
-            const existingIndex = updatedMessages.findIndex((m) => String(m.id || m._id) === String(msgId));
+            const existingIndex = updatedMessages.findIndex(
+              (m) => String(m.id || m._id) === String(msgId),
+            );
 
             if (existingIndex !== -1) {
-              updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], ...sMsg, status: "sent", id: msgId };
+              updatedMessages[existingIndex] = {
+                ...updatedMessages[existingIndex],
+                ...sMsg,
+                status: "sent",
+                id: msgId,
+              };
             } else {
               updatedMessages.push({ ...sMsg, id: msgId, status: "sent" });
             }
@@ -838,15 +933,24 @@ const MainLayout = ({ children }: { children?: any }) => {
           const lastSent = sentMessagesArray[sentMessagesArray.length - 1];
           const lastMessageId = lastSent.id || lastSent._id;
 
-          socketService.emit("receiveMessage", { message: lastSent, conversationId });
+          socketService.emit("receiveMessage", {
+            message: lastSent,
+            conversationId,
+          });
 
           if (lastMessageId) {
-            conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
+            socketService
+              .markDelivered(conversationId, lastMessageId)
+              .catch(() => {});
           }
         }
       } catch (error) {
         console.error("Failed to send message via socket", error);
-        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? { ...msg, status: "failed" } : msg)));
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempId ? { ...msg, status: "failed" } : msg,
+          ),
+        );
       }
     };
 
@@ -859,24 +963,32 @@ const MainLayout = ({ children }: { children?: any }) => {
       try {
         const msgId = fwMsg.id || fwMsg._id;
         if (msgId) {
-          const res = await conversationService.forwardMessages({
-            messageIds: [msgId],
-            targetConversationIds: [conversationId],
-          });
+          const res: any = await socketService.forwardMessages(
+            [msgId],
+            conversationId,
+          );
 
           // Normalize res to an array of messages
           let newMessages = [];
           if (Array.isArray(res)) {
             newMessages = res;
+          } else if (res?.data && Array.isArray(res.data)) {
+            newMessages = res.data;
           } else if (res && typeof res === "object") {
-            newMessages = [res];
+            newMessages = [res.message || res.data || res];
           }
 
           if (newMessages.length > 0) {
             setMessages((prev) => {
               const newMsgs = [...prev];
               newMessages.forEach((newMsg) => {
-                if (!newMsgs.some((m) => String(m._id || m.id) === String(newMsg._id || newMsg.id))) {
+                if (
+                  newMsg &&
+                  !newMsgs.some(
+                    (m) =>
+                      String(m._id || m.id) === String(newMsg._id || newMsg.id),
+                  )
+                ) {
                   newMsgs.push(newMsg);
                 }
               });
@@ -885,15 +997,18 @@ const MainLayout = ({ children }: { children?: any }) => {
 
             // Mark delivered and seen after forwarding message
             const lastForwardedMessage = newMessages[newMessages.length - 1];
-            const lastMessageId = lastForwardedMessage.id || lastForwardedMessage._id;
+            const lastMessageId =
+              lastForwardedMessage?.id || lastForwardedMessage?._id;
             if (lastMessageId) {
               // Only mark own messages as delivered (not seen)
-              conversationService.markDelivered(conversationId, lastMessageId).catch(() => {});
+              socketService
+                .markDelivered(conversationId, lastMessageId)
+                .catch(() => {});
             }
           }
         }
       } catch (error) {
-        console.error("Failed to forward message via API", error);
+        console.error("Failed to forward message via socket", error);
       }
     }
   };
@@ -919,19 +1034,76 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
 
   const handleDeleteMessageForMe = async (message) => {
+    const messageId = message?.id || message?._id;
+    if (!messageId) return;
+
     try {
-      const messageId = message?.id || message?._id;
-      if (!messageId) return;
+      const res: any = await socketService.deleteMessage(messageId);
 
-      const res: any = await conversationService.deleteMessageForMe(messageId);
-
-      if (res && (res.success || res.status === 200 || res.statusText === "OK")) {
+      if (
+        res &&
+        (res.success ||
+          res.status === 200 ||
+          res.statusText === "OK" ||
+          res.status === "success")
+      ) {
         setMessages((prev) =>
-          prev.filter((msg) => String(msg.id) !== String(messageId) && String(msg._id) !== String(messageId)),
+          prev.filter(
+            (msg) =>
+              String(msg.id) !== String(messageId) &&
+              String(msg._id) !== String(messageId),
+          ),
         );
       }
     } catch (error) {
-      console.error("Failed to delete message for me:", error);
+      console.error("Failed to delete message for me via socket:", error);
+      // Fallback to API if socket fails or not implemented for this action
+      try {
+        await conversationService.deleteMessageForMe(messageId);
+        setMessages((prev) =>
+          prev.filter(
+            (msg) =>
+              String(msg.id) !== String(messageId) &&
+              String(msg._id) !== String(messageId),
+          ),
+        );
+      } catch (apiErr) {
+        console.error("Failed to delete message for me via API:", apiErr);
+      }
+    }
+  };
+
+  const handleDeleteMessageForEveryone = async (message: any) => {
+    const messageId = message?.id || message?._id;
+    if (!messageId) return;
+
+    try {
+      const res: any = await socketService.deleteMessageForEveryone(messageId);
+
+      if (
+        res &&
+        (res.success || res.status === 200 || res.status === "success")
+      ) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m._id || m.id) === String(messageId)
+              ? {
+                  ...m,
+                  isRevoked: true,
+                  text: "Message deleted for everyone",
+                  deletedAt: new Date().toISOString(),
+                }
+              : m,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete message for everyone via socket:", error);
+      try {
+        await conversationService.deleteMessageForEveryone(messageId);
+      } catch (apiErr) {
+        console.error("Failed to delete message for everyone via API:", apiErr);
+      }
     }
   };
 
@@ -944,16 +1116,24 @@ const MainLayout = ({ children }: { children?: any }) => {
     }
 
     if (!selectedConversationId) {
-      console.error("Cannot pin message: no conversation selected", { selectedConversationId, messageId });
+      console.error("Cannot pin message: no conversation selected", {
+        selectedConversationId,
+        messageId,
+      });
       return;
     }
 
     pendingPinOperations.current.add(operationKey);
 
-    console.log("[Pin] Pinning message:", { conversationId: selectedConversationId, messageId });
+    console.log("[Pin] Pinning message:", {
+      conversationId: selectedConversationId,
+      messageId,
+    });
 
     // Get current pinned state before optimistic update (for potential rollback)
-    const currentMessage = messages.find((m) => String(m.id || m._id) === String(messageId));
+    const currentMessage = messages.find(
+      (m) => String(m.id || m._id) === String(messageId),
+    );
     const originalPinnedAt = currentMessage?.pinnedAt;
     const originalPinnedBy = currentMessage?.pinnedBy;
 
@@ -961,15 +1141,28 @@ const MainLayout = ({ children }: { children?: any }) => {
     setMessages((prev) =>
       prev.map((msg) =>
         String(msg.id || msg._id) === String(messageId)
-          ? { ...msg, pinnedAt: new Date().toISOString(), pinnedBy: user?.id || user?._id }
-          : msg
-      )
+          ? {
+              ...msg,
+              pinnedAt: new Date().toISOString(),
+              pinnedBy: user?.id,
+            }
+          : msg,
+      ),
     );
 
     try {
       const res: any = await socketService.pinMessage(messageId);
-      if (res && (res.success || res.status === 200 || res.statusText === "OK" || res.status === "success")) {
-        console.log("[Pin] Success:", { conversationId: selectedConversationId, messageId });
+      if (
+        res &&
+        (res.success ||
+          res.status === 200 ||
+          res.statusText === "OK" ||
+          res.status === "success")
+      ) {
+        console.log("[Pin] Success:", {
+          conversationId: selectedConversationId,
+          messageId,
+        });
         // Server will broadcast back to other clients, but we already updated optimistically
       } else {
         throw new Error(res?.error || res?.msg || res?.message || "Pin failed");
@@ -981,8 +1174,8 @@ const MainLayout = ({ children }: { children?: any }) => {
         prev.map((msg) =>
           String(msg.id || msg._id) === String(messageId)
             ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
-            : msg
-        )
+            : msg,
+        ),
       );
       throw error;
     } finally {
@@ -999,16 +1192,24 @@ const MainLayout = ({ children }: { children?: any }) => {
     }
 
     if (!selectedConversationId) {
-      console.error("Cannot unpin message: no conversation selected", { selectedConversationId, messageId });
+      console.error("Cannot unpin message: no conversation selected", {
+        selectedConversationId,
+        messageId,
+      });
       return;
     }
 
     pendingPinOperations.current.add(operationKey);
 
-    console.log("[Unpin] Unpinning message:", { conversationId: selectedConversationId, messageId });
+    console.log("[Unpin] Unpinning message:", {
+      conversationId: selectedConversationId,
+      messageId,
+    });
 
     // Get current pinned state before optimistic update (for potential rollback)
-    const currentMessage = messages.find((m) => String(m.id || m._id) === String(messageId));
+    const currentMessage = messages.find(
+      (m) => String(m.id || m._id) === String(messageId),
+    );
     const originalPinnedAt = currentMessage?.pinnedAt;
     const originalPinnedBy = currentMessage?.pinnedBy;
 
@@ -1017,17 +1218,28 @@ const MainLayout = ({ children }: { children?: any }) => {
       prev.map((msg) =>
         String(msg.id || msg._id) === String(messageId)
           ? { ...msg, pinnedAt: undefined, pinnedBy: undefined }
-          : msg
-      )
+          : msg,
+      ),
     );
 
     try {
       const res: any = await socketService.unpinMessage(messageId);
-      if (res && (res.success || res.status === 200 || res.statusText === "OK" || res.status === "success")) {
-        console.log("[Unpin] Success:", { conversationId: selectedConversationId, messageId });
+      if (
+        res &&
+        (res.success ||
+          res.status === 200 ||
+          res.statusText === "OK" ||
+          res.status === "success")
+      ) {
+        console.log("[Unpin] Success:", {
+          conversationId: selectedConversationId,
+          messageId,
+        });
         // Server will broadcast back to other clients, but we already updated optimistically
       } else {
-        throw new Error(res?.error || res?.msg || res?.message || "Unpin failed");
+        throw new Error(
+          res?.error || res?.msg || res?.message || "Unpin failed",
+        );
       }
     } catch (error) {
       // Rollback on error - restore original pinned state
@@ -1036,8 +1248,8 @@ const MainLayout = ({ children }: { children?: any }) => {
         prev.map((msg) =>
           String(msg.id || msg._id) === String(messageId)
             ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
-            : msg
-        )
+            : msg,
+        ),
       );
       throw error;
     } finally {
@@ -1051,7 +1263,9 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     const foundMessage = messages.find((msg) => {
       if (!msg.media || !Array.isArray(msg.media)) return false;
-      return msg.media.some((m: any) => m.url === mediaUrl || m.preview === mediaUrl);
+      return msg.media.some(
+        (m: any) => m.url === mediaUrl || m.preview === mediaUrl,
+      );
     });
 
     if (!foundMessage) {
@@ -1064,7 +1278,9 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     // Try to find and scroll to the message element
     const findAndScrollToMessage = () => {
-      const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+      const messageElement = document.querySelector(
+        `[data-message-id="${messageId}"]`,
+      );
       console.log("📍 Found element:", messageElement);
 
       if (messageElement) {
@@ -1073,7 +1289,10 @@ const MainLayout = ({ children }: { children?: any }) => {
         messageElement.classList.add("bg-yellow-100", "dark:bg-yellow-900/30");
         console.log("✅ Message highlighted and scrolled");
         setTimeout(() => {
-          messageElement.classList.remove("bg-yellow-100", "dark:bg-yellow-900/30");
+          messageElement.classList.remove(
+            "bg-yellow-100",
+            "dark:bg-yellow-900/30",
+          );
         }, 2000);
         return true;
       }
@@ -1084,7 +1303,9 @@ const MainLayout = ({ children }: { children?: any }) => {
     if (findAndScrollToMessage()) return;
 
     // If message element not found (may be outside viewport), scroll chat to top and retry
-    console.warn("⚠️ Message element not found, trying to scroll chat to top...");
+    console.warn(
+      "⚠️ Message element not found, trying to scroll chat to top...",
+    );
     const chatContainer = document.querySelector("[data-chat-container]");
     if (chatContainer) {
       chatContainer.scrollTop = 0;
@@ -1117,11 +1338,12 @@ const MainLayout = ({ children }: { children?: any }) => {
               error={chatError}
               messages={messages}
               typingUsers={typingUsers}
-              currentUserId={user?.id || user?._id}
+              currentUserId={user?.id}
               onRetry={retryOpenCurrentChat}
               onSendMessage={handleSendMessage}
               onRevokeMessage={handleRevokeMessage}
               onDeleteMessageForMe={handleDeleteMessageForMe}
+              onDeleteMessageForEveryone={handleDeleteMessageForEveryone}
               onForwardToTarget={handleForwardToTarget}
               forwardingMessage={forwardingMessage}
               onClearForwarding={clearForwardingMessage}
@@ -1136,24 +1358,35 @@ const MainLayout = ({ children }: { children?: any }) => {
         <RightSidebar
           isOpen={isRightSidebarOpen && !!selectedChat}
           selectedChat={selectedChat}
-          currentUserId={user?.id || user?._id}
+          currentUserId={user?.id}
           onClose={() => setIsRightSidebarOpen(false)}
           onGroupUpdated={(newInfo: any) => {
-            setSelectedChat((prev: any) => (prev ? { ...prev, ...newInfo } : prev));
+            setSelectedChat((prev: any) =>
+              prev ? { ...prev, ...newInfo } : prev,
+            );
           }}
           onShowInChat={handleShowInChat}
           messages={messages}
           onSendMessage={(member: any) => {
-            const memberId = member.userId || member.user?.id || member.user?._id || member._id || member.id;
+            const memberId =
+              member.userId ||
+              member.user?.id ||
+              member.user?._id ||
+              member._id ||
+              member.id;
             const participant = member.user || member;
-            const name = participant.displayName || participant.name || participant.username || "Unknown";
-            
+            const name =
+              participant.displayName ||
+              participant.name ||
+              participant.username ||
+              "Unknown";
+
             if (memberId) {
-              openChatByRow({ 
-                id: `temp-${memberId}`, 
+              openChatByRow({
+                id: `temp-${memberId}`,
                 targetUserId: memberId,
                 name: name,
-                avatarUrl: participant.avatarUrl
+                avatarUrl: participant.avatarUrl,
               });
             }
           }}

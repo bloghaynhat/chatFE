@@ -20,7 +20,9 @@ export const FriendProvider = ({ children }: any) => {
     setError("");
     try {
       const response = await getReceivedFriendRequests();
-      const items = (response as any)?.items || (response as any)?.data?.data?.items || [];
+      // Với axios, dữ liệu trả về nằm trong response.data sau khi refactor api.ts
+      // format response common: { status, msg, data: { items, nextCursor, hasMore } }
+      const items = response?.items || response?.data?.items || [];
       setFriendRequests(items);
     } catch (err) {
       setError(err.message || "Failed to load friend requests");
@@ -59,7 +61,12 @@ export const FriendProvider = ({ children }: any) => {
           fetchFriendRequests();
         });
 
-        unsubscribeRef.current = [unsubscribe1, unsubscribe2, unsubscribe3, unsubscribe4];
+        unsubscribeRef.current = [
+          unsubscribe1,
+          unsubscribe2,
+          unsubscribe3,
+          unsubscribe4,
+        ];
       } catch (err) {
         console.error("[FriendContext] Socket setup error:", err);
       }
@@ -82,13 +89,17 @@ export const FriendProvider = ({ children }: any) => {
     setFriendRequests,
   };
 
-  return <FriendContext.Provider value={value}>{children}</FriendContext.Provider>;
+  return (
+    <FriendContext.Provider value={value}>{children}</FriendContext.Provider>
+  );
 };
 
 export const useFriendRequestsContext = () => {
   const context = useContext(FriendContext);
   if (!context) {
-    throw new Error("useFriendRequestsContext must be used within FriendProvider");
+    throw new Error(
+      "useFriendRequestsContext must be used within FriendProvider",
+    );
   }
   return context;
 };

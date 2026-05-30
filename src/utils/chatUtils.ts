@@ -1,5 +1,5 @@
 export const getMessageId = (message, index) =>
-  message?.id || message?._id || `${index}-${message?.createdAt || "msg"}`;
+  message?.id || `${index}-${message?.createdAt || "msg"}`;
 
 export const getMessageText = (message) =>
   message?.text || message?.content || message?.message || "";
@@ -29,32 +29,48 @@ export const CALENDAR_WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export const groupMediaMessages = (messages: any[]) => {
   const groupedMessages: any[] = [];
-  
+
   messages.forEach((msg) => {
     if (groupedMessages.length === 0) {
       groupedMessages.push({ ...msg, media: [...(msg.media || [])] });
       return;
     }
     const lastMsg = groupedMessages[groupedMessages.length - 1];
-    
-    const getSenderId = (m: any) => m?.senderId || m?.sender?._id || m?.id_sender;
+
+    const getSenderId = (m: any) =>
+      m?.senderId || m?.sender?.id || m?.id_sender;
     const msgSender = getSenderId(msg);
     const lastMsgSender = getSenderId(lastMsg);
-    
-    const hasMedia = (m: any) => (m.media && m.media.length > 0) || m.type === "image" || m.type === "video";
-    
-    // Valid media limits grouping strictly to unquoted media messages
-    const isMsgMediaValid = hasMedia(msg) && !msg.quotedMessageId && !msg.replyTo && !msg.originalMessageId;
-    const isLastMsgMediaValid = hasMedia(lastMsg) && !lastMsg.quotedMessageId && !lastMsg.replyTo && !lastMsg.originalMessageId;
 
-    const timeDiff = Math.abs(new Date(msg.createdAt).getTime() - new Date(lastMsg.createdAt).getTime());
+    const hasMedia = (m: any) =>
+      (m.media && m.media.length > 0) ||
+      m.type === "image" ||
+      m.type === "video";
+
+    // Valid media limits grouping strictly to unquoted media messages
+    const isMsgMediaValid =
+      hasMedia(msg) &&
+      !msg.quotedMessageId &&
+      !msg.replyTo &&
+      !msg.originalMessageId;
+    const isLastMsgMediaValid =
+      hasMedia(lastMsg) &&
+      !lastMsg.quotedMessageId &&
+      !lastMsg.replyTo &&
+      !lastMsg.originalMessageId;
+
+    const timeDiff = Math.abs(
+      new Date(msg.createdAt).getTime() - new Date(lastMsg.createdAt).getTime(),
+    );
     const textMatches = msg.text === lastMsg.text;
 
     // Group if: same sender, same text (even if not empty), both have media, sent within 5 seconds
     if (
-      msgSender && lastMsgSender &&
+      msgSender &&
+      lastMsgSender &&
       String(msgSender) === String(lastMsgSender) &&
-      isMsgMediaValid && isLastMsgMediaValid &&
+      isMsgMediaValid &&
+      isLastMsgMediaValid &&
       textMatches &&
       timeDiff < 5000
     ) {
@@ -64,6 +80,6 @@ export const groupMediaMessages = (messages: any[]) => {
       groupedMessages.push({ ...msg, media: [...(msg.media || [])] });
     }
   });
-  
+
   return groupedMessages;
 };

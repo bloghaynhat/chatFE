@@ -1,15 +1,32 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 import { authStorage } from "../runtime/storage";
+import { v4 as uuidv4 } from "uuid";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/v1";
 
+const getDeviceId = () => {
+  let deviceId = localStorage.getItem("deviceId");
+  if (!deviceId) {
+    deviceId = uuidv4();
+    localStorage.setItem("deviceId", deviceId);
+  }
+  return deviceId;
+};
+
 const getAccessToken = async () => authStorage.getItem("token");
 const getRefreshToken = async () => authStorage.getItem("refreshToken");
-const setAccessToken = async (token: string) => authStorage.setItem("token", token);
+const setAccessToken = async (token: string) =>
+  authStorage.setItem("token", token);
 const setRefreshToken = async (token: string) =>
   authStorage.setItem("refreshToken", token);
 
-export const setAuthTokens = async ({ accessToken, refreshToken }: { accessToken?: string; refreshToken?: string }) => {
+export const setAuthTokens = async ({
+  accessToken,
+  refreshToken,
+}: {
+  accessToken?: string;
+  refreshToken?: string;
+}) => {
   if (accessToken) {
     await setAccessToken(accessToken);
   }
@@ -87,6 +104,14 @@ axiosInstance.interceptors.request.use(
   async (config) => {
     const requestConfig = config;
 
+    // Thêm device info
+    requestConfig.headers["X-Device-Id"] = getDeviceId();
+    requestConfig.headers["X-Device-Platform"] = "web";
+    requestConfig.headers["X-Display-Label"] =
+      typeof window !== "undefined"
+        ? navigator.userAgent.slice(0, 100)
+        : "Browser";
+
     if (requestConfig.skipAuth) {
       return requestConfig;
     }
@@ -103,6 +128,11 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
   (response) => {
+    const deviceId = response.headers?.["x-device-id"];
+    if (deviceId && typeof deviceId === "string") {
+      localStorage.setItem("deviceId", deviceId);
+    }
+
     const payload = response?.data;
 
     if (payload && typeof payload === "object" && "status" in payload) {

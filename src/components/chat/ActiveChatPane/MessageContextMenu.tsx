@@ -1,5 +1,6 @@
 import { Message } from "../../../types/conversation";
 import { conversationService } from "../../../services/conversationService";
+import { socketService } from "../../../services/socketService";
 import {
   FiCheckCircle,
   FiCornerUpLeft,
@@ -10,7 +11,11 @@ import {
   FiRotateCcw,
   FiTrash2,
 } from "react-icons/fi";
-import { getDateLabel, getMessageTime, getMessageText } from "../../../utils/chatUtils";
+import {
+  getDateLabel,
+  getMessageTime,
+  getMessageText,
+} from "../../../utils/chatUtils";
 
 interface MessageContextMenuProps {
   contextMenu: {
@@ -28,6 +33,7 @@ interface MessageContextMenuProps {
   onOpenForwardModal: (message: Message) => void;
   onRevokeMessage?: (message: Message) => void;
   onDeleteMessageForMe?: (message: Message) => void;
+  onDeleteMessageForEveryone?: (message: Message) => void;
 }
 
 export const MessageContextMenu = ({
@@ -42,6 +48,7 @@ export const MessageContextMenu = ({
   onOpenForwardModal,
   onRevokeMessage,
   onDeleteMessageForMe,
+  onDeleteMessageForEveryone,
 }: MessageContextMenuProps) => {
   const isMyMessage =
     contextMenu.message.senderId === currentUserId ||
@@ -74,9 +81,9 @@ export const MessageContextMenu = ({
         ?.users?.some((u) => String(u._id || u.id) === String(currentUserId));
 
       if (hasMyReaction) {
-        await conversationService.removeReactionMessage(msgId, emoji);
+        await socketService.removeReaction(msgId, emoji);
       } else {
-        await conversationService.reactMessage(msgId, emoji);
+        await socketService.addReaction(msgId, emoji);
       }
       onClose();
     } catch (error) {
@@ -107,7 +114,9 @@ export const MessageContextMenu = ({
         {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => {
           const hasMyReaction = contextMenu.message?.reactions
             ?.find((r: any) => r.emoji === emoji)
-            ?.users?.some((u: any) => String(u._id || u.id) === String(currentUserId));
+            ?.users?.some(
+              (u: any) => String(u._id || u.id) === String(currentUserId),
+            );
 
           return (
             <div
@@ -129,8 +138,11 @@ export const MessageContextMenu = ({
               <FiCheckCircle className="text-sm" />
             </div>
             <span>
-              {getDateLabel(contextMenu.message?.createdAt || contextMenu.message?.updatedAt)} at{" "}
-              {getMessageTime(contextMenu.message)}
+              {getDateLabel(
+                contextMenu.message?.createdAt ||
+                  contextMenu.message?.updatedAt,
+              )}{" "}
+              at {getMessageTime(contextMenu.message)}
             </span>
           </div>
         )}
@@ -141,7 +153,8 @@ export const MessageContextMenu = ({
             onClose();
           }}
         >
-          <FiCornerUpLeft className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Reply</span>
+          <FiCornerUpLeft className="text-[18px]" strokeWidth={2} />{" "}
+          <span className="font-medium">Reply</span>
         </button>
         {isMyMessage && (
           <button
@@ -151,22 +164,28 @@ export const MessageContextMenu = ({
               onClose();
             }}
           >
-            <FiEdit2 className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Edit</span>
+            <FiEdit2 className="text-[18px]" strokeWidth={2} />{" "}
+            <span className="font-medium">Edit</span>
           </button>
         )}
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
           onClick={handleCopy}
         >
-          <FiCopy className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Copy</span>
+          <FiCopy className="text-[18px]" strokeWidth={2} />{" "}
+          <span className="font-medium">Copy</span>
         </button>
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
           onClick={onClose}
         >
           <div className="relative flex items-center text-[18px] w-[18px] h-[18px] justify-center font-bold">
-            <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">A</span>
-            <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">文</span>
+            <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">
+              A
+            </span>
+            <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">
+              文
+            </span>
           </div>
           <span className="font-medium">Translate</span>
         </button>
@@ -184,13 +203,15 @@ export const MessageContextMenu = ({
             onClose();
           }}
         >
-          <FiCornerUpRight className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Forward</span>
+          <FiCornerUpRight className="text-[18px]" strokeWidth={2} />{" "}
+          <span className="font-medium">Forward</span>
         </button>
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
           onClick={onClose}
         >
-          <FiCheckCircle className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Select</span>
+          <FiCheckCircle className="text-[18px]" strokeWidth={2} />{" "}
+          <span className="font-medium">Select</span>
         </button>
 
         {isMyMessage && (
@@ -203,7 +224,23 @@ export const MessageContextMenu = ({
               onClose();
             }}
           >
-            <FiRotateCcw className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Recall</span>
+            <FiRotateCcw className="text-[18px]" strokeWidth={2} />{" "}
+            <span className="font-medium">Recall</span>
+          </button>
+        )}
+
+        {isMyMessage && (
+          <button
+            className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
+            onClick={() => {
+              if (onDeleteMessageForEveryone) {
+                onDeleteMessageForEveryone(contextMenu.message);
+              }
+              onClose();
+            }}
+          >
+            <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
+            <span className="font-medium">Delete for everyone</span>
           </button>
         )}
 
@@ -216,7 +253,8 @@ export const MessageContextMenu = ({
             onClose();
           }}
         >
-          <FiTrash2 className="text-[18px]" strokeWidth={2} /> <span className="font-medium">Delete for me only</span>
+          <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
+          <span className="font-medium">Delete for me only</span>
         </button>
       </div>
     </div>
