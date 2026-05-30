@@ -114,11 +114,14 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
         groupName.trim(),
         avatarUrl
       );
+      const createdConversationId = result.id || (result as any).conversationId;
 
       // Join the newly created group room to receive real-time messages
       try {
-        await socketService.joinGroup(result.conversationId);
-        console.log("[CreateGroupModal] Joined group room:", result.conversationId);
+        if (createdConversationId) {
+          await socketService.joinGroup(createdConversationId);
+          console.log("[CreateGroupModal] Joined group room:", createdConversationId);
+        }
       } catch (joinErr) {
         console.error("[CreateGroupModal] Failed to join group room:", joinErr);
         // Continue anyway - user can still manually join later

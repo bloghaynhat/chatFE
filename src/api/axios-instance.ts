@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { authStorage } from "../runtime/storage";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/v1";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 
 const getAccessToken = async () => authStorage.getItem("token");
 const getRefreshToken = async () => authStorage.getItem("refreshToken");
