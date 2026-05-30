@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { userService } from "../../services/userService";
+import { conversationService } from "../../services/conversationService";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -18,6 +19,9 @@ import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
+import { useCallV2 } from "../../providers/CallV2SocketProvider";
+import { callV2Service } from "../../services/callV2.service";
+import type { CallV2Session } from "../../services/callV2.types";
 import { FiImage, FiFile, FiGift, FiCheckCircle } from "react-icons/fi";
 
 export const ActiveChatPane = ({
@@ -80,6 +84,9 @@ export const ActiveChatPane = ({
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
 
+  const callV2 = useCallV2();
+  const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
+
   // Computed pinned messages from messages (real-time from socket)
   const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<
     Message[]
@@ -108,6 +115,111 @@ export const ActiveChatPane = ({
 
   const { friends, fetchFriends } = useFriendManagement();
 
+  const resolveInviteeIds = useCallback(async () => {
+    const isGroup =
+      selectedChat?.type === "GROUP" ||
+      selectedChat?.type === "group" ||
+      (selectedChat?.members && selectedChat.members.length > 2);
+
+    if (!isGroup) {
+      const targetUserId = selectedChat?.targetUserId || selectedChat?.participantId;
+      return targetUserId ? [targetUserId] : [];
+    }
+
+    const rawMembers = selectedChat?.members || selectedChat?.participants || [];
+    let inviteeIds = Array.isArray(rawMembers)
+      ? rawMembers.map((member) => member?.userId || member?.id || member?._id).filter(Boolean)
+      : [];
+
+    if (inviteeIds.length === 0 && selectedConversationId) {
+      try {
+        const membersData = await conversationService.getGroupMembers(selectedConversationId);
+        const rawList = Array.isArray(membersData) ? membersData : membersData?.members || membersData?.data || [];
+        inviteeIds = rawList
+          .map((member: any) => member?.userId || member?.user?.id || member?.user?._id || member?.id || member?._id)
+          .filter(Boolean);
+      } catch (err) {
+        console.warn("Failed to load group members for call", err);
+      }
+    }
+
+    return inviteeIds.filter((id) => id && id !== currentUserId);
+  }, [selectedChat, selectedConversationId, currentUserId]);
+
+  const callPeerInfo = useMemo(() => {
+    if (!selectedChat) return null;
+    const target =
+      selectedChat.targetUser ||
+      selectedChat.participant ||
+      selectedChat.user ||
+      selectedChat.receiver ||
+      selectedChat.friend ||
+      null;
+
+    return {
+      id: selectedChat.targetUserId || selectedChat.participantId || target?.id || target?._id || null,
+      name:
+        selectedChat.name ||
+        selectedChat.displayName ||
+        target?.displayName ||
+        target?.name ||
+        target?.username ||
+        null,
+      avatarUrl:
+        selectedChat.avatarUrl ||
+        selectedChat.avatar ||
+        target?.avatarUrl ||
+        target?.avatar ||
+        target?.profilePicture ||
+        null,
+    };
+  }, [selectedChat]);
+
+  const handleStartCall = useCallback(
+    async (type: "audio" | "video") => {
+      const conversationId = selectedConversationId || selectedChat?.id;
+      if (!conversationId) return;
+
+      const isGroup =
+        selectedChat?.type === "GROUP" ||
+        selectedChat?.type === "group" ||
+        (selectedChat?.members && selectedChat.members.length > 2);
+
+      const inviteeIds = await resolveInviteeIds();
+      await callV2.startCallV2(conversationId, type, inviteeIds.length > 0 ? inviteeIds : undefined, isGroup, callPeerInfo);
+    },
+    [callPeerInfo, callV2, resolveInviteeIds, selectedConversationId, selectedChat],
+  );
+
+  const refreshActiveCallV2 = useCallback(async () => {
+    const conversationId = selectedConversationId || selectedChat?.id;
+    if (!conversationId) {
+      setActiveCallV2(null);
+      return;
+    }
+
+    const activeCall = await callV2Service.getActiveCallByConversation(conversationId);
+    setActiveCallV2(activeCall);
+  }, [selectedConversationId, selectedChat?.id]);
+
+  const handleJoinActiveCallV2 = useCallback(async () => {
+    const conversationId = selectedConversationId || selectedChat?.id;
+    if (!conversationId || !activeCallV2) return;
+    await callV2.joinExistingCallV2(activeCallV2.callId, conversationId, activeCallV2.type);
+    await refreshActiveCallV2();
+  }, [activeCallV2, callV2, refreshActiveCallV2, selectedConversationId, selectedChat?.id]);
+
+  useEffect(() => {
+    void refreshActiveCallV2();
+
+    const handleRefresh = () => {
+      void refreshActiveCallV2();
+    };
+
+    window.addEventListener("chatList:refresh", handleRefresh);
+    return () => window.removeEventListener("chatList:refresh", handleRefresh);
+  }, [refreshActiveCallV2]);
+
   useEffect(() => {
     if (forwardModalVisible) {
       fetchFriends();
@@ -130,9 +242,7 @@ export const ActiveChatPane = ({
   // Navigate to a specific message
   const handleNavigateToMessage = (messageId: string) => {
     // Find the message index in the full messages array
-    const messageIndex = messages.findIndex(
-      (m) => (m.id || m._id) === messageId,
-    );
+    const messageIndex = messages.findIndex((m) => (m.id || m._id) === messageId);
     if (messageIndex !== -1) {
       // Calculate required displayCount to ensure this message is visible
       const requiredDisplayCount = messages.length - messageIndex;
@@ -283,17 +393,13 @@ export const ActiveChatPane = ({
     if (!messages || messages.length === 0) return messages;
 
     // Extract unique senderIds
-    const senderIds = [
-      ...new Set(messages.map((msg) => msg.senderId).filter(Boolean)),
-    ] as string[];
+    const senderIds = [...new Set(messages.map((msg) => msg.senderId).filter(Boolean))] as string[];
 
     if (senderIds.length === 0) return messages;
 
     try {
       // Separate cached and uncached senderIds
-      const uncachedSenderIds = senderIds.filter(
-        (id) => !userCache.current.has(id),
-      );
+      const uncachedSenderIds = senderIds.filter((id) => !userCache.current.has(id));
 
       // Fetch uncached users in parallel
       if (uncachedSenderIds.length > 0) {
@@ -655,6 +761,11 @@ export const ActiveChatPane = ({
         isRightSidebarOpen={isRightSidebarOpen}
         setIsRightSidebarOpen={setIsRightSidebarOpen}
         pinnedCount={enrichedPinnedMessages.length}
+        onStartAudioCall={() => void handleStartCall("audio")}
+        onStartVideoCall={() => void handleStartCall("video")}
+        activeCallV2={activeCallV2}
+        callV2Status={callV2.state.status}
+        onJoinActiveCallV2={() => void handleJoinActiveCallV2()}
       />
 
       {/* Pinned Messages Bar */}
@@ -772,10 +883,7 @@ export const ActiveChatPane = ({
         handleSendVoice={handleSendVoice}
       />
 
-      <VideoPreviewModal
-        previewVideoUrl={previewVideoUrl}
-        onClose={() => setPreviewVideoUrl(null)}
-      />
+      <VideoPreviewModal previewVideoUrl={previewVideoUrl} onClose={() => setPreviewVideoUrl(null)} />
     </div>
   );
 };

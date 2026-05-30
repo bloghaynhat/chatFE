@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from "axios";
 import { authStorage } from "../runtime/storage";
 import { v4 as uuidv4 } from "uuid";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/v1";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 
 const getDeviceId = () => {
   let deviceId = localStorage.getItem("deviceId");

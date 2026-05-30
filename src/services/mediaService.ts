@@ -2,6 +2,21 @@ import { getApiBaseUrl } from "../runtime/config";
 import { authStorage } from "../runtime/storage";
 import { api } from "./api";
 
+const readJsonSafely = async (response) => {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+};
+
+const unwrapResponseData = (payload) => {
+  if (!payload || typeof payload !== "object") return payload;
+  return payload.data || payload;
+};
+
 /**
  * Request a presigned upload URL
  * @param {string} filename - The original filename
@@ -122,14 +137,17 @@ export const uploadMedia = async (file) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await readJsonSafely(response);
       throw new Error(
-        errorData.message || `Upload failed with status ${response.status}`,
+        errorData?.message ||
+          errorData?.msg ||
+          errorData?.rootCause ||
+          `Upload failed with status ${response.status}`,
       );
     }
 
-    const data = await response.json();
-    return data.data;
+    const data = await readJsonSafely(response);
+    return unwrapResponseData(data);
   } catch (error) {
     console.error("Media upload failed:", error);
     throw new Error(error.message || "Failed to upload file");
@@ -149,7 +167,9 @@ export const uploadMultipleMedia = async (files) => {
 
     const formData = new FormData();
     files.forEach((file) => {
-      formData.append("files", file);
+      if (file) {
+        formData.append("files", file);
+      }
     });
 
     const token = await authStorage.getItem("token");
@@ -162,14 +182,17 @@ export const uploadMultipleMedia = async (files) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await readJsonSafely(response);
       throw new Error(
-        errorData.message || `Upload failed with status ${response.status}`,
+        errorData?.message ||
+          errorData?.msg ||
+          errorData?.rootCause ||
+          `Upload failed with status ${response.status}`,
       );
     }
 
-    const data = await response.json();
-    return data.data;
+    const data = await readJsonSafely(response);
+    return unwrapResponseData(data);
   } catch (error) {
     console.error("Media upload failed:", error);
     throw new Error(error.message || "Failed to upload files");
@@ -193,9 +216,12 @@ export const deleteMedia = async (filename) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await readJsonSafely(response);
       throw new Error(
-        errorData.message || `Delete failed with status ${response.status}`,
+        errorData?.message ||
+          errorData?.msg ||
+          errorData?.rootCause ||
+          `Delete failed with status ${response.status}`,
       );
     }
   } catch (error) {
