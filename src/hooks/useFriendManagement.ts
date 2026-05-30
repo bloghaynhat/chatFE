@@ -95,13 +95,13 @@ export const useFriendManagement = () => {
             const userResponse = await searchUserById(friendUserId);
             const userInfo = unwrapUser(userResponse);
             return {
-              ...raw,
+              ...friendship,
               friendUserId,
-              displayName: userInfo?.displayName,
-              name: userInfo?.name,
-              username: userInfo?.username,
-              phone: userInfo?.phone,
-              avatarUrl: userInfo?.avatarUrl,
+              displayName: userInfo?.displayName || userInfo?.name || "Unknown",
+              name: userInfo?.name || friendship?.name,
+              username: userInfo?.username || friendship?.username,
+              phone: userInfo?.phone || friendship?.phone,
+              avatarUrl: userInfo?.avatarUrl || userInfo?.avatar || embeddedInfo.avatarUrl,
             };
           } catch (err) {
             console.error(
@@ -113,50 +113,9 @@ export const useFriendManagement = () => {
               ...friendship,
               friendUserId,
               displayName: "Unknown",
-              avatarUrl,
+              avatarUrl: embeddedInfo.avatarUrl,
             };
           }
-
-          // Fallback: try to fetch user info when we have an id and no displayName
-          if (friendUserId) {
-            try {
-              const userResponse = await searchUserById(friendUserId);
-              const userInfo = userResponse?.data || userResponse || {};
-              return {
-                ...raw,
-                friendUserId,
-                displayName:
-                  userInfo.displayName ||
-                  userInfo.name ||
-                  displayName ||
-                  "Unknown",
-                name: userInfo.name || raw.name,
-                username: userInfo.username || raw.username,
-                phone: userInfo.phone || raw.phone,
-                avatarUrl: userInfo.avatarUrl || avatarUrl,
-              };
-            } catch (err) {
-              console.error(
-                "[useFriendManagement] Failed to fetch user info for friendship:",
-                raw.id,
-                err,
-              );
-              return {
-                ...raw,
-                friendUserId,
-                displayName: displayName || "Unknown",
-                avatarUrl,
-              };
-            }
-          }
-
-          // Last resort: return a minimal normalized object
-          return {
-            ...raw,
-            friendUserId: friendUserId || raw.id,
-            displayName: displayName || "Unknown",
-            avatarUrl,
-          };
         }),
       );
 
