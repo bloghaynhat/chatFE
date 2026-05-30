@@ -134,19 +134,15 @@ export const CreateGroupModal = ({
       );
 
       // Join the newly created group room to receive real-time messages
-      try {
-        const convId =
-          (result as any)?.conversationId ||
-          (result as any)?.id ||
-          (result as any)?.conversation?.id;
+      const createdConversationId = result.id || (result as any).conversationId;
 
-        if (convId) {
-          await socketService.joinGroup(convId);
-          console.log("[CreateGroupModal] Joined group room:", convId);
-        } else {
-          console.warn(
-            "[CreateGroupModal] No conversationId returned from createGroupConversation",
-            result,
+      // Join the newly created group room to receive real-time messages
+      try {
+        if (createdConversationId) {
+          await socketService.joinGroup(createdConversationId);
+          console.log(
+            "[CreateGroupModal] Joined group room:",
+            createdConversationId,
           );
         }
       } catch (joinErr) {

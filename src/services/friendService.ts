@@ -6,7 +6,7 @@ import { api } from "./api";
  * @returns {Promise<Object>} User data
  */
 export const searchUserByPhone = async (phone) => {
-  const response = await api.get("/users/search", {
+  const response = await api.get("/users/search-by-phone", {
     params: { phone },
   });
   return response;
@@ -18,6 +18,9 @@ export const searchUserByPhone = async (phone) => {
  * @returns {Promise<Object>} User data
  */
 export const searchUserById = async (userId) => {
+  if (!userId) {
+    throw new Error("Missing user id");
+  }
   const response = await api.get(`/users/${userId}`);
   return response;
 };
@@ -86,13 +89,8 @@ export const getFriends = async () => {
   } catch (error) {
     // Log chi tiết error nếu là lỗi backend method
     if (error?.payload?.msg?.includes("findFriendshipsWithCursor")) {
-      console.error(
-        "[friendService] Backend error - method not implemented:",
-        error.payload.msg,
-      );
-      throw new Error(
-        "Backend error: Friends list method not available. Please contact support.",
-      );
+      console.error("[friendService] Backend error - method not implemented:", error.payload.msg);
+      throw new Error("Backend error: Friends list method not available. Please contact support.");
     }
     throw error;
   }

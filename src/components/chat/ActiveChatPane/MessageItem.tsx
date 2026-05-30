@@ -13,6 +13,7 @@ import { MessageMedia } from "./MessageTypes/MessageMedia";
 import { MessageAudio } from "./MessageTypes/MessageAudio";
 import { MessageDocument } from "./MessageTypes/MessageDocument";
 import { MessageText } from "./MessageTypes/MessageText";
+import { CallMessageBubble, parseCallMessage } from "./MessageTypes/CallMessageBubble";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
 import { conversationService } from "../../../services/conversationService";
@@ -159,6 +160,8 @@ export const MessageItem = ({
         !audios.includes(messageFiles[0])));
 
   const isSystem = message?.type === "system" || message?.type === "SYSTEM";
+  const callMessage = parseCallMessage(message, text);
+  const isCallMessage = Boolean(callMessage);
 
   const hasText = !!text && text.trim() !== "";
 
@@ -170,7 +173,8 @@ export const MessageItem = ({
     !isDocument &&
     !isAudio &&
     !isForwarded &&
-    !isSystem;
+    !isSystem &&
+    !isCallMessage;
 
   const onlyImagesOrVideos =
     isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
@@ -273,8 +277,8 @@ export const MessageItem = ({
               ? "self-end bg-transparent"
               : "self-start bg-transparent"
             : mine
-              ? "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"
-              : "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"
+              ? `shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50 ${isCallMessage ? "min-w-[242px]" : ""}`
+              : `shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50 ${isCallMessage ? "min-w-[242px]" : ""}`
         }`}
       >
         {isGroup &&
@@ -318,13 +322,10 @@ export const MessageItem = ({
           />
         )}
 
-        {!onlyImagesOrVideos && (
-          <MessageText
-            message={message}
-            text={text}
-            mine={mine}
-            isSeen={isSeen}
-          />
+        {isCallMessage ? (
+          <CallMessageBubble message={message} text={text} mine={mine} />
+        ) : (
+          !onlyImagesOrVideos && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
         )}
 
         {/* Bottom area: Reactions + Timestamp */}

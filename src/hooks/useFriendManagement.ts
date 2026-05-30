@@ -1,24 +1,15 @@
 import { useState } from "react";
 import { getFriends, searchUserById } from "../services";
 
-/**
- * Custom hook để quản lý dữ liệu bạn bè
- */
 export const useFriendManagement = () => {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /**
-   * Helper để lấy user ID từ các định dạng dữ liệu khác nhau
-   */
   const getUserId = (user) => {
-    return user?.id;
+    return user?.userId || user?.targetUserId || user?.friendUserId || user?.id || user?._id;
   };
 
-  /**
-   * Helper để lấy current user ID từ localStorage
-   */
   const getCurrentUserId = () => {
     try {
       const userStr = localStorage.getItem("user");
@@ -31,59 +22,97 @@ export const useFriendManagement = () => {
     }
   };
 
-  /**
-   * Lấy danh sách bạn bè từ API
-   * Resolve user info cho mỗi friendship
-   */
+  const resolveFriendUserId = (friendship, currentUserId) => {
+    if (!friendship) return null;
+    if (friendship.userId) return friendship.userId;
+    if (friendship.friendUserId) return friendship.friendUserId;
+    if (friendship.targetUserId) return friendship.targetUserId;
+    if (friendship.friend?.id || friendship.friend?._id) return friendship.friend.id || friendship.friend._id;
+    if (friendship.user?.id || friendship.user?._id) return friendship.user.id || friendship.user._id;
+    if (friendship.userA && friendship.userB) {
+      return friendship.userA === currentUserId ? friendship.userB : friendship.userA;
+    }
+    return null;
+  };
+
+  const extractEmbeddedUserInfo = (friendship) => {
+    const embedded = friendship?.friend || friendship?.user || friendship?.profile || null;
+    return {
+      displayName: friendship?.displayName || embedded?.displayName,
+      name: friendship?.name || embedded?.name,
+      username: friendship?.username || embedded?.username,
+      phone: friendship?.phone || embedded?.phone,
+      avatarUrl: friendship?.avatarUrl || embedded?.avatarUrl || embedded?.avatar,
+    };
+  };
+
+  const unwrapUser = (response) => response?.data?.data || response?.data || response;
+
   const fetchFriends = async () => {
     setLoading(true);
     setError("");
     try {
       const response = await getFriends();
-
-      const friendships =
-        response?.items ||
-        response?.data?.items ||
-        response?.data?.data?.items ||
-        [];
-
-      // Resolve user info cho mỗi friendship
+      const friendships = response?.items || response?.data?.items || response?.data?.data?.items || [];
       const currentUserId = getCurrentUserId();
+
+      if (!currentUserId) {
+        setFriends(friendships);
+        return;
+      }
 
       const enrichedFriends = await Promise.all(
         friendships.map(async (friendship) => {
-          // Normalize different backend shapes so UI can always rely on these fields
-          const raw = friendship || {};
+          const friendUserId = resolveFriendUserId(friendship, currentUserId);
+          const embeddedInfo = extractEmbeddedUserInfo(friendship);
 
-          // Prefer explicit userId (newer API), then nested user object, then legacy userA/userB
-          const possibleUserId =
-            raw.userId ||
-            raw.user?.id ||
-            raw.user?.userId ||
-            raw.userId ||
-            raw.id;
-
-          // Determine friendUserId deterministically
-          let friendUserId = possibleUserId;
-
-          if (!friendUserId && currentUserId && (raw.userA || raw.userB)) {
-            friendUserId = raw.userA === currentUserId ? raw.userB : raw.userA;
+          if (!friendUserId) {
+            console.warn("[useFriendManagement] Could not resolve friend user id:", friendship);
+            return {
+              ...friendship,
+              friendUserId: null,
+              displayName: embeddedInfo.displayName || "Unknown",
+              name: embeddedInfo.name,
+              username: embeddedInfo.username,
+              phone: embeddedInfo.phone,
+              avatarUrl: embeddedInfo.avatarUrl,
+            };
           }
 
-          // Determine displayName/avatar from available places
-          const displayName =
-            raw.displayName ||
-            raw.user?.displayName ||
-            raw.user?.name ||
-            raw.name;
-          const avatarUrl = raw.avatarUrl || raw.user?.avatarUrl;
+          if (embeddedInfo.displayName || embeddedInfo.name || embeddedInfo.username || embeddedInfo.avatarUrl) {
+            return {
+              ...friendship,
+              friendUserId,
+              displayName: embeddedInfo.displayName,
+              name: embeddedInfo.name,
+              username: embeddedInfo.username,
+              phone: embeddedInfo.phone,
+              avatarUrl: embeddedInfo.avatarUrl,
+            };
+          }
 
-          // If we already have enough info, return quickly
-          if (friendUserId && displayName) {
+          try {
+            const userResponse = await searchUserById(friendUserId);
+            const userInfo = unwrapUser(userResponse);
             return {
               ...raw,
               friendUserId,
-              displayName,
+              displayName: userInfo?.displayName,
+              name: userInfo?.name,
+              username: userInfo?.username,
+              phone: userInfo?.phone,
+              avatarUrl: userInfo?.avatarUrl,
+            };
+          } catch (err) {
+            console.error(
+              "[useFriendManagement] Failed to fetch user info for friendship:",
+              friendship.id,
+              err,
+            );
+            return {
+              ...friendship,
+              friendUserId,
+              displayName: "Unknown",
               avatarUrl,
             };
           }
@@ -135,8 +164,6 @@ export const useFriendManagement = () => {
     } catch (err) {
       const errorMsg = err?.message || "Failed to load friends";
       setError(errorMsg);
-
-      // Log chi tiết error để debug
       console.error("[useFriendManagement] Failed to load friends:", {
         message: errorMsg,
         code: err?.code,
@@ -145,11 +172,8 @@ export const useFriendManagement = () => {
         fullError: err,
       });
 
-      // Xử lý các error cụ thể từ backend
       if (err?.payload?.msg?.includes("findFriendshipsWithCursor")) {
-        console.warn(
-          "[useFriendManagement] Backend method not implemented: findFriendshipsWithCursor",
-        );
+        console.warn("[useFriendManagement] Backend method not implemented: findFriendshipsWithCursor");
       }
     } finally {
       setLoading(false);
@@ -157,18 +181,11 @@ export const useFriendManagement = () => {
   };
 
   return {
-    // State
     friends,
     loading,
     error,
-
-    // Fetch functions
     fetchFriends,
-
-    // Helpers
     getUserId,
-
-    // Setters để cập nhật state thủ công nếu cần
     setFriends,
     setError,
   };

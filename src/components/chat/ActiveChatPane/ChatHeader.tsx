@@ -32,6 +32,7 @@ const moreActions = [
 
 export const ChatHeader = ({
   selectedChat,
+  selectedConversationId,
   currentUserId,
   isLoading,
   isHeaderSearchOpen,
@@ -50,13 +51,17 @@ export const ChatHeader = ({
   isRightSidebarOpen,
   setIsRightSidebarOpen,
   pinnedCount = 0,
+  onStartAudioCall,
+  onStartVideoCall,
+  activeCallV2,
+  callV2Status,
+  onJoinActiveCallV2,
 }: any) => {
-
   return (
     <div className="px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
       {!isHeaderSearchOpen ? (
-        <div className="flex items-center justify-between" >
-          <div 
+        <div className="flex items-center justify-between">
+          <div
             className="flex items-center gap-3 min-w-0  hover:bg-gray-50 dark:hover:bg-slate-800/50 p-1.5 -ml-1.5 rounded-xl transition-colors cursor-pointer"
             onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           >
@@ -71,9 +76,7 @@ export const ChatHeader = ({
                 (
                   selectedChat?.name ||
                   selectedChat?.displayName ||
-                  (selectedChat?.participants || []).find(
-                    (p) => p.userId !== currentUserId,
-                  )?.displayName ||
+                  (selectedChat?.participants || []).find((p) => p.userId !== currentUserId)?.displayName ||
                   "U"
                 )
                   ?.charAt(0)
@@ -85,9 +88,7 @@ export const ChatHeader = ({
               <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate">
                 {selectedChat?.name ||
                   selectedChat?.displayName ||
-                  (selectedChat?.participants || []).find(
-                    (p) => p.userId !== currentUserId,
-                  )?.displayName ||
+                  (selectedChat?.participants || []).find((p) => p.userId !== currentUserId)?.displayName ||
                   "Unknown"}
               </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
@@ -100,13 +101,31 @@ export const ChatHeader = ({
             {pinnedCount > 0 && (
               <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-full border border-blue-200 dark:border-blue-800 mr-1">
                 <FiMapPin className="text-blue-500 dark:text-blue-400" strokeWidth={2.5} />
-                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                  {pinnedCount}
-                </span>
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{pinnedCount}</span>
               </div>
             )}
-            <button className="h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition">
+            <button
+              onClick={() => onStartAudioCall?.(selectedConversationId)}
+              className="h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              title="Goi thoai"
+            >
               <FiPhone className="text-base lg:text-lg" />
+            </button>
+            {activeCallV2 && callV2Status === "idle" && (
+              <button
+                onClick={() => onJoinActiveCallV2?.()}
+                className="h-8 lg:h-9 inline-flex items-center justify-center rounded-full bg-blue-50 px-3 text-xs font-semibold text-blue-600 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50 transition"
+                title="Tham gia cuoc goi dang dien ra"
+              >
+                Tham gia
+              </button>
+            )}
+            <button
+              onClick={() => onStartVideoCall?.(selectedConversationId)}
+              className="h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              title="Goi video"
+            >
+              <FiVideo className="text-base lg:text-lg" />
             </button>
             <button
               onClick={() => {
@@ -146,12 +165,8 @@ export const ChatHeader = ({
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none hover:bg-white/75 dark:hover:bg-slate-700/80 transition ${action.danger ? "text-red-500" : "text-gray-900 dark:text-gray-100"}`}
                     >
                       <ActionIcon className="text-[18px] shrink-0" />
-                      <span className="font-semibold tracking-tight flex-1">
-                        {action.label}
-                      </span>
-                      {action.hasChevron && (
-                        <FiChevronRight className="text-[16px] text-gray-400 dark:text-gray-500" />
-                      )}
+                      <span className="font-semibold tracking-tight flex-1">{action.label}</span>
+                      {action.hasChevron && <FiChevronRight className="text-[16px] text-gray-400 dark:text-gray-500" />}
                     </button>
                   );
                 })}
@@ -161,7 +176,7 @@ export const ChatHeader = ({
         </div>
       ) : (
         <div className="flex items-center gap-2 animate-in fade-in duration-200">
-          <div 
+          <div
             className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:opacity-90 transition-opacity shadow-sm border border-black/5 dark:border-white/10"
             onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           >
@@ -175,9 +190,7 @@ export const ChatHeader = ({
               (
                 selectedChat?.name ||
                 selectedChat?.displayName ||
-                (selectedChat?.participants || []).find(
-                  (p) => p.userId !== currentUserId,
-                )?.displayName ||
+                (selectedChat?.participants || []).find((p) => p.userId !== currentUserId)?.displayName ||
                 "U"
               )
                 ?.charAt(0)

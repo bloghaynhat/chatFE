@@ -83,24 +83,12 @@ export const apiCall = async <T = any>(
 export const api = {
   get: async <T = any>(endpoint: string, config: any = {}): Promise<T> =>
     apiCall<T>("GET", endpoint, undefined, config),
-  post: async <T = any>(
-    endpoint: string,
-    data: any = null,
-    config: any = {},
-  ): Promise<T> => apiCall<T>("POST", endpoint, data, config),
-  patch: async <T = any>(
-    endpoint: string,
-    data: any = null,
-    config: any = {},
-  ): Promise<T> => apiCall<T>("PATCH", endpoint, data, config),
-  put: async <T = any>(
-    endpoint: string,
-    data: any = null,
-    config: any = {},
-  ): Promise<T> => apiCall<T>("PUT", endpoint, data, config),
-  delete: async <T = any>(
-    endpoint: string,
-    data: any = null,
-    config: any = {},
-  ): Promise<T> => apiCall<T>("DELETE", endpoint, data, config),
+  post: async <T = any>(endpoint: string, data?: any, config: any = {}): Promise<T> =>
+    apiCall<T>("POST", endpoint, data, config),
+  patch: async <T = any>(endpoint: string, data?: any, config: any = {}): Promise<T> =>
+    apiCall<T>("PATCH", endpoint, data, config),
+  put: async <T = any>(endpoint: string, data?: any, config: any = {}): Promise<T> =>
+    apiCall<T>("PUT", endpoint, data, config),
+  delete: async <T = any>(endpoint: string, data?: any, config: any = {}): Promise<T> =>
+    apiCall<T>("DELETE", endpoint, data, config),
 };

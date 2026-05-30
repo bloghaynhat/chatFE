@@ -24,7 +24,7 @@ export interface Message {
   textPreview: string;
 
   // Message type and status
-  type: "text" | "media" | "mixed";
+  type: "text" | "media" | "mixed" | "call";
   status?: "sent" | "delivered" | "seen";
   isSeen?: boolean;
   readAt?: string;
@@ -33,6 +33,19 @@ export interface Message {
   files?: MediaFile[];
   media?: MediaFile[];
   imageUrl?: string;
+  call?: {
+    callId: string;
+    roomName: string;
+    callType: "audio" | "video";
+    status: "completed" | "missed" | "rejected" | "cancelled";
+    callerId: string;
+    calleeIds: string[];
+    answeredAt?: string | Date;
+    endedAt?: string | Date;
+    endedBy?: string;
+    durationSeconds?: number;
+    participantOutcomes?: Record<string, unknown>;
+  };
 
   // Forwarded message
   originalMessageId?: string;

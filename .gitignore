@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+chat-canvas-main
 
 # Editor directories and files
 .vscode/*
