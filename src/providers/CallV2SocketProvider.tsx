@@ -3,6 +3,7 @@ import { Room, RoomEvent } from "livekit-client";
 import { toast } from "sonner";
 import { callV2Socket } from "../services/callV2Socket";
 import { callV2Service } from "../services/callV2.service";
+import { userService } from "../services/userService";
 import { useAuth } from "../hooks/useAuth";
 import {
   CallV2IncomingPayload,
@@ -31,6 +32,12 @@ interface CallV2ParticipantInfo {
   endedAt?: number;
 }
 
+interface CallV2PeerInfo {
+  id?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+}
+
 interface CallV2State {
   status: CallV2Status;
   callId: string | null;
@@ -44,6 +51,7 @@ interface CallV2State {
   livekitProvider: "self-hosted" | "cloud";
   participants: Record<string, CallV2ParticipantInfo>;
   busyUserIds: string[];
+  remotePeer: CallV2PeerInfo | null;
 }
 
 type CallV2Action =
@@ -55,6 +63,8 @@ type CallV2Action =
       roomName?: string | null;
       participants: Record<string, CallV2ParticipantInfo>;
       busyUserIds: string[];
+      remotePeer?: CallV2PeerInfo | null;
+      isGroup?: boolean;
     }
   | { type: "SET_INCOMING"; payload: CallV2IncomingPayload }
   | { type: "SET_ONGOING"; payload: CallV2OngoingPayload }
@@ -63,6 +73,7 @@ type CallV2Action =
   | { type: "UPDATE_PARTICIPANT"; callId: string; userId: string; participant: CallV2ParticipantInfo }
   | { type: "REMOVE_PARTICIPANT"; callId: string; userId: string }
   | { type: "SET_BUSY"; busyUserIds: string[] }
+  | { type: "SET_REMOTE_PEER"; remotePeer: CallV2PeerInfo | null }
   | { type: "SET_LOCAL_MEDIA"; audioEnabled?: boolean; videoEnabled?: boolean }
   | { type: "TOGGLE_VIDEO" }
   | { type: "TOGGLE_AUDIO" }
@@ -81,6 +92,7 @@ const initialState: CallV2State = {
   livekitProvider: "cloud",
   participants: {},
   busyUserIds: [],
+  remotePeer: null,
 };
 
 const formatErrorMessage = (error: unknown, fallback: string) => {
@@ -93,6 +105,16 @@ const refreshCallMessage = (conversationId?: string | null) => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("chatList:refresh"));
   }
+};
+
+const normalizeUserInfo = (payload: any, fallbackId?: string | null): CallV2PeerInfo | null => {
+  const data = payload?.data?.data || payload?.data || payload?.user || payload;
+  if (!data) return fallbackId ? { id: fallbackId } : null;
+  return {
+    id: data.id || data._id || data.userId || fallbackId || null,
+    name: data.displayName || data.fullName || data.name || data.username || data.phone || null,
+    avatarUrl: data.avatarUrl || data.avatar || data.profilePicture || null,
+  };
 };
 
 function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
@@ -108,6 +130,8 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         roomName: action.roomName ?? state.roomName,
         participants: action.participants,
         busyUserIds: action.busyUserIds,
+        remotePeer: action.remotePeer ?? null,
+        isGroup: action.isGroup ?? false,
         localAudioEnabled: true,
         localVideoEnabled: action.callType === "video",
       };
@@ -120,9 +144,11 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         type: action.payload.type,
         conversationId: action.payload.conversationId,
         roomName: action.payload.roomName,
+        isGroup: Boolean((action.payload as any).isGroup),
         livekitProvider: action.payload.livekitProvider ?? "cloud",
         participants: {},
         busyUserIds: action.payload.busyUserIds ?? [],
+        remotePeer: normalizeUserInfo((action.payload as any).caller || (action.payload as any).callerInfo, action.payload.callerId),
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
       };
@@ -135,9 +161,11 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         type: action.payload.type,
         conversationId: action.payload.conversationId,
         roomName: action.payload.roomName,
+        isGroup: Boolean((action.payload as any).isGroup),
         livekitProvider: action.payload.livekitProvider ?? "cloud",
         participants: {},
         busyUserIds: action.payload.busyUserIds ?? [],
+        remotePeer: normalizeUserInfo((action.payload as any).caller || (action.payload as any).callerInfo, action.payload.callerId),
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
       };
@@ -159,6 +187,8 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
     }
     case "SET_BUSY":
       return { ...state, busyUserIds: action.busyUserIds };
+    case "SET_REMOTE_PEER":
+      return { ...state, remotePeer: action.remotePeer };
     case "SET_LOCAL_MEDIA":
       return {
         ...state,
@@ -183,6 +213,7 @@ interface CallV2ContextValue {
     type: "audio" | "video",
     inviteeIds?: string[],
     inviteAll?: boolean,
+    remotePeer?: CallV2PeerInfo | null,
   ) => Promise<void>;
   joinCallV2: () => Promise<void>;
   joinExistingCallV2: (callId: string, conversationId: string, type?: "audio" | "video") => Promise<void>;
@@ -255,10 +286,10 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       room.on(RoomEvent.ParticipantDisconnected, (participant) => {
         console.log("[CallV2SocketProvider] Participant disconnected:", participant.identity);
         if (stateRef.current.isGroup && room.remoteParticipants.size > 0) {
-          toast.info("Mot thanh vien da roi cuoc goi");
+          toast.info("A participant left the call");
           return;
         }
-        toast.info("Doi tuong da ket thuc cuoc goi");
+        toast.info("The other person ended the call");
         cleanupRoom();
         dispatch({ type: "RESET" });
         currentCallIdRef.current = null;
@@ -273,7 +304,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
 
       room.on(RoomEvent.MediaDevicesError, (error) => {
         console.error("[CallV2SocketProvider] Media device error:", error);
-        toast.error("Khong the truy cap thiet bi nghe goi");
+        toast.error("Cannot access call devices");
       });
 
       try {
@@ -283,7 +314,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         }
       } catch (err) {
         console.error("[CallV2SocketProvider] Failed to connect to LiveKit room:", err);
-        toast.error("Khong the ket noi cuoc goi");
+        toast.error("Cannot connect to the call");
         cleanupRoom();
         dispatch({ type: "RESET" });
         currentCallIdRef.current = null;
@@ -297,7 +328,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           videoEnabled = true;
         } catch (err) {
           console.error("[CallV2SocketProvider] Failed to enable camera:", err);
-          toast.error("Khong the bat camera. Cuoc goi van tiep tuc o che do khong camera.");
+          toast.error("Cannot enable camera. The call will continue without camera.");
         }
       }
 
@@ -307,7 +338,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         audioEnabled = true;
       } catch (err) {
         console.error("[CallV2SocketProvider] Failed to enable microphone:", err);
-        toast.error("Khong tim thay hoac khong the truy cap microphone.");
+        toast.error("Microphone was not found or cannot be accessed.");
       }
 
       dispatch({
@@ -342,9 +373,15 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
   );
 
   const startCallV2 = useCallback(
-    async (conversationId: string, type: "audio" | "video", inviteeIds?: string[], inviteAll?: boolean) => {
+    async (
+      conversationId: string,
+      type: "audio" | "video",
+      inviteeIds?: string[],
+      inviteAll?: boolean,
+      remotePeer?: CallV2PeerInfo | null,
+    ) => {
       if (state.status !== "idle") {
-        toast.warning("Mot cuoc goi dang dien ra");
+        toast.warning("A call is already in progress");
         return;
       }
       if (isStartingRef.current) return;
@@ -367,6 +404,8 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           roomName: res.call.roomName,
           participants: res.call.participants,
           busyUserIds: res.busyUserIds,
+          remotePeer,
+          isGroup: Boolean(inviteAll || res.call.isGroup),
         });
         if (res.busyUserIds.length > 0) {
           dispatch({ type: "SET_BUSY", busyUserIds: res.busyUserIds });
@@ -377,7 +416,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           await connectFromJoin(joinRes.token, joinRes.wsUrl, joinRes.roomName, type, false);
         }
       } catch (err: unknown) {
-        toast.error(formatErrorMessage(err, "Khong the bat dau cuoc goi"));
+        toast.error(formatErrorMessage(err, "Cannot start the call"));
         dispatch({ type: "RESET" });
         currentCallIdRef.current = null;
       } finally {
@@ -399,7 +438,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         await connectFromJoin(res.token, res.wsUrl, res.roomName, currentTypeRef.current);
       }
     } catch (err: unknown) {
-      toast.error(formatErrorMessage(err, "Khong the tham gia cuoc goi"));
+      toast.error(formatErrorMessage(err, "Cannot join the call"));
       dispatch({ type: "RESET" });
       currentCallIdRef.current = null;
     } finally {
@@ -426,6 +465,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
             conversationId,
             type: callType,
             roomName: res.roomName,
+            isGroup: res.call.isGroup,
             livekitProvider: res.livekitProvider,
             status: res.call.status,
             busyUserIds: res.call.busyUserIds,
@@ -436,7 +476,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           await connectFromJoin(res.token, res.wsUrl, res.roomName, callType);
         }
       } catch (err: unknown) {
-        toast.error(formatErrorMessage(err, "Khong the tham gia cuoc goi"));
+        toast.error(formatErrorMessage(err, "Cannot join the call"));
         dispatch({ type: "RESET" });
         currentCallIdRef.current = null;
       } finally {
@@ -506,7 +546,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       .then(() => dispatch({ type: "SET_LOCAL_MEDIA", videoEnabled: nextEnabled }))
       .catch((err) => {
         console.error("[CallV2SocketProvider] Failed to toggle camera:", err);
-        toast.error("Khong the thay doi trang thai camera");
+        toast.error("Cannot change camera status");
       });
   }, [state.localVideoEnabled]);
 
@@ -521,7 +561,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       .then(() => dispatch({ type: "SET_LOCAL_MEDIA", audioEnabled: nextEnabled }))
       .catch((err) => {
         console.error("[CallV2SocketProvider] Failed to toggle microphone:", err);
-        toast.error("Khong the thay doi trang thai microphone");
+        toast.error("Cannot change microphone status");
       });
   }, [state.localAudioEnabled]);
 
@@ -537,8 +577,17 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       clearIncomingTimer();
       currentCallIdRef.current = data.callId;
       currentTypeRef.current = data.type;
-      toast.info(`Ban co cuoc goi ${data.type === "video" ? "video" : "thoai"} den!`, { duration: Infinity });
       dispatch({ type: "SET_INCOMING", payload: data });
+      void userService
+        .getUserById(data.callerId)
+        .then((res) => {
+          if (currentCallIdRef.current !== data.callId) return;
+          dispatch({ type: "SET_REMOTE_PEER", remotePeer: normalizeUserInfo(res, data.callerId) });
+        })
+        .catch(() => {
+          if (currentCallIdRef.current !== data.callId) return;
+          dispatch({ type: "SET_REMOTE_PEER", remotePeer: { id: data.callerId } });
+        });
       incomingTimerRef.current = setTimeout(async () => {
         try {
           const res = await callV2Service.missedCall(data.callId);
@@ -547,7 +596,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           console.warn("[CallV2SocketProvider] Failed to mark missed call:", err);
         }
-        toast.error("Cuoc goi khong duoc tra loi");
+        toast.error("The call was not answered");
         dispatch({ type: "RESET" });
         currentCallIdRef.current = null;
       }, 60000);
@@ -612,7 +661,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     const offBusy = callV2Socket.on<CallV2BusyPayload>("call:busy", (data) => {
       console.log("[CallV2SocketProvider] User busy:", data);
       dispatch({ type: "SET_BUSY", busyUserIds: data.busyUserIds });
-      toast.warning("Nguoi nhan dang ban");
+      toast.warning("The recipient is busy");
     });
 
     const offEnded = callV2Socket.on<CallV2EndedPayload>("call:ended", (data) => {

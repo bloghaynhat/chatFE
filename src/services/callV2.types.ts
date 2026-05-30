@@ -108,6 +108,7 @@ export interface CallV2IncomingPayload {
   type: "audio" | "video";
   conversationId: string;
   roomName: string;
+  isGroup?: boolean;
   apiVersion?: "v1" | "v2";
   livekitProvider?: "self-hosted" | "cloud";
   status?: CallV2SessionStatus;

@@ -141,6 +141,35 @@ export const ActiveChatPane = ({
     return inviteeIds.filter((id) => id && id !== currentUserId);
   }, [selectedChat, selectedConversationId, currentUserId]);
 
+  const callPeerInfo = useMemo(() => {
+    if (!selectedChat) return null;
+    const target =
+      selectedChat.targetUser ||
+      selectedChat.participant ||
+      selectedChat.user ||
+      selectedChat.receiver ||
+      selectedChat.friend ||
+      null;
+
+    return {
+      id: selectedChat.targetUserId || selectedChat.participantId || target?.id || target?._id || null,
+      name:
+        selectedChat.name ||
+        selectedChat.displayName ||
+        target?.displayName ||
+        target?.name ||
+        target?.username ||
+        null,
+      avatarUrl:
+        selectedChat.avatarUrl ||
+        selectedChat.avatar ||
+        target?.avatarUrl ||
+        target?.avatar ||
+        target?.profilePicture ||
+        null,
+    };
+  }, [selectedChat]);
+
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
       const conversationId = selectedConversationId || selectedChat?.id;
@@ -152,9 +181,9 @@ export const ActiveChatPane = ({
         (selectedChat?.members && selectedChat.members.length > 2);
 
       const inviteeIds = await resolveInviteeIds();
-      await callV2.startCallV2(conversationId, type, inviteeIds.length > 0 ? inviteeIds : undefined, isGroup);
+      await callV2.startCallV2(conversationId, type, inviteeIds.length > 0 ? inviteeIds : undefined, isGroup, callPeerInfo);
     },
-    [callV2, resolveInviteeIds, selectedConversationId, selectedChat],
+    [callPeerInfo, callV2, resolveInviteeIds, selectedConversationId, selectedChat],
   );
 
   const refreshActiveCallV2 = useCallback(async () => {

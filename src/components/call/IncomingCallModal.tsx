@@ -25,6 +25,8 @@ export default function IncomingCallModal() {
   };
 
   const busyCount = state.busyUserIds?.length || 0;
+  const peerName = state.remotePeer?.name || "Caller";
+  const peerInitial = peerName.trim().charAt(0).toUpperCase() || "?";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#dceefb]/85 p-4 backdrop-blur-md">
@@ -33,22 +35,23 @@ export default function IncomingCallModal() {
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#37a9f2] via-[#229ed9] to-[#5cc6ff]" />
 
         <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#5fc3ff] to-[#229ed9] text-white shadow-[0_18px_40px_rgba(34,158,217,0.32)]">
-            <span className="absolute inset-0 rounded-full border border-white/55" />
-            {state.type === "video" ? (
-              <FiVideo className="h-10 w-10" />
+          <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#5fc3ff] to-[#229ed9] text-white shadow-[0_18px_40px_rgba(34,158,217,0.32)]">
+            <span className="absolute inset-0 z-10 rounded-full border border-white/55" />
+            {state.remotePeer?.avatarUrl ? (
+              <img src={state.remotePeer.avatarUrl} alt={peerName} className="h-full w-full object-cover" />
             ) : (
-              <FiPhone className="h-10 w-10" />
+              <span className="text-4xl font-semibold">{peerInitial}</span>
             )}
           </div>
 
           <div className="text-center">
-            <p className="text-xl font-semibold text-slate-900">Cuoc goi den</p>
-            <p className="mt-1 text-sm font-medium text-[#229ed9]">
-              {state.type === "video" ? "Goi video" : "Goi thoai"}
-              {busyCount > 0 ? ` - ${busyCount} nguoi ban` : ""}
+            <p className="max-w-[18rem] truncate text-xl font-semibold text-slate-900">{peerName}</p>
+            <p className="mt-1 flex items-center justify-center gap-1.5 text-sm font-medium text-[#229ed9]">
+              {state.type === "video" ? <FiVideo className="h-4 w-4" /> : <FiPhone className="h-4 w-4" />}
+              {state.type === "video" ? "Video call" : "Voice call"}
+              {busyCount > 0 ? ` - ${busyCount} busy` : ""}
             </p>
-            <p className="mt-2 text-xs text-slate-500">Telegram style call</p>
+            <p className="mt-1 text-xs text-slate-500">is calling you</p>
           </div>
         </div>
 

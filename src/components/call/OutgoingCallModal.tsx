@@ -1,4 +1,4 @@
-import { FiPhone, FiPhoneOff } from "react-icons/fi";
+import { FiPhone, FiPhoneOff, FiVideo } from "react-icons/fi";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 
 export default function OutgoingCallModal() {
@@ -19,6 +19,8 @@ export default function OutgoingCallModal() {
         participant.status === "missed" ||
         participant.status === "busy",
     ).length + busyCount;
+  const peerName = state.remotePeer?.name || "Recipient";
+  const peerInitial = peerName.trim().charAt(0).toUpperCase() || "?";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#dceefb]/85 p-4 backdrop-blur-md">
@@ -27,20 +29,27 @@ export default function OutgoingCallModal() {
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#37a9f2] via-[#229ed9] to-[#5cc6ff]" />
 
         <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#5fc3ff] to-[#229ed9] text-white shadow-[0_18px_40px_rgba(34,158,217,0.32)]">
+          <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#5fc3ff] to-[#229ed9] text-white shadow-[0_18px_40px_rgba(34,158,217,0.32)]">
             <span className="absolute inset-[-7px] animate-ping rounded-full border border-[#229ed9]/40" />
-            <FiPhone className="h-10 w-10" />
+            <span className="absolute inset-0 z-10 rounded-full border border-white/55" />
+            {state.remotePeer?.avatarUrl ? (
+              <img src={state.remotePeer.avatarUrl} alt={peerName} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-4xl font-semibold">{peerInitial}</span>
+            )}
           </div>
 
           <div className="text-center">
-            <p className="text-xl font-semibold text-slate-900">Dang goi...</p>
-            <p className="mt-1 text-sm font-medium text-[#229ed9]">
-              {state.type === "video" ? "Goi video" : "Goi thoai"}
+            <p className="max-w-[18rem] truncate text-xl font-semibold text-slate-900">{peerName}</p>
+            <p className="mt-1 flex items-center justify-center gap-1.5 text-sm font-medium text-[#229ed9]">
+              {state.type === "video" ? <FiVideo className="h-4 w-4" /> : <FiPhone className="h-4 w-4" />}
+              {state.type === "video" ? "Video call" : "Voice call"}
             </p>
+            <p className="mt-1 text-xs text-slate-500">Waiting for answer...</p>
             {participants.length > 0 && (
               <p className="mt-2 text-xs text-slate-500">
-                {ringingCount} dang do chuong
-                {declinedCount > 0 ? ` - ${declinedCount} khong san sang` : ""}
+                {ringingCount} ringing
+                {declinedCount > 0 ? ` - ${declinedCount} unavailable` : ""}
               </p>
             )}
           </div>
