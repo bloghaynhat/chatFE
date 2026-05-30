@@ -1,4 +1,11 @@
-import { createContext, useCallback, useEffect, useMemo, useState, ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
 import { authService } from "../services/authService";
 import { authStorage } from "../runtime/storage";
 import { User } from "../types/user";
@@ -40,14 +47,19 @@ const generateDeviceId = (): string => {
   });
 };
 
-const resolveUserProfile = async (authPayload: any, fallbackPhone?: string): Promise<User> => {
+const resolveUserProfile = async (
+  authPayload: any,
+  fallbackPhone?: string,
+  token?: string,
+): Promise<User> => {
   const payloadUser = authPayload?.user || authPayload?.profile;
   if (payloadUser) {
     return payloadUser as User;
   }
 
   try {
-    return await authService.getProfile();
+    // pass token explicitly to avoid timing/storage races
+    return await authService.getProfile(token);
   } catch {
     return {
       id: authPayload?.id || "",
@@ -73,10 +85,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const restoreSession = async () => {
       try {
+        // DEV: trace restoreSession start
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] restoreSession start");
         const [savedToken, savedUser] = await Promise.all([
           authService.getToken(),
           authService.getUser(),
         ]);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] restoreSession loaded from storage", {
+          savedToken: savedToken ? "present" : "none",
+          savedUser: !!savedUser,
+        });
         if (!isActive) return;
 
         if (!savedToken) {
@@ -84,16 +104,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
+        // Verify token via introspection before attempting profile fetch
+        try {
+          const introspect = await authService.introspect(savedToken);
+          const valid =
+            introspect &&
+            (introspect?.active ||
+              introspect?.valid ||
+              introspect?.status === "active");
+          if (!valid) {
+            // token invalid - clear session and fallback to savedUser if any
+            // eslint-disable-next-line no-console
+            console.debug(
+              "[AuthProvider] restoreSession introspect indicates invalid token",
+              introspect,
+            );
+            await authService.logout();
+            if (savedUser) setUser(savedUser);
+            return;
+          }
+        } catch (intErr) {
+          // If introspect call fails, log and continue to attempt profile fetch (some backends do not implement introspect)
+          // eslint-disable-next-line no-console
+          console.debug(
+            "[AuthProvider] restoreSession introspect failed - will attempt profile fetch",
+            intErr?.message || intErr,
+          );
+        }
+
         setToken(savedToken);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] restoreSession setToken (from storage)");
 
         try {
           const profile = await authService.getProfile(savedToken);
           if (!isActive) return;
 
           setUser(profile);
+          // eslint-disable-next-line no-console
+          console.debug(
+            "[AuthProvider] restoreSession setUser (from profile)",
+            { id: profile?.id },
+          );
           await authService.saveUser(profile);
-        } catch {
+        } catch (errProfile) {
           if (!isActive) return;
+          // eslint-disable-next-line no-console
+          console.debug(
+            "[AuthProvider] restoreSession profile fetch failed",
+            errProfile?.message || errProfile,
+          );
           if (savedUser) setUser(savedUser);
         }
       } finally {
@@ -135,99 +195,127 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const sendVerification = useCallback(async (payload: { email: string }, options?: any): Promise<any> => {
-    try {
-      setError(null);
-      return await authService.sendVerification(payload, options);
-    } catch (err) {
-      const message = err?.message || "Send verification failed";
-      setError(message);
-      throw err;
-    }
-  }, []);
-
-  const verifyEmail = useCallback(async (payload: { email: string; otp: string }): Promise<any> => {
-    try {
-      setError(null);
-      setLoading(true);
-
-      const authPayload = await authService.verifyEmail(payload);
-      const currentToken =
-        authPayload?.accessToken ||
-        authPayload?.token ||
-        (await authService.getToken());
-
-      if (currentToken) {
-        setToken(currentToken);
+  const sendVerification = useCallback(
+    async (payload: { email: string }, options?: any): Promise<any> => {
+      try {
+        setError(null);
+        return await authService.sendVerification(payload, options);
+      } catch (err) {
+        const message = err?.message || "Send verification failed";
+        setError(message);
+        throw err;
       }
+    },
+    [],
+  );
 
-      const userProfile = await resolveUserProfile(authPayload);
-      await authService.saveUser(userProfile);
-      setUser(userProfile);
+  const verifyEmail = useCallback(
+    async (payload: { email: string; otp: string }): Promise<any> => {
+      try {
+        setError(null);
+        setLoading(true);
 
-      return authPayload;
-    } catch (err) {
-      const message = err?.message || "Email verification failed";
-      setError(message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        const authPayload = await authService.verifyEmail(payload);
+        const currentToken =
+          authPayload?.accessToken ||
+          authPayload?.token ||
+          (await authService.getToken());
 
-  const resendVerification = useCallback(async (payload: { email: string }, options?: any): Promise<any> => {
-    try {
-      setError(null);
-      return await authService.resendVerification(payload, options);
-    } catch (err) {
-      const message = err?.message || "Resend verification failed";
-      setError(message);
-      throw err;
-    }
-  }, []);
+        if (currentToken) {
+          setToken(currentToken);
+        }
 
-  const login = useCallback(async (phone: string, password: string): Promise<User> => {
-    try {
-      setError(null);
-      setLoading(true);
+        const userProfile = await resolveUserProfile(authPayload);
+        await authService.saveUser(userProfile);
+        setUser(userProfile);
 
-      let deviceId = await authStorage.getItem("deviceId");
-      if (!deviceId) {
-        deviceId = generateDeviceId();
-        await authStorage.setItem("deviceId", deviceId);
+        return authPayload;
+      } catch (err) {
+        const message = err?.message || "Email verification failed";
+        setError(message);
+        throw err;
+      } finally {
+        setLoading(false);
       }
+    },
+    [],
+  );
 
-      const authPayload = await authService.login({
-        phone,
-        password,
-        deviceInfo: {
-          deviceId: deviceId,
-          userAgent: navigator.userAgent,
-          platform: "web",
-        },
-      });
-      const currentToken =
-        authPayload?.accessToken ||
-        authPayload?.token ||
-        (await authService.getToken());
-
-      if (currentToken) {
-        setToken(currentToken);
+  const resendVerification = useCallback(
+    async (payload: { email: string }, options?: any): Promise<any> => {
+      try {
+        setError(null);
+        return await authService.resendVerification(payload, options);
+      } catch (err) {
+        const message = err?.message || "Resend verification failed";
+        setError(message);
+        throw err;
       }
+    },
+    [],
+  );
 
-      const userProfile = await resolveUserProfile(authPayload, phone);
-      await authService.saveUser(userProfile);
-      setUser(userProfile);
+  const login = useCallback(
+    async (phone: string, password: string): Promise<User> => {
+      try {
+        setError(null);
+        setLoading(true);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] login start", { phone });
 
-      return userProfile;
-    } catch (err) {
-      const message = err?.message || "Login failed";
-      setError(message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        let deviceId = await authStorage.getItem("deviceId");
+        if (!deviceId) {
+          deviceId = generateDeviceId();
+          await authStorage.setItem("deviceId", deviceId);
+        }
+
+        const authPayload = await authService.login({
+          phone,
+          password,
+          deviceInfo: {
+            deviceId: deviceId,
+            userAgent: navigator.userAgent,
+            platform: "web",
+          },
+        });
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] login got authPayload", {
+          hasAccessToken: !!(authPayload?.accessToken || authPayload?.token),
+        });
+        const currentToken =
+          authPayload?.accessToken ||
+          authPayload?.token ||
+          (await authService.getToken());
+
+        if (currentToken) {
+          setToken(currentToken);
+          // eslint-disable-next-line no-console
+          console.debug("[AuthProvider] login setToken (state)");
+        }
+
+        const userProfile = await resolveUserProfile(authPayload, phone);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] login resolved userProfile", {
+          id: userProfile?.id,
+        });
+        await authService.saveUser(userProfile);
+        setUser(userProfile);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] login setUser (state)");
+
+        return userProfile;
+      } catch (err) {
+        const message = err?.message || "Login failed";
+        setError(message);
+        throw err;
+      } finally {
+        setLoading(false);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider] login finished");
+      }
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -239,20 +327,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const updateUserProfile = useCallback(async (partialProfile: Partial<User>): Promise<void> => {
-    setUser((prevUser) => {
-      const nextUser: User = {
-        ...(prevUser || ({} as User)),
-        ...partialProfile,
-      } as User;
+  const updateUserProfile = useCallback(
+    async (partialProfile: Partial<User>): Promise<void> => {
+      setUser((prevUser) => {
+        const nextUser: User = {
+          ...(prevUser || ({} as User)),
+          ...partialProfile,
+        } as User;
 
-      authService.saveUser(nextUser).catch(() => {
-        // Keep UI responsive even if storage write fails.
+        authService.saveUser(nextUser).catch(() => {
+          // Keep UI responsive even if storage write fails.
+        });
+
+        return nextUser;
       });
-
-      return nextUser;
-    });
-  }, []);
+    },
+    [],
+  );
 
   const updateProfile = useCallback(async () => {
     try {
@@ -286,7 +377,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout,
       updateProfile,
       updateUserProfile,
-      isAuthenticated: !!token,
+      isAuthenticated: !!token || !!user,
     }),
     [
       user,

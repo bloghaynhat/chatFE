@@ -66,7 +66,7 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
         <div className="flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
           <FiInfoIcon className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
           <div className="flex-1">
-            <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">t.me/+xyz123 link</div>
+            <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">ChatChit.me/+xyz123 link</div>
             <div className="text-[13px] text-gray-500">Link</div>
           </div>
         </div>

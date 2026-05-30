@@ -7,10 +7,11 @@ import { authService } from "./authService";
  */
 export const getProfile = async () => {
   try {
-    const response = await api.get("/profile");
+    const response = await api.get("/users/me/profile");
     return response;
   } catch (error) {
-    throw new Error(error.message || "Failed to fetch profile");
+    console.error("[userService.getProfile] Failed to fetch profile:", error);
+    throw new Error(error?.message || "Failed to fetch profile");
   }
 };
 
@@ -56,7 +57,7 @@ export const updateProfile = async (profileData) => {
       }
     });
 
-    const response = await api.patch("/profile", updateData);
+    const response = await api.patch("/users/me/profile", updateData);
 
     // Cập nhật localStorage với dữ liệu mới
     if (response.data) {

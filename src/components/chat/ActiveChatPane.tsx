@@ -18,12 +18,7 @@ import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
-import {
-  FiImage,
-  FiFile,
-  FiGift,
-  FiCheckCircle,
-} from "react-icons/fi";
+import { FiImage, FiFile, FiGift, FiCheckCircle } from "react-icons/fi";
 
 export const ActiveChatPane = ({
   selectedChat,
@@ -37,6 +32,7 @@ export const ActiveChatPane = ({
   onSendMessage,
   onRevokeMessage,
   onDeleteMessageForMe,
+  onDeleteMessageForEveryone,
   onForwardToTarget,
   forwardingMessage,
   onClearForwarding,
@@ -52,7 +48,9 @@ export const ActiveChatPane = ({
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [headerSearchValue, setHeaderSearchValue] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(
+    () => new Date(),
+  );
   const [draftMessage, setDraftMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
@@ -83,7 +81,9 @@ export const ActiveChatPane = ({
   const [messageToForward, setMessageToForward] = useState(null);
 
   // Computed pinned messages from messages (real-time from socket)
-  const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<Message[]>([]);
+  const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<
+    Message[]
+  >([]);
 
   // Enrich pinned messages with sender info whenever messages change
   useEffect(() => {
@@ -130,11 +130,13 @@ export const ActiveChatPane = ({
   // Navigate to a specific message
   const handleNavigateToMessage = (messageId: string) => {
     // Find the message index in the full messages array
-    const messageIndex = messages.findIndex(m => (m.id || m._id) === messageId);
+    const messageIndex = messages.findIndex(
+      (m) => (m.id || m._id) === messageId,
+    );
     if (messageIndex !== -1) {
       // Calculate required displayCount to ensure this message is visible
       const requiredDisplayCount = messages.length - messageIndex;
-      setDisplayCount(prev => Math.max(prev, requiredDisplayCount));
+      setDisplayCount((prev) => Math.max(prev, requiredDisplayCount));
     }
 
     // Scroll after a short delay to allow DOM update
@@ -143,9 +145,19 @@ export const ActiveChatPane = ({
       if (messageElement) {
         messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
         // Add highlight effect
-        messageElement.classList.add("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+        messageElement.classList.add(
+          "bg-orange-100",
+          "dark:bg-emerald-900/60",
+          "ring-2",
+          "ring-blue-500",
+        );
         setTimeout(() => {
-          messageElement.classList.remove("bg-orange-100", "dark:bg-emerald-900/60", "ring-2", "ring-blue-500");
+          messageElement.classList.remove(
+            "bg-orange-100",
+            "dark:bg-emerald-900/60",
+            "ring-2",
+            "ring-blue-500",
+          );
         }, 2000);
       }
     }, 100);
@@ -221,16 +233,16 @@ export const ActiveChatPane = ({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
-      'image/jpeg': [],
-      'image/png': [],
-      'image/gif': [],
-      'image/webp': [],
-      'video/mp4': [],
-      'video/mpeg': [],
-      'video/quicktime': [],
-      'audio/mpeg': [],
-      'audio/wav': [],
-      'application/pdf': []
+      "image/jpeg": [],
+      "image/png": [],
+      "image/gif": [],
+      "image/webp": [],
+      "video/mp4": [],
+      "video/mpeg": [],
+      "video/quicktime": [],
+      "audio/mpeg": [],
+      "audio/wav": [],
+      "application/pdf": [],
     },
     onDrop,
     noClick: true,
@@ -265,25 +277,31 @@ export const ActiveChatPane = ({
   };
 
   // Enrich messages with sender user data using cache
-  const enrichMessagesWithSenderInfo = async (messages: Message[]): Promise<Message[]> => {
+  const enrichMessagesWithSenderInfo = async (
+    messages: Message[],
+  ): Promise<Message[]> => {
     if (!messages || messages.length === 0) return messages;
 
     // Extract unique senderIds
-    const senderIds = [...new Set(messages.map(msg => msg.senderId).filter(Boolean))] as string[];
+    const senderIds = [
+      ...new Set(messages.map((msg) => msg.senderId).filter(Boolean)),
+    ] as string[];
 
     if (senderIds.length === 0) return messages;
 
     try {
       // Separate cached and uncached senderIds
-      const uncachedSenderIds = senderIds.filter(id => !userCache.current.has(id));
+      const uncachedSenderIds = senderIds.filter(
+        (id) => !userCache.current.has(id),
+      );
 
       // Fetch uncached users in parallel
       if (uncachedSenderIds.length > 0) {
-        const userPromises = uncachedSenderIds.map(senderId =>
-          userService.getUserById(senderId).catch(error => {
+        const userPromises = uncachedSenderIds.map((senderId) =>
+          userService.getUserById(senderId).catch((error) => {
             console.warn(`Failed to fetch user ${senderId}:`, error);
             return null;
-          })
+          }),
         );
 
         const users = await Promise.all(userPromises);
@@ -299,12 +317,12 @@ export const ActiveChatPane = ({
       }
 
       // Attach user data to messages from cache
-      return messages.map(msg => {
+      return messages.map((msg) => {
         const senderId = msg.senderId;
         if (senderId && userCache.current.has(senderId)) {
           return {
             ...msg,
-            sender: userCache.current.get(senderId)
+            sender: userCache.current.get(senderId),
           };
         }
         return msg;
@@ -335,7 +353,9 @@ export const ActiveChatPane = ({
   }, [isLoading]);
 
   const visibleMessages = useMemo(() => {
-    return messages.length > displayCount ? messages.slice(messages.length - displayCount) : messages;
+    return messages.length > displayCount
+      ? messages.slice(messages.length - displayCount)
+      : messages;
   }, [messages, displayCount]);
 
   useEffect(() => {
@@ -385,11 +405,14 @@ export const ActiveChatPane = ({
     year: "numeric",
   });
 
-  const selectedCalendarHeadline = selectedCalendarDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "long",
-    day: "numeric",
-  });
+  const selectedCalendarHeadline = selectedCalendarDate.toLocaleDateString(
+    "en-US",
+    {
+      weekday: "short",
+      month: "long",
+      day: "numeric",
+    },
+  );
 
   const calendarGrid = useMemo(() => {
     const year = calendarMonth.getFullYear();
@@ -408,15 +431,19 @@ export const ActiveChatPane = ({
 
   const isViewingCurrentMonthOrLater =
     calendarMonth.getFullYear() > todayStart.getFullYear() ||
-    (calendarMonth.getFullYear() === todayStart.getFullYear() && calendarMonth.getMonth() >= todayStart.getMonth());
+    (calendarMonth.getFullYear() === todayStart.getFullYear() &&
+      calendarMonth.getMonth() >= todayStart.getMonth());
 
   useEffect(() => {
     if (!isAttachMenuOpen && !isMoreMenuOpen && !isEmojiPickerOpen) return;
 
     const handleOutsideClick = (event) => {
-      const isInsideAttach = attachMenuRef.current && attachMenuRef.current.contains(event.target);
-      const isInsideMore = moreMenuRef.current && moreMenuRef.current.contains(event.target);
-      const isInsideEmoji = emojiMenuRef.current && emojiMenuRef.current.contains(event.target);
+      const isInsideAttach =
+        attachMenuRef.current && attachMenuRef.current.contains(event.target);
+      const isInsideMore =
+        moreMenuRef.current && moreMenuRef.current.contains(event.target);
+      const isInsideEmoji =
+        emojiMenuRef.current && emojiMenuRef.current.contains(event.target);
 
       if (!isInsideAttach && !isInsideMore && !isInsideEmoji) {
         setIsAttachMenuOpen(false);
@@ -479,7 +506,9 @@ export const ActiveChatPane = ({
       selectedChat?.type === "GROUP" ||
       selectedChat?.type === "group" ||
       (selectedChat?.members && selectedChat.members.length > 2);
-    const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
+    const targetId = isGroup
+      ? selectedConversationId
+      : selectedChat?.targetUserId;
 
     if (targetId) {
       if (!isTypingRef.current) {
@@ -495,7 +524,13 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
-    if (!draftMessage.trim() && !forwardingMessage && !editingMessage && !replyingMessage) return;
+    if (
+      !draftMessage.trim() &&
+      !forwardingMessage &&
+      !editingMessage &&
+      !replyingMessage
+    )
+      return;
 
     if (onSendMessage) {
       if (editingMessage) {
@@ -527,7 +562,9 @@ export const ActiveChatPane = ({
           selectedChat?.type === "GROUP" ||
           selectedChat?.type === "group" ||
           (selectedChat?.members && selectedChat.members.length > 2);
-        const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
+        const targetId = isGroup
+          ? selectedConversationId
+          : selectedChat?.targetUserId;
         socketService.stopTyping(targetId, isGroup);
       }
     }
@@ -672,6 +709,7 @@ export const ActiveChatPane = ({
           }}
           onRevokeMessage={onRevokeMessage}
           onDeleteMessageForMe={onDeleteMessageForMe}
+          onDeleteMessageForEveryone={onDeleteMessageForEveryone}
         />
       )}
 

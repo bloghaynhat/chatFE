@@ -5,7 +5,7 @@ const normalizeConversation = (payload: any): Conversation | null => {
   if (!payload || typeof payload !== "object") return null;
 
   const conversationId =
-    payload.conversationId || payload.id || payload._id || payload.conversation?.id || payload.conversation?._id;
+    payload.conversationId || payload.id || payload.conversation?.id;
 
   return {
     ...payload,
@@ -24,15 +24,34 @@ const normalizeMessages = (payload: any): Message[] => {
 export const conversationService = {
   async getConversations(params: Record<string, any> = {}): Promise<any> {
     const response: any = await api.get("/conversations", { params });
-    return response.data || response;
+    // api.get now returns the payload (response.data). Normalize to an array
+    // Possible shapes:
+    // - [] (array)
+    // - { items: [...] }
+    // - { data: { items: [...] } }
+    // - { conversations: [...] }
+    const payload = response || {};
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.data)) return payload.data;
+    if (Array.isArray(payload.data?.items)) return payload.data.items;
+    if (Array.isArray(payload.conversations)) return payload.conversations;
+    // Last resort: return empty array
+    return [];
   },
 
   async createPrivateConversation(targetUserId: string): Promise<Conversation> {
-    const response: any = await api.post("/conversations/private", { targetUserId });
+    const response: any = await api.post("/conversations/private", {
+      targetUserId,
+    });
     return normalizeConversation(response.data || response);
   },
 
-  async createGroupConversation(memberIds: string[], groupName?: string, avatarUrl?: string): Promise<Conversation> {
+  async createGroupConversation(
+    memberIds: string[],
+    groupName?: string,
+    avatarUrl?: string,
+  ): Promise<Conversation> {
     const response: any = await api.post("/groups", {
       memberIds,
       name: groupName,
@@ -47,12 +66,16 @@ export const conversationService = {
   },
 
   async addGroupMembers(groupId: string, memberIds: string[]): Promise<any> {
-    const response: any = await api.post(`/groups/${groupId}/members`, { memberIds });
+    const response: any = await api.post(`/groups/${groupId}/members`, {
+      memberIds,
+    });
     return response.data || response;
   },
 
   async removeGroupMember(groupId: string, userId: string): Promise<any> {
-    const response: any = await api.delete(`/groups/${groupId}/members/${userId}`);
+    const response: any = await api.delete(
+      `/groups/${groupId}/members/${userId}`,
+    );
     return response.data || response;
   },
 
@@ -76,13 +99,25 @@ export const conversationService = {
     return response.data || response;
   },
 
-  async setGroupAdmin(groupId: string, targetUserId: string, isAdmin: boolean): Promise<any> {
-    const response: any = await api.post(`/groups/${groupId}/set-admin`, { targetUserId, isAdmin });
+  async setGroupAdmin(
+    groupId: string,
+    targetUserId: string,
+    isAdmin: boolean,
+  ): Promise<any> {
+    const response: any = await api.post(`/groups/${groupId}/set-admin`, {
+      targetUserId,
+      isAdmin,
+    });
     return response.data || response;
   },
 
-  async transferGroupOwnership(groupId: string, newOwnerId: string): Promise<any> {
-    const response: any = await api.post(`/groups/${groupId}/transfer-owner`, { newOwnerId });
+  async transferGroupOwnership(
+    groupId: string,
+    newOwnerId: string,
+  ): Promise<any> {
+    const response: any = await api.post(`/groups/${groupId}/transfer-owner`, {
+      newOwnerId,
+    });
     return response.data || response;
   },
 
@@ -91,21 +126,30 @@ export const conversationService = {
     return response.data || response;
   },
 
-  async updateGroupInfo(groupId: string, data: { name?: string; avatarUrl?: string }): Promise<any> {
+  async updateGroupInfo(
+    groupId: string,
+    data: { name?: string; avatarUrl?: string },
+  ): Promise<any> {
     const response: any = await api.put(`/groups/${groupId}`, data);
     return response.data || response;
   },
 
-  async getConversationMessages(conversationId: string, params: { limit?: number; [key: string]: any } = {}): Promise<{ raw: any; messages: Message[] }> {
+  async getConversationMessages(
+    conversationId: string,
+    params: { limit?: number; [key: string]: any } = {},
+  ): Promise<{ raw: any; messages: Message[] }> {
     // Limit tối đa backend cho phép là 100
     const limit = Math.min(params.limit || 100, 100);
 
-    const response = await api.get(`/conversations/${conversationId}/messages`, {
-      params: {
-        limit,
-        ...params,
+    const response = await api.get(
+      `/conversations/${conversationId}/messages`,
+      {
+        params: {
+          limit,
+          ...params,
+        },
       },
-    });
+    );
 
     return {
       raw: response,
@@ -125,7 +169,10 @@ export const conversationService = {
    * @param type - Message type: 'text', 'media', 'mixed'
    * @returns Message response
    */
-  async sendMediaMessage(conversationId: string, params: { content?: string; attachments: any[]; type?: string }): Promise<any> {
+  async sendMediaMessage(
+    conversationId: string,
+    params: { content?: string; attachments: any[]; type?: string },
+  ): Promise<any> {
     return api.post(`/conversations/${conversationId}/messages`, {
       content: params.content,
       attachments: params.attachments,
@@ -145,16 +192,28 @@ export const conversationService = {
     return api.delete(`/messages/${messageId}/react`, { data: { emoji } });
   },
 
-  async markDelivered(conversationId: string, lastDeliveredMessageId: string): Promise<any> {
-    return api.post(`/conversations/${conversationId}/delivered`, { lastDeliveredMessageId });
+  async markDelivered(
+    conversationId: string,
+    lastDeliveredMessageId: string,
+  ): Promise<any> {
+    return api.post(`/conversations/${conversationId}/delivered`, {
+      lastDeliveredMessageId,
+    });
   },
 
-  async markSeen(conversationId: string, lastSeenMessageId: string): Promise<any> {
-    return api.post(`/conversations/${conversationId}/seen`, { lastSeenMessageId });
+  async markSeen(
+    conversationId: string,
+    lastSeenMessageId: string,
+  ): Promise<any> {
+    return api.post(`/conversations/${conversationId}/seen`, {
+      lastSeenMessageId,
+    });
   },
 
   async getPinnedMessages(conversationId: string): Promise<Message[]> {
-    const response: any = await api.get(`/conversations/${conversationId}/pinned-messages`);
+    const response: any = await api.get(
+      `/conversations/${conversationId}/pinned-messages`,
+    );
     return normalizeMessages(response.data || response);
   },
 
@@ -183,13 +242,19 @@ export const conversationService = {
     return response.data || response;
   },
 
-  async getConversationMedia(conversationId: string, params: { limit?: number; cursor?: string } = {}) {
-    const response: any = await api.get(`/conversations/${conversationId}/media`, {
-      params: {
-        limit: params.limit || 50,
-        ...(params.cursor && { cursor: params.cursor }),
+  async getConversationMedia(
+    conversationId: string,
+    params: { limit?: number; cursor?: string } = {},
+  ) {
+    const response: any = await api.get(
+      `/conversations/${conversationId}/media`,
+      {
+        params: {
+          limit: params.limit || 50,
+          ...(params.cursor && { cursor: params.cursor }),
+        },
       },
-    });
+    );
     return response.data || response;
   },
 };

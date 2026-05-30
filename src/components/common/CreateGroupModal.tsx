@@ -9,10 +9,18 @@ import { socketService } from "../../services/socketService";
 // Helper to get consistent background colors based on name string
 const getAvatarBgColor = (name: string) => {
   const colors = [
-    "bg-red-500", "bg-orange-500", "bg-amber-500", 
-    "bg-green-500", "bg-emerald-500", "bg-teal-500", 
-    "bg-cyan-500", "bg-blue-500", "bg-indigo-500", 
-    "bg-violet-500", "bg-purple-500", "bg-pink-500"
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-amber-500",
+    "bg-green-500",
+    "bg-emerald-500",
+    "bg-teal-500",
+    "bg-cyan-500",
+    "bg-blue-500",
+    "bg-indigo-500",
+    "bg-violet-500",
+    "bg-purple-500",
+    "bg-pink-500",
   ];
   if (!name) return colors[0];
   let hash = 0;
@@ -24,14 +32,20 @@ const getAvatarBgColor = (name: string) => {
 
 const getInitials = (name: string) => {
   if (!name) return "";
-  const parts = name.split(" ").filter(p => p.length > 0);
+  const parts = name.split(" ").filter((p) => p.length > 0);
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
   }
   return name.substring(0, 2).toUpperCase();
 };
 
-export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+export const CreateGroupModal = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -42,7 +56,11 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { friends, loading: friendsLoading, fetchFriends } = useFriendManagement();
+  const {
+    friends,
+    loading: friendsLoading,
+    fetchFriends,
+  } = useFriendManagement();
 
   // Cleanup preview URL on unmount
   useEffect(() => {
@@ -112,13 +130,25 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
       const result = await conversationService.createGroupConversation(
         memberIds,
         groupName.trim(),
-        avatarUrl
+        avatarUrl,
       );
 
       // Join the newly created group room to receive real-time messages
       try {
-        await socketService.joinGroup(result.conversationId);
-        console.log("[CreateGroupModal] Joined group room:", result.conversationId);
+        const convId =
+          (result as any)?.conversationId ||
+          (result as any)?.id ||
+          (result as any)?.conversation?.id;
+
+        if (convId) {
+          await socketService.joinGroup(convId);
+          console.log("[CreateGroupModal] Joined group room:", convId);
+        } else {
+          console.warn(
+            "[CreateGroupModal] No conversationId returned from createGroupConversation",
+            result,
+          );
+        }
       } catch (joinErr) {
         console.error("[CreateGroupModal] Failed to join group room:", joinErr);
         // Continue anyway - user can still manually join later
@@ -136,7 +166,7 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
     }
   };
 
-  const filteredContacts = friends.filter(c => {
+  const filteredContacts = friends.filter((c) => {
     const name = c.displayName || c.name || "Unknown";
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -144,14 +174,13 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
   // We want the modal to open over the whole screen or maybe look like a standalone mobile app
   // on smaller screens, and standard centered modal on large layout.
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/40 flex flex-col items-center justify-center z-[70] p-0 sm:p-4 transition-opacity"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="bg-white w-full h-[100dvh] sm:max-w-[400px] sm:h-[650px] sm:max-h-[90vh] sm:rounded-xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-14 bg-white flex-shrink-0">
           <div className="flex items-center">
@@ -176,37 +205,50 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto bg-white" style={{ minHeight: 0 }}>
+        <div
+          className="flex-1 overflow-y-auto bg-white"
+          style={{ minHeight: 0 }}
+        >
           {step === "select" ? (
             <>
               {/* Selected Members and Search Input Area */}
               <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0">
                 {selectedIds.size > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {friends.filter(c => selectedIds.has(c.friendUserId)).map((contact: any) => {
-                      const name = contact.displayName || contact.name || "Unknown";
-                      const avatarBg = getAvatarBgColor(name);
-                      const initials = getInitials(name);
+                    {friends
+                      .filter((c) => selectedIds.has(c.friendUserId))
+                      .map((contact: any) => {
+                        const name = contact.displayName || "Unknown";
+                        const avatarBg = getAvatarBgColor(name);
+                        const initials = getInitials(name);
 
-                      return (
-                        <div
-                          key={contact.friendUserId}
-                          className="flex items-center bg-[#f0f2f5] rounded-full pr-3 cursor-pointer hover:bg-gray-200 transition-colors"
-                          onClick={() => handleToggleSelect(contact.friendUserId)}
-                        >
-                          <div className={`w-[34px] h-[34px] rounded-full flex-shrink-0 flex items-center justify-center text-white font-medium text-[13px] tracking-tight ${contact.avatarUrl ? '' : avatarBg} overflow-hidden mr-2`}>
-                            {contact.avatarUrl ? (
-                              <img src={contact.avatarUrl} alt={name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span>{initials}</span>
-                            )}
+                        return (
+                          <div
+                            key={contact.friendUserId}
+                            className="flex items-center bg-[#f0f2f5] rounded-full pr-3 cursor-pointer hover:bg-gray-200 transition-colors"
+                            onClick={() =>
+                              handleToggleSelect(contact.friendUserId)
+                            }
+                          >
+                            <div
+                              className={`w-[34px] h-[34px] rounded-full flex-shrink-0 flex items-center justify-center text-white font-medium text-[13px] tracking-tight ${contact.avatarUrl ? "" : avatarBg} overflow-hidden mr-2`}
+                            >
+                              {contact.avatarUrl ? (
+                                <img
+                                  src={contact.avatarUrl}
+                                  alt={name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span>{initials}</span>
+                              )}
+                            </div>
+                            <span className="text-[15px] text-gray-900 font-medium truncate max-w-[120px]">
+                              {name}
+                            </span>
                           </div>
-                          <span className="text-[15px] text-gray-900 font-medium truncate max-w-[120px]">
-                            {name}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 )}
 
@@ -231,7 +273,8 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
                   </div>
                 ) : (
                   filteredContacts.map((contact: any) => {
-                    const name = contact.displayName || contact.name || "Unknown";
+                    const name =
+                      contact.displayName || contact.name || "Unknown";
                     const isSelected = selectedIds.has(contact.friendUserId);
                     const avatarBg = getAvatarBgColor(name);
                     const initials = getInitials(name);
@@ -247,13 +290,23 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
                           <div
                             className={`w-5 h-5 rounded-[4px] border-[1.5px] flex items-center justify-center transition-all duration-200 ${
                               isSelected
-                              ? 'bg-[#3b82f6] border-[#3b82f6]'
-                              : 'bg-transparent border-gray-400 hover:border-gray-500'
+                                ? "bg-[#3b82f6] border-[#3b82f6]"
+                                : "bg-transparent border-gray-400 hover:border-gray-500"
                             }`}
                           >
                             {isSelected && (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              <svg
+                                className="w-3.5 h-3.5 text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 13l4 4L19 7"
+                                />
                               </svg>
                             )}
                           </div>
@@ -261,10 +314,14 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
 
                         {/* Avatar */}
                         <div
-                          className={`w-[46px] h-[46px] rounded-full flex-shrink-0 mr-[14px] flex items-center justify-center text-white font-medium text-[17px] tracking-tight ${contact.avatarUrl ? '' : avatarBg} overflow-hidden`}
+                          className={`w-[46px] h-[46px] rounded-full flex-shrink-0 mr-[14px] flex items-center justify-center text-white font-medium text-[17px] tracking-tight ${contact.avatarUrl ? "" : avatarBg} overflow-hidden`}
                         >
                           {contact.avatarUrl ? (
-                            <img src={contact.avatarUrl} alt={name} className="w-full h-full object-cover" />
+                            <img
+                              src={contact.avatarUrl}
+                              alt={name}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <span>{initials}</span>
                           )}
@@ -296,7 +353,11 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {avatarPreview ? (
-                      <img src={avatarPreview} alt="Group avatar preview" className="w-full h-full object-cover" />
+                      <img
+                        src={avatarPreview}
+                        alt="Group avatar preview"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <FiCamera className="w-8 h-8 text-gray-400" />
                     )}
@@ -336,11 +397,16 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
                     className="hidden"
                   />
                 </div>
-                <p className="text-sm text-gray-500 mt-2">Tap to add group photo</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Tap to add group photo
+                </p>
               </div>
 
               <div className="mb-4">
-                <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="groupName"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Group Name
                 </label>
                 <input
@@ -360,18 +426,26 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
                   Members ({selectedIds.size})
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {friends.filter(c => selectedIds.has(c.friendUserId)).map((contact: any) => {
-                    const name = contact.displayName || contact.name || "Unknown";
-                    const initials = getInitials(name);
-                    return (
-                      <div key={contact.friendUserId} className="flex items-center bg-gray-100 rounded-full px-3 py-1">
-                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs mr-2">
-                          {initials}
+                  {friends
+                    .filter((c) => selectedIds.has(c.friendUserId))
+                    .map((contact: any) => {
+                      const name =
+                        contact.displayName || contact.name || "Unknown";
+                      const initials = getInitials(name);
+                      return (
+                        <div
+                          key={contact.friendUserId}
+                          className="flex items-center bg-gray-100 rounded-full px-3 py-1"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs mr-2">
+                            {initials}
+                          </div>
+                          <span className="text-sm text-gray-700 truncate max-w-[100px]">
+                            {name}
+                          </span>
                         </div>
-                        <span className="text-sm text-gray-700 truncate max-w-[100px]">{name}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             </div>
@@ -392,20 +466,25 @@ export const CreateGroupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose
         <div
           className={`absolute bottom-[20px] right-[20px] transition-all duration-300 ease-out ${
             selectedIds.size > 0
-            ? "transform scale-100 translate-y-0 opacity-100"
-            : "transform scale-75 translate-y-4 opacity-0 pointer-events-none"
+              ? "transform scale-100 translate-y-0 opacity-100"
+              : "transform scale-75 translate-y-4 opacity-0 pointer-events-none"
           }`}
         >
           <button
             className="w-[56px] h-[56px] bg-[#3b82f6] hover:bg-[#2563eb] rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(59,130,246,0.3)] transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label={step === "select" ? "Continue" : "Create"}
             onClick={handleContinue}
-            disabled={loading || (step === "select" ? selectedIds.size === 0 : !groupName.trim())}
+            disabled={
+              loading ||
+              (step === "select" ? selectedIds.size === 0 : !groupName.trim())
+            }
           >
             {loading ? (
               <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : step === "select" ? (
+              <FiArrowRight className="text-[26px]" />
             ) : (
-              step === "select" ? <FiArrowRight className="text-[26px]" /> : <FiArrowRight className="text-[26px]" />
+              <FiArrowRight className="text-[26px]" />
             )}
           </button>
         </div>

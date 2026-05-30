@@ -11,10 +11,9 @@ export const useFriendManagement = () => {
 
   /**
    * Helper để lấy user ID từ các định dạng dữ liệu khác nhau
-   * Xử lý: id, _id fields
    */
   const getUserId = (user) => {
-    return user?.id || user?._id;
+    return user?.id;
   };
 
   /**
@@ -25,7 +24,7 @@ export const useFriendManagement = () => {
       const userStr = localStorage.getItem("user");
       if (!userStr) return null;
       const user = JSON.parse(userStr);
-      return user?.id || user?._id;
+      return user?.id;
     } catch (err) {
       console.error("[useFriendManagement] Failed to get currentUserId:", err);
       return null;
@@ -50,48 +49,85 @@ export const useFriendManagement = () => {
 
       // Resolve user info cho mỗi friendship
       const currentUserId = getCurrentUserId();
-      if (!currentUserId) {
-        setFriends(friendships);
-        return;
-      }
 
       const enrichedFriends = await Promise.all(
         friendships.map(async (friendship) => {
-          try {
-            // Xác định friendUserId (là user còn lại không phải current user)
-            const friendUserId =
-              friendship.userA === currentUserId
-                ? friendship.userB
-                : friendship.userA;
-            const userResponse = await searchUserById(friendUserId);
-            const userInfo = userResponse?.data || userResponse;
+          // Normalize different backend shapes so UI can always rely on these fields
+          const raw = friendship || {};
 
-            // Return enriched friendship object với user info
+          // Prefer explicit userId (newer API), then nested user object, then legacy userA/userB
+          const possibleUserId =
+            raw.userId ||
+            raw.user?.id ||
+            raw.user?.userId ||
+            raw.userId ||
+            raw.id;
+
+          // Determine friendUserId deterministically
+          let friendUserId = possibleUserId;
+
+          if (!friendUserId && currentUserId && (raw.userA || raw.userB)) {
+            friendUserId = raw.userA === currentUserId ? raw.userB : raw.userA;
+          }
+
+          // Determine displayName/avatar from available places
+          const displayName =
+            raw.displayName ||
+            raw.user?.displayName ||
+            raw.user?.name ||
+            raw.name;
+          const avatarUrl = raw.avatarUrl || raw.user?.avatarUrl;
+
+          // If we already have enough info, return quickly
+          if (friendUserId && displayName) {
             return {
-              ...friendship,
+              ...raw,
               friendUserId,
-              displayName: userInfo?.displayName,
-              name: userInfo?.name,
-              username: userInfo?.username,
-              phone: userInfo?.phone,
-              avatarUrl: userInfo?.avatarUrl,
-            };
-          } catch (err) {
-            console.error(
-              "[useFriendManagement] Failed to fetch user info for friendship:",
-              friendship.id,
-              err,
-            );
-            // Fallback: return friendship with raw IDs
-            return {
-              ...friendship,
-              friendUserId:
-                friendship.userA === currentUserId
-                  ? friendship.userB
-                  : friendship.userA,
-              displayName: "Unknown",
+              displayName,
+              avatarUrl,
             };
           }
+
+          // Fallback: try to fetch user info when we have an id and no displayName
+          if (friendUserId) {
+            try {
+              const userResponse = await searchUserById(friendUserId);
+              const userInfo = userResponse?.data || userResponse || {};
+              return {
+                ...raw,
+                friendUserId,
+                displayName:
+                  userInfo.displayName ||
+                  userInfo.name ||
+                  displayName ||
+                  "Unknown",
+                name: userInfo.name || raw.name,
+                username: userInfo.username || raw.username,
+                phone: userInfo.phone || raw.phone,
+                avatarUrl: userInfo.avatarUrl || avatarUrl,
+              };
+            } catch (err) {
+              console.error(
+                "[useFriendManagement] Failed to fetch user info for friendship:",
+                raw.id,
+                err,
+              );
+              return {
+                ...raw,
+                friendUserId,
+                displayName: displayName || "Unknown",
+                avatarUrl,
+              };
+            }
+          }
+
+          // Last resort: return a minimal normalized object
+          return {
+            ...raw,
+            friendUserId: friendUserId || raw.id,
+            displayName: displayName || "Unknown",
+            avatarUrl,
+          };
         }),
       );
 

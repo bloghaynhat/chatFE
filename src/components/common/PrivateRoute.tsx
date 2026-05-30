@@ -5,6 +5,14 @@ import { useAuth } from "../../hooks";
 export const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
 
+  // DEV: show auth state when PrivateRoute renders
+  // eslint-disable-next-line no-console
+  console.debug("[PrivateRoute] render", {
+    isAuthenticated,
+    loading,
+    userId: user?.id || user?._id,
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
