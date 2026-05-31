@@ -15,6 +15,7 @@ import { CalendarModal } from "./ActiveChatPane/CalendarModal";
 import { PinnedBar } from "./ActiveChatPane/PinnedBar";
 import { PinnedList } from "./ActiveChatPane/PinnedList";
 import { MessageContextMenu } from "./ActiveChatPane/MessageContextMenu";
+import { AiTranslateMessage } from "./AiTranslateMessage";
 import { VideoPreviewModal } from "./ActiveChatPane/VideoPreviewModal";
 import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
@@ -60,6 +61,7 @@ export const ActiveChatPane = ({
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(
     () => new Date(),
   );
+
   const [draftMessage, setDraftMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
@@ -91,6 +93,9 @@ export const ActiveChatPane = ({
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
   const [chatRestriction, setChatRestriction] = useState<string | null>(null);
+  const [messageToTranslate, setMessageToTranslate] = useState<Message | null>(
+    null,
+  );
 
   const callV2 = useCallV2();
   const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
@@ -130,21 +135,36 @@ export const ActiveChatPane = ({
       (selectedChat?.members && selectedChat.members.length > 2);
 
     if (!isGroup) {
-      const targetUserId = selectedChat?.targetUserId || selectedChat?.participantId;
+      const targetUserId =
+        selectedChat?.targetUserId || selectedChat?.participantId;
       return targetUserId ? [targetUserId] : [];
     }
 
-    const rawMembers = selectedChat?.members || selectedChat?.participants || [];
+    const rawMembers =
+      selectedChat?.members || selectedChat?.participants || [];
     let inviteeIds = Array.isArray(rawMembers)
-      ? rawMembers.map((member) => member?.userId || member?.id || member?._id).filter(Boolean)
+      ? rawMembers
+          .map((member) => member?.userId || member?.id || member?._id)
+          .filter(Boolean)
       : [];
 
     if (inviteeIds.length === 0 && selectedConversationId) {
       try {
-        const membersData = await conversationService.getGroupMembers(selectedConversationId);
-        const rawList = Array.isArray(membersData) ? membersData : membersData?.members || membersData?.data || [];
+        const membersData = await conversationService.getGroupMembers(
+          selectedConversationId,
+        );
+        const rawList = Array.isArray(membersData)
+          ? membersData
+          : membersData?.members || membersData?.data || [];
         inviteeIds = rawList
-          .map((member: any) => member?.userId || member?.user?.id || member?.user?._id || member?.id || member?._id)
+          .map(
+            (member: any) =>
+              member?.userId ||
+              member?.user?.id ||
+              member?.user?._id ||
+              member?.id ||
+              member?._id,
+          )
           .filter(Boolean);
       } catch (err) {
         console.warn("Failed to load group members for call", err);
@@ -165,7 +185,12 @@ export const ActiveChatPane = ({
       null;
 
     return {
-      id: selectedChat.targetUserId || selectedChat.participantId || target?.id || target?._id || null,
+      id:
+        selectedChat.targetUserId ||
+        selectedChat.participantId ||
+        target?.id ||
+        target?._id ||
+        null,
       name:
         selectedChat.name ||
         selectedChat.displayName ||
@@ -293,9 +318,21 @@ export const ActiveChatPane = ({
         (selectedChat?.members && selectedChat.members.length > 2);
 
       const inviteeIds = await resolveInviteeIds();
-      await callV2.startCallV2(conversationId, type, inviteeIds.length > 0 ? inviteeIds : undefined, isGroup, callPeerInfo);
+      await callV2.startCallV2(
+        conversationId,
+        type,
+        inviteeIds.length > 0 ? inviteeIds : undefined,
+        isGroup,
+        callPeerInfo,
+      );
     },
-    [callPeerInfo, callV2, resolveInviteeIds, selectedConversationId, selectedChat],
+    [
+      callPeerInfo,
+      callV2,
+      resolveInviteeIds,
+      selectedConversationId,
+      selectedChat,
+    ],
   );
 
   const refreshActiveCallV2 = useCallback(async () => {
@@ -305,16 +342,27 @@ export const ActiveChatPane = ({
       return;
     }
 
-    const activeCall = await callV2Service.getActiveCallByConversation(conversationId);
+    const activeCall =
+      await callV2Service.getActiveCallByConversation(conversationId);
     setActiveCallV2(activeCall);
   }, [selectedConversationId, selectedChat?.id]);
 
   const handleJoinActiveCallV2 = useCallback(async () => {
     const conversationId = selectedConversationId || selectedChat?.id;
     if (!conversationId || !activeCallV2) return;
-    await callV2.joinExistingCallV2(activeCallV2.callId, conversationId, activeCallV2.type);
+    await callV2.joinExistingCallV2(
+      activeCallV2.callId,
+      conversationId,
+      activeCallV2.type,
+    );
     await refreshActiveCallV2();
-  }, [activeCallV2, callV2, refreshActiveCallV2, selectedConversationId, selectedChat?.id]);
+  }, [
+    activeCallV2,
+    callV2,
+    refreshActiveCallV2,
+    selectedConversationId,
+    selectedChat?.id,
+  ]);
 
   useEffect(() => {
     void refreshActiveCallV2();
@@ -349,7 +397,9 @@ export const ActiveChatPane = ({
   // Navigate to a specific message
   const handleNavigateToMessage = (messageId: string) => {
     // Find the message index in the full messages array
-    const messageIndex = messages.findIndex((m) => (m.id || m._id) === messageId);
+    const messageIndex = messages.findIndex(
+      (m) => (m.id || m._id) === messageId,
+    );
     if (messageIndex !== -1) {
       // Calculate required displayCount to ensure this message is visible
       const requiredDisplayCount = messages.length - messageIndex;
@@ -500,13 +550,17 @@ export const ActiveChatPane = ({
     if (!messages || messages.length === 0) return messages;
 
     // Extract unique senderIds
-    const senderIds = [...new Set(messages.map((msg) => msg.senderId).filter(Boolean))] as string[];
+    const senderIds = [
+      ...new Set(messages.map((msg) => msg.senderId).filter(Boolean)),
+    ] as string[];
 
     if (senderIds.length === 0) return messages;
 
     try {
       // Separate cached and uncached senderIds
-      const uncachedSenderIds = senderIds.filter((id) => !userCache.current.has(id));
+      const uncachedSenderIds = senderIds.filter(
+        (id) => !userCache.current.has(id),
+      );
 
       // Fetch uncached users in parallel
       if (uncachedSenderIds.length > 0) {
@@ -570,6 +624,12 @@ export const ActiveChatPane = ({
       ? messages.slice(messages.length - displayCount)
       : messages;
   }, [messages, displayCount]);
+
+  const lastMessage = messages[messages.length - 1];
+  const lastMessageId =
+    lastMessage?.id || lastMessage?._id || lastMessage?.messageId || "";
+  const isLastMessageFromCurrentUser =
+    Boolean(lastMessage?.senderId) && lastMessage.senderId === currentUserId;
 
   useEffect(() => {
     if (firstMessageRef.current) {
@@ -767,29 +827,19 @@ export const ActiveChatPane = ({
     }
   };
 
-  const handleSendMessage = () => {
-    if (chatRestriction) return;
-
-    if (
-      !draftMessage.trim() &&
-      !forwardingMessage &&
-      !editingMessage &&
-      !replyingMessage
-    )
-      return;
-
+  const executeSend = (textToSend: string) => {
     if (onSendMessage) {
       if (editingMessage) {
         const payload = {
           id: editingMessage.id || editingMessage._id,
-          text: draftMessage.trim(),
+          text: textToSend,
           type: "edit",
         };
         onSendMessage(payload);
         setEditingMessage(null);
       } else {
         const payload = {
-          text: draftMessage.trim(),
+          text: textToSend,
           type: "text",
           forwardingMessage: forwardingMessage,
           replyingMessage: replyingMessage,
@@ -814,6 +864,19 @@ export const ActiveChatPane = ({
         socketService.stopTyping(targetId, isGroup);
       }
     }
+  };
+
+  const handleSendMessage = () => {
+    if (chatRestriction) return;
+    if (
+      !draftMessage.trim() &&
+      !forwardingMessage &&
+      !editingMessage &&
+      !replyingMessage
+    )
+      return;
+
+    executeSend(draftMessage.trim());
   };
 
   const handleSendVoice = (voiceFile: any) => {
@@ -879,6 +942,13 @@ export const ActiveChatPane = ({
           onDraftMessageChange={setDraftMessage}
           onCancel={handleCancelAttachment}
           onSend={handleSendAttachedFiles}
+        />
+      )}
+
+      {messageToTranslate && (
+        <AiTranslateMessage
+          message={messageToTranslate}
+          onClose={() => setMessageToTranslate(null)}
         />
       )}
 
@@ -961,6 +1031,10 @@ export const ActiveChatPane = ({
             setForwardModalVisible(true);
             setContextMenu(null);
           }}
+          onTranslateMessage={(message) => {
+            setMessageToTranslate(message);
+            setContextMenu(null);
+          }}
           onRevokeMessage={onRevokeMessage}
           onDeleteMessageForMe={onDeleteMessageForMe}
           onDeleteMessageForEveryone={onDeleteMessageForEveryone}
@@ -1002,6 +1076,27 @@ export const ActiveChatPane = ({
         onNavigateToMessage={handleNavigateToMessage}
       />
 
+      {/* Attach Menu Overlay */}
+      {isAttachMenuOpen && (
+        <div
+          className="absolute inset-x-0 bottom-full bg-white dark:bg-slate-800 border-t dark:border-slate-700 p-2 flex items-center justify-around shadow-[0_-4px_25px_-5px_rgba(0,0,0,0.1)] z-10"
+          onMouseLeave={() => setIsAttachMenuOpen(false)}
+        >
+          {attachActions.map((action) => (
+            <div
+              key={action.id}
+              className="flex flex-col items-center cursor-pointer p-2 transition-transform transform hover:scale-105"
+              onClick={action.onClick}
+            >
+              <action.icon className="w-6 h-6 mb-1" />
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                {action.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <ChatInput
         draftMessage={draftMessage}
         setDraftMessage={setDraftMessage}
@@ -1024,6 +1119,10 @@ export const ActiveChatPane = ({
         onClearForwarding={onClearForwarding}
         currentUserId={currentUserId}
         handleSendVoice={handleSendVoice}
+        selectedConversationId={selectedConversationId}
+        smartReplyTriggerKey={lastMessageId}
+        isTyping={typingUsers.size > 0}
+        isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
         disabledReason={chatRestriction}
       />
 
@@ -1034,7 +1133,10 @@ export const ActiveChatPane = ({
         isCreating={isCreatingPoll}
       />
 
-      <VideoPreviewModal previewVideoUrl={previewVideoUrl} onClose={() => setPreviewVideoUrl(null)} />
+      <VideoPreviewModal
+        previewVideoUrl={previewVideoUrl}
+        onClose={() => setPreviewVideoUrl(null)}
+      />
     </div>
   );
 };

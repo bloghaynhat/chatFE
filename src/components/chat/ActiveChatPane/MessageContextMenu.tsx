@@ -31,6 +31,7 @@ interface MessageContextMenuProps {
   onPinMessage: (messageId: string) => Promise<void>;
   onUnpinMessage: (messageId: string) => Promise<void>;
   onOpenForwardModal: (message: Message) => void;
+  onTranslateMessage?: (message: Message) => void;
   onRevokeMessage?: (message: Message) => void;
   onDeleteMessageForMe?: (message: Message) => void;
   onDeleteMessageForEveryone?: (message: Message) => void;
@@ -46,6 +47,7 @@ export const MessageContextMenu = ({
   onPinMessage,
   onUnpinMessage,
   onOpenForwardModal,
+  onTranslateMessage,
   onRevokeMessage,
   onDeleteMessageForMe,
   onDeleteMessageForEveryone,
@@ -146,6 +148,40 @@ export const MessageContextMenu = ({
             </span>
           </div>
         )}
+
+        {onTranslateMessage && (
+          <button
+            className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
+            onClick={() => {
+              onTranslateMessage(contextMenu.message);
+              onClose();
+            }}
+          >
+            <div className="w-4 flex justify-center text-gray-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-languages"
+              >
+                <path d="m5 8 6 6" />
+                <path d="m4 14 6-6 2-3" />
+                <path d="M2 5h12" />
+                <path d="M7 2h1" />
+                <path d="m22 22-5-10-5 10" />
+                <path d="M14 18h6" />
+              </svg>
+            </div>
+            Dịch tin nhắn
+          </button>
+        )}
+
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
           onClick={() => {
@@ -174,20 +210,6 @@ export const MessageContextMenu = ({
         >
           <FiCopy className="text-[18px]" strokeWidth={2} />{" "}
           <span className="font-medium">Copy</span>
-        </button>
-        <button
-          className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
-          onClick={onClose}
-        >
-          <div className="relative flex items-center text-[18px] w-[18px] h-[18px] justify-center font-bold">
-            <span className="text-[13px] absolute -top-0.5 -left-1 tracking-tighter">
-              A
-            </span>
-            <span className="text-[10px] absolute -bottom-0.5 -right-0.5 truncate tracking-tighter">
-              文
-            </span>
-          </div>
-          <span className="font-medium">Translate</span>
         </button>
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"

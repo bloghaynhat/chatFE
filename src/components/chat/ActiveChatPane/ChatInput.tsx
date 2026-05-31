@@ -22,6 +22,8 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import EmojiPicker, { Theme } from "emoji-picker-react";
+import { AiSmartReply } from "../AiSmartReply";
+import { AiToneAdjustMenu } from "../AiToneAdjustMenu";
 
 // frequentEmojis removed
 
@@ -48,6 +50,10 @@ export const ChatInput = ({
   currentUserId,
   handleSendVoice,
   disabledReason,
+  selectedConversationId,
+  smartReplyTriggerKey,
+  isTyping,
+  isLastMessageFromCurrentUser,
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
 
@@ -276,6 +282,26 @@ export const ChatInput = ({
           <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-[#2ea6f3] rounded-[5px]"></div>
         </div>
       )}
+
+      {/* Tích hợp AI Smart Reply ở đây */}
+      <AiSmartReply 
+        conversationId={selectedConversationId}
+        triggerKey={smartReplyTriggerKey}
+        userId={currentUserId}
+        onSelectReply={(text) => {
+          setDraftMessage(text);
+        }}
+        shouldFetch={
+          Boolean(selectedConversationId) &&
+          !draftMessage.trim() &&
+          !isTyping &&
+          !isLastMessageFromCurrentUser &&
+          !editingMessage &&
+          !replyingMessage &&
+          !forwardingMessage
+        }
+      />
+
       <div
         className={`relative flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40" : ""}`}
       >
@@ -373,6 +399,13 @@ export const ChatInput = ({
             className="absolute left-11 right-11 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed"
           />
 
+          <div className="absolute right-9 top-1/2 -translate-y-1/2">
+            <AiToneAdjustMenu 
+              currentText={draftMessage}
+              onApplyTone={(newText) => setDraftMessage(newText)}
+            />
+          </div>
+
           <button
             onClick={() => {
               if (disabledReason) return;
@@ -380,7 +413,7 @@ export const ChatInput = ({
               setIsMoreMenuOpen(false);
               setIsEmojiPickerOpen(false);
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
             title="Open attachment actions"
           >
             <FiPaperclip className="text-[20px] lg:text-[22px]" />
