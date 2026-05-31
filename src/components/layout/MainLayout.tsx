@@ -725,6 +725,46 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
   };
 
+  const getMessageKey = (message) =>
+    message?.id || message?._id || message?.messageId || null;
+
+  const normalizeSearchMessage = (message, conversationId) => {
+    const id = getMessageKey(message);
+    if (!id) return null;
+    return {
+      ...message,
+      id,
+      conversationId: message.conversationId || conversationId,
+      type: message.type || "text",
+    };
+  };
+
+  const mergeSearchTargetMessages = (messages, chat, conversationId) => {
+    const searchMessages = [
+      ...(Array.isArray(chat?.searchContextMessages)
+        ? chat.searchContextMessages
+        : []),
+      chat?.searchTargetMessage,
+    ]
+      .map((message) => normalizeSearchMessage(message, conversationId))
+      .filter(Boolean);
+
+    if (searchMessages.length === 0) return messages;
+
+    const messageById = new Map();
+    [...messages, ...searchMessages].forEach((message) => {
+      const id = getMessageKey(message);
+      if (!id || messageById.has(String(id))) return;
+      messageById.set(String(id), message);
+    });
+
+    return Array.from(messageById.values()).sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      return dateA - dateB;
+    });
+  };
+
   const openChatByRow = useCallback(
     async (chat) => {
       if (!chat?.id) {
@@ -819,7 +859,9 @@ const MainLayout = ({ children }: { children?: any }) => {
           return dateA - dateB;
         });
 
-        setMessages(sortedMessages);
+        setMessages(
+          mergeSearchTargetMessages(sortedMessages, processedChat, conversationId),
+        );
 
         // fire-and-forget status sync with last message ID
         const lastMessage = sortedMessages[sortedMessages.length - 1];
@@ -1557,6 +1599,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           activeChatId={selectedChat?.id || null}
           openingChatId={openingChatId}
           onSelectChat={openChatByRow}
+          onForwardToTarget={handleForwardToTarget}
           onOpenSavedMessages={openSavedMessages}
         />
 

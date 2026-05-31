@@ -28,6 +28,7 @@ export const ResizableChatPanel = ({
   activeChatId,
   openingChatId,
   onSelectChat,
+  onForwardToTarget,
   onOpenSavedMessages,
 }: any) => {
   const [width, setWidth] = useState(320); // Default width in pixels
@@ -37,6 +38,8 @@ export const ResizableChatPanel = ({
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [isSearchClosing, setIsSearchClosing] = useState(false);
   const [filterMode, setFilterMode] = useState("all");
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const panelRef = useRef(null);
@@ -202,11 +205,28 @@ export const ResizableChatPanel = ({
           <MainTaskbar
             searchValue={searchQuery}
             onSearchChange={(value) => {
+              setIsSearchClosing(false);
               setSearchQuery(value);
               setFilterMode("all");
+              setIsSearchMode(true);
+            }}
+            onSearchFocus={() => {
+              setIsSearchClosing(false);
+              setFilterMode("all");
+              setIsSearchMode(true);
             }}
             onOpenMenu={() => setIsNavigationOpen(true)}
             onClearSearch={() => setSearchQuery("")}
+            onExitSearch={() => {
+              setIsSearchClosing(true);
+              window.setTimeout(() => {
+                setSearchQuery("");
+                setDebouncedSearchQuery("");
+                setIsSearchMode(false);
+                setIsSearchClosing(false);
+              }, 180);
+            }}
+            isSearchMode={isSearchMode}
             friendRequestCount={friendRequests.length}
             isCollapsed={isCollapsed}
           />
@@ -341,11 +361,15 @@ export const ResizableChatPanel = ({
             <div className="flex-1 overflow-hidden relative">
               <ChatList
                 searchQuery={debouncedSearchQuery}
+                isSearchMode={isSearchMode}
+                isSearchClosing={isSearchClosing}
                 filterMode={filterMode}
                 isCollapsed={isCollapsed}
                 activeChatId={activeChatId}
                 openingChatId={openingChatId}
+                isGlobalSearchEnabled={true}
                 onSelectChat={onSelectChat}
+                onForwardToTarget={onForwardToTarget}
               />
 
               {!isCollapsed && (

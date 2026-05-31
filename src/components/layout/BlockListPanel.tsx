@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FiArrowLeft, FiSlash } from "react-icons/fi";
 import { Avatar } from "../contacts/shared";
-import { getBlockedUsers, unblockUser, userService } from "../../services";
+import { getBlockedUsers, socketService, unblockUser, userService } from "../../services";
 
 const unwrapApiData = (payload: any) => {
   if (!payload || typeof payload !== "object") return payload;
@@ -58,6 +58,26 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
 
   useEffect(() => {
     loadBlockedUsers();
+  }, [loadBlockedUsers]);
+
+  useEffect(() => {
+    void socketService.initBlocksSocket();
+
+    const refreshBlockList = () => {
+      void loadBlockedUsers();
+    };
+
+    const unsubscribeBlockStatus = socketService.on("blockStatus:changed", refreshBlockList);
+    const unsubscribeBlocked = socketService.on("block:blocked", refreshBlockList);
+    const unsubscribeUnblocked = socketService.on("block:unblocked", refreshBlockList);
+
+    window.addEventListener("blockStatus:changed", refreshBlockList);
+    return () => {
+      unsubscribeBlockStatus();
+      unsubscribeBlocked();
+      unsubscribeUnblocked();
+      window.removeEventListener("blockStatus:changed", refreshBlockList);
+    };
   }, [loadBlockedUsers]);
 
   const handleUnblock = async (item: any) => {

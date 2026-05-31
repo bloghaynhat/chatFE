@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { userService } from "../../services/userService";
 import { conversationService } from "../../services/conversationService";
-import { checkBlockStatus, checkFriendRequestStatus } from "../../services";
+import { blockUser, checkBlockStatus, checkFriendRequestStatus } from "../../services";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -128,13 +128,16 @@ export const ActiveChatPane = ({
 
   const { friends, fetchFriends } = useFriendManagement();
 
-  const resolveInviteeIds = useCallback(async () => {
-    const isGroup =
+  const isGroupChat = useMemo(
+    () =>
       selectedChat?.type === "GROUP" ||
       selectedChat?.type === "group" ||
-      (selectedChat?.members && selectedChat.members.length > 2);
+      selectedChat?.isGroup === true,
+    [selectedChat],
+  );
 
-    if (!isGroup) {
+  const resolveInviteeIds = useCallback(async () => {
+    if (!isGroupChat) {
       const targetUserId =
         selectedChat?.targetUserId || selectedChat?.participantId;
       return targetUserId ? [targetUserId] : [];
@@ -172,7 +175,7 @@ export const ActiveChatPane = ({
     }
 
     return inviteeIds.filter((id) => id && id !== currentUserId);
-  }, [selectedChat, selectedConversationId, currentUserId]);
+  }, [selectedChat, selectedConversationId, currentUserId, isGroupChat]);
 
   const callPeerInfo = useMemo(() => {
     if (!selectedChat) return null;
@@ -210,12 +213,7 @@ export const ActiveChatPane = ({
 
   const privateTargetUserId = useMemo(() => {
     if (!selectedChat) return null;
-    const isGroup =
-      selectedChat?.type === "GROUP" ||
-      selectedChat?.type === "group" ||
-      (selectedChat?.members && selectedChat.members.length > 2);
-
-    if (isGroup) return null;
+    if (isGroupChat) return null;
 
     const target =
       selectedChat.targetUser ||
@@ -235,7 +233,7 @@ export const ActiveChatPane = ({
         : null) ||
       null
     );
-  }, [currentUserId, selectedChat]);
+  }, [currentUserId, selectedChat, isGroupChat]);
 
   const refreshChatRestriction = useCallback(async () => {
     if (!privateTargetUserId) {
@@ -312,28 +310,46 @@ export const ActiveChatPane = ({
       const conversationId = selectedConversationId || selectedChat?.id;
       if (!conversationId) return;
 
-      const isGroup =
-        selectedChat?.type === "GROUP" ||
-        selectedChat?.type === "group" ||
-        (selectedChat?.members && selectedChat.members.length > 2);
-
       const inviteeIds = await resolveInviteeIds();
       await callV2.startCallV2(
         conversationId,
         type,
         inviteeIds.length > 0 ? inviteeIds : undefined,
-        isGroup,
+        isGroupChat,
         callPeerInfo,
+        isGroupChat ? callPeerInfo?.name || selectedChat?.name || selectedChat?.displayName || null : null,
       );
     },
     [
       callPeerInfo,
       callV2,
       resolveInviteeIds,
+      isGroupChat,
       selectedConversationId,
       selectedChat,
     ],
   );
+
+  const handleBlockUser = useCallback(async () => {
+    if (!privateTargetUserId) return;
+
+    const confirmed = window.confirm("Block this user? They will not be able to message or call you.");
+    if (!confirmed) return;
+
+    try {
+      await blockUser(privateTargetUserId);
+      setChatRestriction("You blocked this user");
+      window.dispatchEvent(
+        new CustomEvent("blockStatus:changed", {
+          detail: { userId: privateTargetUserId, isBlocked: true },
+        }),
+      );
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (err: any) {
+      console.error("[ActiveChatPane] Failed to block user:", err);
+      alert(err?.message || "Failed to block user");
+    }
+  }, [privateTargetUserId]);
 
   const refreshActiveCallV2 = useCallback(async () => {
     const conversationId = selectedConversationId || selectedChat?.id;
@@ -354,12 +370,14 @@ export const ActiveChatPane = ({
       activeCallV2.callId,
       conversationId,
       activeCallV2.type,
+      isGroupChat,
     );
     await refreshActiveCallV2();
   }, [
     activeCallV2,
     callV2,
     refreshActiveCallV2,
+    isGroupChat,
     selectedConversationId,
     selectedChat?.id,
   ]);
@@ -398,7 +416,7 @@ export const ActiveChatPane = ({
   const handleNavigateToMessage = (messageId: string) => {
     // Find the message index in the full messages array
     const messageIndex = messages.findIndex(
-      (m) => (m.id || m._id) === messageId,
+      (m) => String(m.id || m._id || m.messageId) === String(messageId),
     );
     if (messageIndex !== -1) {
       // Calculate required displayCount to ensure this message is visible
@@ -429,6 +447,28 @@ export const ActiveChatPane = ({
       }
     }, 100);
   };
+
+  const lastSearchTargetRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const targetMessageId = selectedChat?.searchTargetMessageId;
+    if (!targetMessageId || !selectedConversationId || messages.length === 0 || isLoading) return;
+
+    const targetKey = `${selectedConversationId}:${targetMessageId}`;
+    if (lastSearchTargetRef.current === targetKey) return;
+    lastSearchTargetRef.current = targetKey;
+
+    const timer = setTimeout(() => {
+      handleNavigateToMessage(String(targetMessageId));
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [
+    selectedChat?.searchTargetMessageId,
+    selectedConversationId,
+    messages.length,
+    isLoading,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
@@ -806,23 +846,19 @@ export const ActiveChatPane = ({
   const handleInputChange = (event) => {
     if (chatRestriction) return;
     setDraftMessage(event.target.value);
-    const isGroup =
-      selectedChat?.type === "GROUP" ||
-      selectedChat?.type === "group" ||
-      (selectedChat?.members && selectedChat.members.length > 2);
-    const targetId = isGroup
+    const targetId = isGroupChat
       ? selectedConversationId
       : selectedChat?.targetUserId;
 
     if (targetId) {
       if (!isTypingRef.current) {
-        socketService.startTyping(targetId, isGroup);
+        socketService.startTyping(targetId, isGroupChat);
         isTypingRef.current = true;
       }
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         isTypingRef.current = false;
-        socketService.stopTyping(targetId, isGroup);
+        socketService.stopTyping(targetId, isGroupChat);
       }, 3000);
     }
   };
@@ -854,14 +890,10 @@ export const ActiveChatPane = ({
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isTypingRef.current) {
         isTypingRef.current = false;
-        const isGroup =
-          selectedChat?.type === "GROUP" ||
-          selectedChat?.type === "group" ||
-          (selectedChat?.members && selectedChat.members.length > 2);
-        const targetId = isGroup
+        const targetId = isGroupChat
           ? selectedConversationId
           : selectedChat?.targetUserId;
-        socketService.stopTyping(targetId, isGroup);
+        socketService.stopTyping(targetId, isGroupChat);
       }
     }
   };
@@ -975,6 +1007,7 @@ export const ActiveChatPane = ({
         pinnedCount={enrichedPinnedMessages.length}
         onStartAudioCall={() => void handleStartCall("audio")}
         onStartVideoCall={() => void handleStartCall("video")}
+        onBlockUser={() => void handleBlockUser()}
         activeCallV2={activeCallV2}
         callV2Status={callV2.state.status}
         onJoinActiveCallV2={() => void handleJoinActiveCallV2()}

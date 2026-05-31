@@ -28,6 +28,7 @@ export { uploadMedia, uploadMultipleMedia, deleteMedia, mediaService } from "./m
 export { conversationService } from "./conversationService";
 export { groupChatService } from "./groupChatService";
 export { pollService } from "./pollService";
+export { searchService } from "./searchService";
 export {
   blockService,
   blockUser,

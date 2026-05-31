@@ -3,6 +3,29 @@ import { FiX, FiCheck } from "react-icons/fi";
 import { Avatar, UserInfo } from "./shared";
 import { searchUserById } from "../../services";
 
+const unwrapApiData = (payload) => {
+  if (!payload || typeof payload !== "object") return payload;
+  if ("status" in payload && "data" in payload) return payload.data;
+  if (payload.data && typeof payload.data === "object") {
+    return unwrapApiData(payload.data);
+  }
+  return payload;
+};
+
+const getEmbeddedSender = (request) =>
+  request?.sender || request?.fromUser || request?.requester || request?.user || {};
+
+const getSenderId = (request) =>
+  request?.fromUserId ||
+  request?.senderId ||
+  request?.requesterId ||
+  request?.fromUser?.id ||
+  request?.fromUser?._id ||
+  request?.sender?.id ||
+  request?.sender?._id ||
+  request?.requester?.id ||
+  request?.requester?._id;
+
 /**
  * FriendRequestCard Component
  * Hiển thị friend request nhận được với accept/reject buttons
@@ -18,24 +41,22 @@ import { searchUserById } from "../../services";
 export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onReject, onClick, style }) => {
   const [senderInfo, setSenderInfo] = useState(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
+  const senderId = getSenderId(request);
 
   useEffect(() => {
     // Fetch user info từ fromUserId
-    if (!request?.fromUserId) {
-      console.log("[FriendRequestCard] No fromUserId in request");
+    if (!senderId) {
       return;
     }
 
     const fetchSenderInfo = async () => {
       try {
         setLoadingInfo(true);
-        console.log("[FriendRequestCard] Fetching sender info for userId:", request.fromUserId);
 
-        const response = await searchUserById(request.fromUserId);
-        console.log("[FriendRequestCard] Sender info fetched:", response);
+        const response = await searchUserById(senderId);
 
         // Extract user data từ response
-        const userData = response?.data || response;
+        const userData = unwrapApiData(response);
         setSenderInfo(userData);
       } catch (err) {
         console.error("[FriendRequestCard] Failed to fetch sender info:", err);
@@ -45,11 +66,24 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
     };
 
     fetchSenderInfo();
-  }, [request?.fromUserId]);
+  }, [senderId]);
 
-  const senderName = senderInfo?.displayName || senderInfo?.name || senderInfo?.username || "Unknown";
-  const senderPhone = senderInfo?.phone || "";
-  const senderAvatar = senderInfo?.avatarUrl || null;
+  const embeddedSender = getEmbeddedSender(request);
+  const senderName =
+    senderInfo?.displayName ||
+    senderInfo?.name ||
+    senderInfo?.username ||
+    embeddedSender?.displayName ||
+    embeddedSender?.name ||
+    embeddedSender?.username ||
+    "Unknown";
+  const senderPhone = senderInfo?.phone || embeddedSender?.phone || request?.phone || "";
+  const senderAvatar =
+    senderInfo?.avatarUrl ||
+    senderInfo?.avatar ||
+    embeddedSender?.avatarUrl ||
+    embeddedSender?.avatar ||
+    null;
 
   return (
     <div

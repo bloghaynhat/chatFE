@@ -118,8 +118,7 @@ export const MessageList = ({
               const isGroup =
                 selectedChat?.type === "group" ||
                 selectedChat?.type === "GROUP" ||
-                selectedChat?.isGroup === true ||
-                (selectedChat?.members && selectedChat.members.length > 2);
+                selectedChat?.isGroup === true;
 
               return (
                 <MessageItem
