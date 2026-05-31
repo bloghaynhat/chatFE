@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { callV2Socket } from "../services/callV2Socket";
 import { callV2Service } from "../services/callV2.service";
 import { userService } from "../services/userService";
+import { conversationService } from "../services/conversationService";
 import { useAuth } from "../hooks/useAuth";
 import {
   CallV2IncomingPayload,
@@ -53,6 +54,7 @@ interface CallV2State {
   busyUserIds: string[];
   remotePeer: CallV2PeerInfo | null;
   activeStartedAt: number | null;
+  groupName: string | null;
 }
 
 type CallV2Action =
@@ -76,6 +78,7 @@ type CallV2Action =
   | { type: "SET_BUSY"; busyUserIds: string[] }
   | { type: "SET_REMOTE_PEER"; remotePeer: CallV2PeerInfo | null }
   | { type: "SET_LOCAL_MEDIA"; audioEnabled?: boolean; videoEnabled?: boolean }
+  | { type: "SET_GROUP_CONTEXT"; groupName: string | null }
   | { type: "TOGGLE_VIDEO" }
   | { type: "TOGGLE_AUDIO" }
   | { type: "RESET" };
@@ -95,6 +98,7 @@ const initialState: CallV2State = {
   busyUserIds: [],
   remotePeer: null,
   activeStartedAt: null,
+  groupName: null,
 };
 
 const formatErrorMessage = (error: unknown, fallback: string) => {
@@ -124,6 +128,21 @@ const normalizeCallTimestamp = (value?: number | string | null): number | null =
   const timestamp = typeof value === "string" ? Date.parse(value) : value;
   if (!Number.isFinite(timestamp)) return null;
   return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
+};
+
+const extractGroupName = (payload: any): string | null => {
+  const data = payload?.data || payload;
+  const group = data?.conversation || data?.group || data;
+  return group?.name || group?.displayName || data?.name || null;
+};
+
+const resolveIncomingGroupContext = async (conversationId: string) => {
+  try {
+    const groupInfo = await conversationService.getGroupInfo(conversationId);
+    return extractGroupName(groupInfo) || "this group";
+  } catch {
+    return null;
+  }
 };
 
 function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
@@ -158,6 +177,7 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         participants: {},
         busyUserIds: action.payload.busyUserIds ?? [],
         remotePeer: normalizeUserInfo((action.payload as any).caller || (action.payload as any).callerInfo, action.payload.callerId),
+        groupName: (action.payload as any).conversationName || (action.payload as any).groupName || null,
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
       };
@@ -175,6 +195,7 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         participants: {},
         busyUserIds: action.payload.busyUserIds ?? [],
         remotePeer: normalizeUserInfo((action.payload as any).caller || (action.payload as any).callerInfo, action.payload.callerId),
+        groupName: (action.payload as any).conversationName || (action.payload as any).groupName || null,
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
       };
@@ -209,6 +230,8 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         localAudioEnabled: action.audioEnabled ?? state.localAudioEnabled,
         localVideoEnabled: action.videoEnabled ?? state.localVideoEnabled,
       };
+    case "SET_GROUP_CONTEXT":
+      return { ...state, isGroup: true, groupName: action.groupName };
     case "TOGGLE_VIDEO":
       return { ...state, localVideoEnabled: !state.localVideoEnabled };
     case "TOGGLE_AUDIO":
@@ -300,7 +323,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
 
       room.on(RoomEvent.ParticipantDisconnected, (participant) => {
         console.log("[CallV2SocketProvider] Participant disconnected:", participant.identity);
-        if (stateRef.current.isGroup && room.remoteParticipants.size > 0) {
+        if (stateRef.current.isGroup) {
           toast.info("A participant left the call");
           return;
         }
@@ -590,6 +613,10 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       currentCallIdRef.current = data.callId;
       currentTypeRef.current = data.type;
       dispatch({ type: "SET_INCOMING", payload: data });
+      void resolveIncomingGroupContext(data.conversationId).then((groupName) => {
+        if (!groupName || currentCallIdRef.current !== data.callId) return;
+        dispatch({ type: "SET_GROUP_CONTEXT", groupName });
+      });
       void userService
         .getUserById(data.callerId)
         .then((res) => {
@@ -616,6 +643,10 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
 
     const offOngoing = callV2Socket.on<CallV2OngoingPayload>("call:ongoing", (data) => {
       console.log("[CallV2SocketProvider] Received call:ongoing:", data);
+      void resolveIncomingGroupContext(data.conversationId).then((groupName) => {
+        if (!groupName || (currentCallIdRef.current && currentCallIdRef.current !== data.callId)) return;
+        dispatch({ type: "SET_GROUP_CONTEXT", groupName });
+      });
     });
 
     const offJoined = callV2Socket.on<CallV2JoinedPayload>("call:joined", (data) => {
