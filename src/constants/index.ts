@@ -1,11 +1,12 @@
 // Application constants and enums
 
 export const API_ENDPOINTS = {
-  AUTH: "/api/auth",
-  USERS: "/api/users",
-  MESSAGES: "/api/messages",
-  FRIENDS: "/api/friends",
-  CHAT: "/api/chat",
+  AUTH: "/auth",
+  USERS: "/users",
+  MESSAGES: "/messages",
+  FRIEND_REQUESTS: "/friend-requests",
+  FRIENDSHIPS: "/friendships",
+  CHAT: "/conversations",
 };
 
 export const USER_ROLES = {

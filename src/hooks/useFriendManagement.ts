@@ -46,14 +46,28 @@ export const useFriendManagement = () => {
     };
   };
 
-  const unwrapUser = (response) => response?.data?.data || response?.data || response;
+  const unwrapApiData = (response) => {
+    if (!response || typeof response !== "object") return response;
+    if ("status" in response && "data" in response) return response.data;
+    return response.data || response;
+  };
+
+  const unwrapUser = (response) => unwrapApiData(response);
+
+  const extractFriendships = (response) => {
+    const payload = unwrapApiData(response);
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload?.data?.items)) return payload.data.items;
+    return [];
+  };
 
   const fetchFriends = async () => {
     setLoading(true);
     setError("");
     try {
       const response = await getFriends();
-      const friendships = response?.items || response?.data?.items || response?.data?.data?.items || [];
+      const friendships = extractFriendships(response);
       const currentUserId = getCurrentUserId();
 
       if (!currentUserId) {
@@ -79,7 +93,13 @@ export const useFriendManagement = () => {
             };
           }
 
-          if (embeddedInfo.displayName || embeddedInfo.name || embeddedInfo.username || embeddedInfo.avatarUrl) {
+          if (
+            embeddedInfo.phone &&
+            (embeddedInfo.displayName ||
+              embeddedInfo.name ||
+              embeddedInfo.username ||
+              embeddedInfo.avatarUrl)
+          ) {
             return {
               ...friendship,
               friendUserId,
@@ -97,11 +117,11 @@ export const useFriendManagement = () => {
             return {
               ...friendship,
               friendUserId,
-              displayName: userInfo?.displayName || userInfo?.name || "Unknown",
-              name: userInfo?.name || friendship?.name,
-              username: userInfo?.username || friendship?.username,
-              phone: userInfo?.phone || friendship?.phone,
-              avatarUrl: userInfo?.avatarUrl || userInfo?.avatar || embeddedInfo.avatarUrl,
+              displayName: userInfo?.displayName || embeddedInfo.displayName,
+              name: userInfo?.name || embeddedInfo.name,
+              username: userInfo?.username || embeddedInfo.username,
+              phone: userInfo?.phone || embeddedInfo.phone,
+              avatarUrl: userInfo?.avatarUrl || embeddedInfo.avatarUrl,
             };
           } catch (err) {
             console.error(

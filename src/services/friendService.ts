@@ -21,7 +21,7 @@ export const searchUserById = async (userId) => {
   if (!userId) {
     throw new Error("Missing user id");
   }
-  const response = await api.get(`/users/${userId}`);
+  const response = await api.get(`/users/${userId}/public`);
   return response;
 };
 

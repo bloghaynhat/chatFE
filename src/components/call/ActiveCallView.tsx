@@ -187,7 +187,7 @@ export default function ActiveCallView() {
   const state = callV2.state;
   const { user } = useAuth();
 
-  const endCall = callV2.endCallV2;
+  const hangUpCall = state.isGroup ? callV2.leaveCallV2 : callV2.endCallV2;
   const toggleVideo = callV2.toggleVideo;
   const toggleAudio = callV2.toggleAudio;
 
@@ -412,8 +412,11 @@ export default function ActiveCallView() {
 
   const isVideo = state.type === "video";
   const remoteIds = remoteTiles.map((tile) => tile.participantId).filter(Boolean);
-  const expectedIds = Object.keys(state.participants || {}).filter((id) => id && id !== user?.id);
-  const allRemoteIds = Array.from(new Set([...remoteIds, ...expectedIds]));
+  const expectedIds = Object.keys(state.participants || {}).filter((id) => {
+    const participant = state.participants?.[id];
+    return id && id !== user?.id && participant?.status === "joined";
+  });
+  const allRemoteIds = state.isGroup ? remoteIds : Array.from(new Set([...remoteIds, ...expectedIds]));
   const remotePeople: ParticipantTileInfo[] =
     allRemoteIds.length > 0
       ? allRemoteIds.map((id) => {
@@ -433,7 +436,9 @@ export default function ActiveCallView() {
             connected: Boolean(liveTile),
           };
         })
-      : [
+      : state.isGroup
+        ? []
+        : [
           {
             participantId: state.remotePeer?.id || "remote-peer",
             participantName: state.remotePeer?.name || "Connecting...",
@@ -598,9 +603,9 @@ export default function ActiveCallView() {
             </button>
           )}
           <button
-            onClick={endCall}
+            onClick={hangUpCall}
             className="h-12 w-12 rounded-full bg-[#ff4d5e] text-white shadow-[0_14px_28px_rgba(255,77,94,0.34)] transition hover:-translate-y-0.5 hover:bg-[#e94352]"
-            aria-label="End call"
+            aria-label={state.isGroup ? "Leave call" : "End call"}
           >
             <FiPhoneOff className="mx-auto h-6 w-6" />
           </button>

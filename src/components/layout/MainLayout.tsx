@@ -31,6 +31,41 @@ const MainLayout = ({ children }: { children?: any }) => {
   // Track pending pin/unpin operations to prevent duplicate requests
   const pendingPinOperations = useRef<Set<string>>(new Set());
 
+  const appendLocalMessage = useCallback((message: any) => {
+    if (!message?.id && !message?._id) return;
+    setMessages((prev) => {
+      const messageId = message.id || message._id;
+      if (prev.some((item: any) => String(item.id || item._id) === String(messageId))) {
+        return prev;
+      }
+      return [...prev, message];
+    });
+  }, []);
+
+  const updatePollInMessages = useCallback((poll: any) => {
+    if (!poll?.id) return;
+    setMessages((prev) =>
+      prev.map((message: any) => {
+        const messagePollId = message.pollId || message.poll?.id;
+        const messageId = message.id || message._id;
+        if (
+          String(messagePollId) === String(poll.id) ||
+          (poll.messageId && String(messageId) === String(poll.messageId))
+        ) {
+          return {
+            ...message,
+            pollId: messagePollId || poll.id,
+            poll: {
+              ...(message.poll || {}),
+              ...poll,
+            },
+          };
+        }
+        return message;
+      }),
+    );
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -339,6 +374,20 @@ const MainLayout = ({ children }: { children?: any }) => {
           );
         });
 
+        socketService.onPollVote((payload: any) => {
+          updatePollInMessages(payload?.poll || payload?.data || payload);
+        });
+
+        socketService.onPollClosed((payload: any) => {
+          updatePollInMessages(payload?.poll || payload?.data || payload);
+        });
+
+        socketService.onPollNew((payload: any) => {
+          const message = payload?.message || payload?.poll?.timelineMessage;
+          if (message) appendLocalMessage(message);
+          if (payload?.poll) updatePollInMessages(payload.poll);
+        });
+
         // Handle message pin
         socketService.onMessagePinned((payload: any) => {
           const { conversationId, message } = payload;
@@ -459,13 +508,16 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.offMessagePinned();
       socketService.offMessageUnpinned();
       socketService.offMessageQuoted();
+      socketService.off("poll:new");
+      socketService.off("poll:vote");
+      socketService.off("poll:closed");
       socketService.off("conversation:updated");
       socketService.offGroupDissolved();
       socketService.offGroupRenamed();
       socketService.offGroupAvatarChanged();
       // Do not disconnect the socket here to preserve global connectivity
     };
-  }, [selectedConversationId]);
+  }, [selectedConversationId, appendLocalMessage, updatePollInMessages]);
 
   useEffect(() => {
     setTypingUsers(new Set());
@@ -654,6 +706,38 @@ const MainLayout = ({ children }: { children?: any }) => {
     },
     [isOpeningConversation, openingChatId],
   );
+
+  const openSavedMessages = useCallback(async () => {
+    setActiveView("chats");
+    setChatError("");
+
+    try {
+      const conversations = await conversationService.getConversations();
+      const savedMessages = (Array.isArray(conversations) ? conversations : []).find(
+        (conversation: any) =>
+          conversation?.type === "saved_messages" ||
+          conversation?.isSavedMessages ||
+          conversation?.isSelfChat ||
+          conversation?.pairKey === `self_${user?.id}`,
+      );
+
+      if (!savedMessages) {
+        setChatError("Saved Messages not found.");
+        return;
+      }
+
+      await openChatByRow({
+        ...savedMessages,
+        name: savedMessages.name || "Saved Messages",
+        type: "saved_messages",
+        isSavedMessages: true,
+        isSelfChat: true,
+      });
+    } catch (error) {
+      console.error("Failed to open Saved Messages:", error);
+      setChatError("Could not open Saved Messages.");
+    }
+  }, [openChatByRow, user?.id]);
 
   const retryOpenCurrentChat = useCallback(() => {
     if (!selectedChat) return;
@@ -1326,6 +1410,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           activeChatId={selectedChat?.id || null}
           openingChatId={openingChatId}
           onSelectChat={openChatByRow}
+          onOpenSavedMessages={openSavedMessages}
         />
 
         {/* Right Panel - Chat Area */}
@@ -1351,6 +1436,8 @@ const MainLayout = ({ children }: { children?: any }) => {
               setIsRightSidebarOpen={setIsRightSidebarOpen}
               onPinMessage={handlePinMessage}
               onUnpinMessage={handleUnpinMessage}
+              onPollCreated={appendLocalMessage}
+              onPollUpdated={updatePollInMessages}
             />
           )}
         </div>

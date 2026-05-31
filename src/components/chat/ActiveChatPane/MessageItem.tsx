@@ -13,6 +13,7 @@ import { MessageMedia } from "./MessageTypes/MessageMedia";
 import { MessageAudio } from "./MessageTypes/MessageAudio";
 import { MessageDocument } from "./MessageTypes/MessageDocument";
 import { MessageText } from "./MessageTypes/MessageText";
+import { PollMessage } from "./MessageTypes/PollMessage";
 import { CallMessageBubble, parseCallMessage } from "./MessageTypes/CallMessageBubble";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
@@ -34,6 +35,7 @@ export const MessageItem = ({
   setPreviewVideoUrl,
   currentUserId,
   onNavigateToMessage,
+  onPollUpdated,
 }: any) => {
   const [fetchedSender, setFetchedSender] = useState(null);
   const [reactionView, setReactionView] = useState(null);
@@ -160,6 +162,7 @@ export const MessageItem = ({
         !audios.includes(messageFiles[0])));
 
   const isSystem = message?.type === "system" || message?.type === "SYSTEM";
+  const isPoll = message?.type === "poll" || message?.type === "POLL" || Boolean(message?.poll);
   const callMessage = parseCallMessage(message, text);
   const isCallMessage = Boolean(callMessage);
 
@@ -174,7 +177,8 @@ export const MessageItem = ({
     !isAudio &&
     !isForwarded &&
     !isSystem &&
-    !isCallMessage;
+    !isCallMessage &&
+    !isPoll;
 
   const onlyImagesOrVideos =
     isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
@@ -322,7 +326,14 @@ export const MessageItem = ({
           />
         )}
 
-        {isCallMessage ? (
+        {isPoll ? (
+          <PollMessage
+            message={message}
+            mine={mine}
+            currentUserId={currentUserId}
+            onPollUpdated={onPollUpdated}
+          />
+        ) : isCallMessage ? (
           <CallMessageBubble message={message} text={text} mine={mine} />
         ) : (
           !onlyImagesOrVideos && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
@@ -331,7 +342,7 @@ export const MessageItem = ({
         {/* Bottom area: Reactions + Timestamp */}
         <div
           className={`flex items-end gap-2 px-2 pb-2 flex-row flex-wrap justify-between ${
-            !message.reactions || message.reactions.length === 0
+            (!message.reactions || message.reactions.length === 0) && !isPoll
               ? "absolute bottom-0 right-[4px] w-auto pt-2"
               : "w-full pt-1"
           } z-10`}

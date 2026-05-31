@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { userService } from "../../services/userService";
 import { conversationService } from "../../services/conversationService";
+import { checkBlockStatus, checkFriendRequestStatus } from "../../services";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -18,12 +19,14 @@ import { AiTranslateMessage } from "./AiTranslateMessage";
 import { VideoPreviewModal } from "./ActiveChatPane/VideoPreviewModal";
 import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
+import { CreatePollModal } from "./ActiveChatPane/CreatePollModal";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
+import { pollService } from "../../services/pollService";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
-import { FiImage, FiFile, FiGift, FiCheckCircle } from "react-icons/fi";
+import { FiImage, FiFile, FiGift, FiCheckCircle, FiBarChart2 } from "react-icons/fi";
 
 export const ActiveChatPane = ({
   selectedChat,
@@ -45,6 +48,8 @@ export const ActiveChatPane = ({
   setIsRightSidebarOpen,
   onPinMessage,
   onUnpinMessage,
+  onPollCreated,
+  onPollUpdated,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -61,6 +66,8 @@ export const ActiveChatPane = ({
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
+  const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
+  const [isCreatingPoll, setIsCreatingPoll] = useState(false);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -85,6 +92,7 @@ export const ActiveChatPane = ({
   const [contextMenu, setContextMenu] = useState(null);
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
+  const [chatRestriction, setChatRestriction] = useState<string | null>(null);
   const [messageToTranslate, setMessageToTranslate] = useState<Message | null>(
     null,
   );
@@ -200,8 +208,107 @@ export const ActiveChatPane = ({
     };
   }, [selectedChat]);
 
+  const privateTargetUserId = useMemo(() => {
+    if (!selectedChat) return null;
+    const isGroup =
+      selectedChat?.type === "GROUP" ||
+      selectedChat?.type === "group" ||
+      (selectedChat?.members && selectedChat.members.length > 2);
+
+    if (isGroup) return null;
+
+    const target =
+      selectedChat.targetUser ||
+      selectedChat.participant ||
+      selectedChat.user ||
+      selectedChat.receiver ||
+      selectedChat.friend ||
+      null;
+
+    return (
+      selectedChat.targetUserId ||
+      selectedChat.participantId ||
+      target?.id ||
+      target?._id ||
+      (selectedChat?.pairKey
+        ? selectedChat.pairKey.split("_").find((id: string) => id !== currentUserId)
+        : null) ||
+      null
+    );
+  }, [currentUserId, selectedChat]);
+
+  const refreshChatRestriction = useCallback(async () => {
+    if (!privateTargetUserId) {
+      setChatRestriction(null);
+      return;
+    }
+
+    try {
+      const [blockStatus, relationshipStatus] = await Promise.all([
+        checkBlockStatus(privateTargetUserId).catch(() => ({ isBlocked: false })),
+        checkFriendRequestStatus(privateTargetUserId).catch(() => null),
+      ]);
+
+      const relationshipPayload =
+        relationshipStatus &&
+        typeof relationshipStatus === "object" &&
+        "status" in relationshipStatus &&
+        "data" in relationshipStatus
+          ? (relationshipStatus as any).data
+          : (relationshipStatus as any)?.data || relationshipStatus || {};
+
+      if (blockStatus?.isBlocked || relationshipPayload?.direction === "BLOCKING") {
+        setChatRestriction("You blocked this user");
+        return;
+      }
+
+      if (relationshipPayload?.status === "BLOCKED" && relationshipPayload?.direction === "BLOCKED_BY") {
+        setChatRestriction("You can't message this user");
+        return;
+      }
+
+      setChatRestriction(null);
+    } catch (err) {
+      console.error("Failed to refresh chat restriction", err);
+      setChatRestriction(null);
+    }
+  }, [privateTargetUserId]);
+
+  useEffect(() => {
+    refreshChatRestriction();
+  }, [refreshChatRestriction]);
+
+  useEffect(() => {
+    void socketService.initBlocksSocket();
+
+    const handleBlockStatusChanged = (event: any) => {
+      if (!event?.detail?.userId || event.detail.userId === privateTargetUserId) {
+        refreshChatRestriction();
+      }
+    };
+
+    const handleSocketBlockStatusChanged = (payload: any) => {
+      if (!payload?.userId || payload.userId === privateTargetUserId) {
+        refreshChatRestriction();
+      }
+    };
+
+    const unsubscribeSocket = socketService.on("blockStatus:changed", handleSocketBlockStatusChanged);
+    window.addEventListener("blockStatus:changed", handleBlockStatusChanged);
+    return () => {
+      unsubscribeSocket();
+      window.removeEventListener("blockStatus:changed", handleBlockStatusChanged);
+    };
+  }, [privateTargetUserId, refreshChatRestriction]);
+
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
+      const isSavedMessages =
+        selectedChat?.type === "saved_messages" ||
+        selectedChat?.isSavedMessages ||
+        selectedChat?.isSelfChat;
+      if (isSavedMessages) return;
+
       const conversationId = selectedConversationId || selectedChat?.id;
       if (!conversationId) return;
 
@@ -555,6 +662,13 @@ export const ActiveChatPane = ({
       onClick: () => documentInputRef.current?.click(),
     },
     {
+      id: "poll",
+      label: "Poll",
+      icon: FiBarChart2,
+      onClick: () => setIsCreatePollOpen(true),
+      groupOnly: true,
+    },
+    {
       id: "gift-premium",
       label: "Gift Premium",
       icon: FiGift,
@@ -565,6 +679,29 @@ export const ActiveChatPane = ({
       icon: FiCheckCircle,
     },
   ];
+
+  const visibleAttachActions = attachActions.filter((action: any) => {
+    if (!action.groupOnly) return true;
+    return selectedChat?.type === "group" || selectedChat?.type === "GROUP";
+  });
+
+  const handleCreatePoll = async (payload: any) => {
+    if (!selectedConversationId) return;
+    setIsCreatingPoll(true);
+    try {
+      const result = await pollService.createPoll(selectedConversationId, payload);
+      const poll = result?.poll || result;
+      const message = result?.message || poll?.timelineMessage;
+      if (message) onPollCreated?.(message);
+      if (poll) onPollUpdated?.(poll);
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (error: any) {
+      alert(error?.message || "Could not create poll.");
+      throw error;
+    } finally {
+      setIsCreatingPoll(false);
+    }
+  };
 
   const calendarMonthLabel = calendarMonth.toLocaleDateString("en-US", {
     month: "long",
@@ -667,6 +804,7 @@ export const ActiveChatPane = ({
   }, [selectedChat?.id]);
 
   const handleInputChange = (event) => {
+    if (chatRestriction) return;
     setDraftMessage(event.target.value);
     const isGroup =
       selectedChat?.type === "GROUP" ||
@@ -729,6 +867,7 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
+    if (chatRestriction) return;
     if (
       !draftMessage.trim() &&
       !forwardingMessage &&
@@ -741,6 +880,8 @@ export const ActiveChatPane = ({
   };
 
   const handleSendVoice = (voiceFile: any) => {
+    if (chatRestriction) return;
+
     if (onSendMessage) {
       const fileWithPreview = Object.assign(voiceFile, {
         preview: URL.createObjectURL(voiceFile),
@@ -865,6 +1006,7 @@ export const ActiveChatPane = ({
         handleContextMenu={handleContextMenu}
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
+        onPollUpdated={onPollUpdated}
       />
 
       {contextMenu && (
@@ -968,7 +1110,7 @@ export const ActiveChatPane = ({
         setIsMoreMenuOpen={setIsMoreMenuOpen}
         attachMenuRef={attachMenuRef}
         emojiMenuRef={emojiMenuRef}
-        attachActions={attachActions}
+        attachActions={visibleAttachActions}
         editingMessage={editingMessage}
         setEditingMessage={setEditingMessage}
         replyingMessage={replyingMessage}
@@ -981,6 +1123,14 @@ export const ActiveChatPane = ({
         smartReplyTriggerKey={lastMessageId}
         isTyping={typingUsers.size > 0}
         isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
+        disabledReason={chatRestriction}
+      />
+
+      <CreatePollModal
+        isOpen={isCreatePollOpen}
+        onClose={() => setIsCreatePollOpen(false)}
+        onCreate={handleCreatePoll}
+        isCreating={isCreatingPoll}
       />
 
       <VideoPreviewModal

@@ -49,6 +49,7 @@ export const ChatInput = ({
   onClearForwarding,
   currentUserId,
   handleSendVoice,
+  disabledReason,
   selectedConversationId,
   smartReplyTriggerKey,
   isTyping,
@@ -302,8 +303,13 @@ export const ChatInput = ({
       />
 
       <div
-        className={`flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40 relative" : ""}`}
+        className={`relative flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40" : ""}`}
       >
+        {disabledReason && (
+          <div className="absolute inset-0 z-[80] flex items-center justify-center rounded-full border border-red-200 dark:border-red-800 bg-red-50/95 dark:bg-red-950/90 px-4 text-center text-sm font-semibold text-red-600 dark:text-red-200 shadow-lg backdrop-blur-sm">
+            <span className="line-clamp-2">{disabledReason}</span>
+          </div>
+        )}
         {isRecordingAudio ? (
           <div className="relative flex-1 h-11 lg:h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-between px-4 border border-red-500/20 shadow-lg">
             <div className="flex items-center gap-3 text-red-500">
@@ -342,6 +348,7 @@ export const ChatInput = ({
                 <button
                   key={action.id}
                   onClick={() => {
+                    if (disabledReason) return;
                     setIsAttachMenuOpen(false);
                     if (action.onClick) action.onClick();
                   }}
@@ -369,6 +376,7 @@ export const ChatInput = ({
 
           <button
             onClick={() => {
+              if (disabledReason) return;
               setIsEmojiPickerOpen((prev) => !prev);
               setIsAttachMenuOpen(false);
               setIsMoreMenuOpen(false);
@@ -384,10 +392,11 @@ export const ChatInput = ({
             value={draftMessage}
             onChange={handleInputChange}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSendMessage();
+              if (e.key === "Enter" && !disabledReason) handleSendMessage();
             }}
-            placeholder="Message"
-            className="absolute left-11 right-20 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none"
+            disabled={Boolean(disabledReason)}
+            placeholder={disabledReason || "Message"}
+            className="absolute left-11 right-11 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed"
           />
 
           <div className="absolute right-9 top-1/2 -translate-y-1/2">
@@ -399,6 +408,7 @@ export const ChatInput = ({
 
           <button
             onClick={() => {
+              if (disabledReason) return;
               setIsAttachMenuOpen((prev) => !prev);
               setIsMoreMenuOpen(false);
               setIsEmojiPickerOpen(false);
@@ -419,7 +429,10 @@ export const ChatInput = ({
                 className="absolute right-0 bottom-[calc(100%+12px)] w-[220px] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-xl p-2 border border-black/5 dark:border-white/10 z-[100] origin-bottom-right animate-in fade-in zoom-in-95 duration-200"
               >
                 <button
-                  onClick={toggleVoiceToText}
+                  onClick={() => {
+                    if (disabledReason) return;
+                    toggleVoiceToText();
+                  }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-white/50 dark:hover:bg-slate-700/80 transition-colors"
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isListeningText ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 animate-pulse' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300'}`}>
@@ -433,7 +446,10 @@ export const ChatInput = ({
                   </div>
                 </button>
                 <button
-                  onClick={startVoiceRecording}
+                  onClick={() => {
+                    if (disabledReason) return;
+                    startVoiceRecording();
+                  }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-white/50 dark:hover:bg-slate-700/80 transition-colors mt-1"
                 >
                   <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center shrink-0 text-gray-600 dark:text-gray-300">
@@ -449,11 +465,15 @@ export const ChatInput = ({
             
             <button
               className={`h-11 w-11 lg:h-12 lg:w-12 rounded-full inline-flex items-center justify-center shadow-md transition cursor-pointer z-50 relative ${
+                disabledReason
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  :
                 isListeningText 
                   ? "bg-blue-100 text-blue-600 animate-pulse hover:bg-blue-200" 
                   : "bg-[#2ea6f3] text-white hover:bg-[#1f97e5]"
               }`}
               onClick={() => {
+                if (disabledReason) return;
                 if (editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage) {
                   handleSendMessage();
                 } else if (isListeningText) {

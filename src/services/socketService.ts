@@ -4,11 +4,13 @@ import { authStorage } from "../runtime/storage";
 class SocketService {
   messagesSocket: Socket | null = null;
   friendsSocket: Socket | null = null;
+  blocksSocket: Socket | null = null;
   listeners: Map<string, Function[]> = new Map();
 
   constructor() {
     this.messagesSocket = null;
     this.friendsSocket = null;
+    this.blocksSocket = null;
     this.listeners = new Map();
   }
 
@@ -81,6 +83,43 @@ class SocketService {
     this.setupFriendListeners();
 
     return this.friendsSocket;
+  }
+
+  async initBlocksSocket() {
+    if (this.blocksSocket?.connected) {
+      return this.blocksSocket;
+    }
+
+    const token = await authStorage.getItem("token");
+    if (!token) return null;
+
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
+
+    this.blocksSocket = io(`${serverUrl}/blocks`, {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    this.blocksSocket.on("connect", () => {
+      console.log("[Blocks] connected:", this.blocksSocket.id);
+    });
+
+    this.blocksSocket.on("disconnect", (reason) => {
+      console.log("[Blocks] disconnected:", reason);
+    });
+
+    this.blocksSocket.on("connect_error", (err) => {
+      console.error("[Blocks] error:", err.message);
+    });
+
+    this.setupBlockListeners();
+
+    return this.blocksSocket;
   }
 
   // ================= LISTENERS =================
@@ -214,6 +253,26 @@ class SocketService {
     this.messagesSocket.on("group:settings_updated", (data) => {
       this.emit("group:settings_updated", data);
     });
+
+    this.messagesSocket.on("poll:new", (data) => {
+      this.emit("poll:new", data);
+    });
+
+    this.messagesSocket.on("poll:vote", (data) => {
+      this.emit("poll:vote", data);
+    });
+
+    this.messagesSocket.on("poll:closed", (data) => {
+      this.emit("poll:closed", data);
+    });
+
+    this.messagesSocket.on("poll:pinned", (data) => {
+      this.emit("poll:pinned", data);
+    });
+
+    this.messagesSocket.on("poll:unpinned", (data) => {
+      this.emit("poll:unpinned", data);
+    });
   }
 
   setupFriendListeners() {
@@ -237,6 +296,30 @@ class SocketService {
 
     this.friendsSocket.on("friendship:unfriended", (payload) => {
       this.emit("friendship:unfriended", payload);
+    });
+  }
+
+  setupBlockListeners() {
+    if (!this.blocksSocket) return;
+
+    this.blocksSocket.on("block:blocked", (payload) => {
+      const blockerId = payload?.data?.blockedBy || payload?.blockedBy || payload?.userId;
+      this.emit("block:blocked", payload);
+      this.emit("blockStatus:changed", {
+        ...payload,
+        isBlockedByOther: true,
+        userId: blockerId,
+      });
+    });
+
+    this.blocksSocket.on("block:unblocked", (payload) => {
+      const unblockerId = payload?.data?.unblockedBy || payload?.unblockedBy || payload?.userId;
+      this.emit("block:unblocked", payload);
+      this.emit("blockStatus:changed", {
+        ...payload,
+        isBlockedByOther: false,
+        userId: unblockerId,
+      });
     });
   }
 
@@ -274,6 +357,7 @@ class SocketService {
   async connect() {
     await this.initMessagesSocket();
     await this.initFriendsSocket();
+    await this.initBlocksSocket();
     return this.messagesSocket;
   }
 
@@ -488,6 +572,18 @@ class SocketService {
     this.off("group:settings_updated");
   }
 
+  onPollNew(callback) {
+    return this.on("poll:new", callback);
+  }
+
+  onPollVote(callback) {
+    return this.on("poll:vote", callback);
+  }
+
+  onPollClosed(callback) {
+    return this.on("poll:closed", callback);
+  }
+
   joinRoom(conversationId) {
     return this.joinGroup(conversationId);
   }
@@ -506,8 +602,6 @@ class SocketService {
       const payload: any = { conversationId };
       if (text) payload.text = text;
       if (media && media.length > 0) payload.media = media;
-
-      console.log("SOCKET SEND_MESSAGE PAYLOAD:", payload);
 
       this.messagesSocket.emit("sendMessage", payload, (res: any) => {
         if (res?.success || res?.status === "success") {
@@ -924,6 +1018,11 @@ class SocketService {
       this.friendsSocket = null;
     }
 
+    if (this.blocksSocket) {
+      this.blocksSocket.disconnect();
+      this.blocksSocket = null;
+    }
+
     this.listeners.clear();
   }
 }
@@ -934,6 +1033,7 @@ export const socketService = new SocketService();
 export const initSocket = async () => {
   await socketService.initMessagesSocket();
   await socketService.initFriendsSocket();
+  await socketService.initBlocksSocket();
 };
 
 // Message
@@ -1025,3 +1125,7 @@ export const onFriendRequestRejected = (cb) =>
   socketService.on("friend_request:rejected", cb);
 
 export const onUnfriend = (cb) => socketService.on("friendship:unfriended", cb);
+
+// Block
+export const onBlockStatusChanged = (cb) =>
+  socketService.on("blockStatus:changed", cb);

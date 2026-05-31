@@ -1,7 +1,8 @@
 import React from "react";
-import { FiCheck, FiEye } from "react-icons/fi";
+import { FiBookmark, FiCheck, FiEye } from "react-icons/fi";
 import { Conversation } from "../../../types/conversation";
 import { useAuth } from "../../../hooks";
+import { getChatMessagePreview } from "../../../utils/chatPreview";
 
 interface ConversationItemProps {
   chat: Conversation;
@@ -21,6 +22,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   const { user } = useAuth();
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
   const isMine = chat.lastMessage?.senderId === user?.id || chat.lastMessage?.senderId === "me";
+  const isSavedMessages = chat.type === "saved_messages" || chat.isSavedMessages || chat.isSelfChat;
 
   return (
     <div
@@ -30,7 +32,15 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
       `}
     >
       <div className="relative flex-shrink-0">
-        {chat.avatarUrl ? (
+        {isSavedMessages ? (
+          <div
+            className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm ${
+              isActive ? "bg-blue-400 text-white" : "bg-blue-500 text-white"
+            }`}
+          >
+            <FiBookmark className="text-[22px]" />
+          </div>
+        ) : chat.avatarUrl ? (
           <img src={chat.avatarUrl} alt={chat.name} className="w-12 h-12 rounded-full object-cover shadow-sm" />
         ) : (
           <div
@@ -75,8 +85,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             <p
               className={`text-sm truncate transition-colors duration-200 ${isActive ? "text-blue-100" : chat.unreadCount ? "text-gray-900 dark:text-gray-200 font-medium" : "text-gray-500"}`}
             >
-              {chat.lastMessage?.textPreview ||
-                (chat.lastMessage?.type === "media" ? "Sent a media file" : "No messages")}
+              {getChatMessagePreview(chat.lastMessage)}
             </p>
             {chat.unreadCount && chat.unreadCount > 0 ? (
               <span

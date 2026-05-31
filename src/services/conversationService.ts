@@ -189,7 +189,7 @@ export const conversationService = {
   },
 
   async removeReactionMessage(messageId: string, emoji: string): Promise<any> {
-    return api.delete(`/messages/${messageId}/react`, { data: { emoji } });
+    return api.delete(`/messages/${messageId}/react`, { emoji });
   },
 
   async markDelivered(
