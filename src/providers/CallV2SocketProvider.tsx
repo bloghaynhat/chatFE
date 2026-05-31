@@ -71,6 +71,16 @@ type CallV2Action =
     }
   | { type: "SET_INCOMING"; payload: CallV2IncomingPayload }
   | { type: "SET_ONGOING"; payload: CallV2OngoingPayload }
+  | {
+      type: "SET_JOINING";
+      callId: string;
+      conversationId: string;
+      callType: "audio" | "video";
+      roomName?: string | null;
+      participants?: Record<string, CallV2ParticipantInfo>;
+      busyUserIds?: string[];
+      isGroup?: boolean;
+    }
   | { type: "SET_ACTIVE"; roomName: string; startedAt?: number | string | null }
   | { type: "SET_ENDED" }
   | { type: "UPDATE_PARTICIPANT"; callId: string; userId: string; participant: CallV2ParticipantInfo }
@@ -198,6 +208,20 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         groupName: (action.payload as any).conversationName || (action.payload as any).groupName || null,
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
+      };
+    case "SET_JOINING":
+      return {
+        ...state,
+        status: "ringing",
+        callId: action.callId,
+        conversationId: action.conversationId,
+        type: action.callType,
+        roomName: action.roomName ?? state.roomName,
+        isGroup: action.isGroup ?? state.isGroup,
+        participants: action.participants ?? state.participants,
+        busyUserIds: action.busyUserIds ?? state.busyUserIds,
+        localAudioEnabled: true,
+        localVideoEnabled: action.callType === "video",
       };
     case "SET_ACTIVE":
       return {
@@ -493,18 +517,14 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         const callType = res.call.type ?? type;
         currentTypeRef.current = callType;
         dispatch({
-          type: "SET_ONGOING",
-          payload: {
-            callId,
-            callerId: res.call.callerId,
-            conversationId,
-            type: callType,
-            roomName: res.roomName,
-            isGroup: res.call.isGroup,
-            livekitProvider: res.livekitProvider,
-            status: res.call.status,
-            busyUserIds: res.call.busyUserIds,
-          },
+          type: "SET_JOINING",
+          callId,
+          conversationId,
+          callType,
+          roomName: res.roomName,
+          participants: res.call.participants,
+          busyUserIds: res.call.busyUserIds,
+          isGroup: res.call.isGroup,
         });
         callV2Socket.joinCallRoom(callId);
         if (res.token && res.wsUrl && res.roomName) {

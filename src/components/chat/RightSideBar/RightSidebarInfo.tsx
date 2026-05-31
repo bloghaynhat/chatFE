@@ -223,9 +223,6 @@ export const RightSidebarInfo = ({
       } else {
         await blockUser(targetUserId);
         setIsBlocked(true);
-        setFriendStatus("NONE");
-        setFriendRequestId(null);
-        setFriendDirection(null);
       }
 
       setShowBlockConfirm(false);
@@ -234,7 +231,6 @@ export const RightSidebarInfo = ({
           detail: { userId: targetUserId, isBlocked: !isBlocked },
         }),
       );
-      window.dispatchEvent(new CustomEvent("friendList_refresh", { detail: { friendId: targetUserId } }));
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err: any) {
       console.error("Failed to update block status:", err);
