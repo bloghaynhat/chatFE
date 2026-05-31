@@ -581,7 +581,21 @@ export const RightSidebar = ({
             onLeaveGroup={handleLeaveGroup}
             targetUserId={
               !isGroup
-                ? selectedChat?.targetUserId || selectedChat?.participantId
+                ? selectedChat?.targetUserId ||
+                  selectedChat?.participantId ||
+                  selectedChat?.targetUser?.id ||
+                  selectedChat?.targetUser?._id ||
+                  selectedChat?.participant?.id ||
+                  selectedChat?.participant?._id ||
+                  selectedChat?.user?.id ||
+                  selectedChat?.user?._id ||
+                  selectedChat?.friend?.id ||
+                  selectedChat?.friend?._id ||
+                  (selectedChat?.pairKey
+                    ? selectedChat.pairKey
+                        .split("_")
+                        .find((id: string) => id !== currentUserId)
+                    : null)
                 : null
             }
             conversationId={selectedChat?.id}

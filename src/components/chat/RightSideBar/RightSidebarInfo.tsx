@@ -8,7 +8,7 @@ import { DeleteContactModal } from "./RightSideBarTypes/DeleteContactModal";
 import { MediaGallery } from "./MediaGallery";
 import React, { useState, useEffect, useCallback } from "react";
 import { useContactsSocketListeners } from "../../../hooks";
-import { removeFriend, checkFriendRequestStatus, sendFriendRequest, acceptFriendRequest } from "../../../services";
+import { removeFriend, checkFriendRequestStatus } from "../../../services";
 import { userService } from "../../../services";
 
 interface RightSidebarInfoProps {
@@ -62,12 +62,19 @@ export const RightSidebarInfo = ({
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null);
   const [friendDirection, setFriendDirection] = useState<"INCOMING" | "OUTGOING" | null>(null);
-  const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
+
+  const canDeleteContact = !isGroup && friendStatus === "ACCEPTED";
+
+  const unwrapApiData = (payload: any) => {
+    if (!payload || typeof payload !== "object") return payload;
+    if ("status" in payload && "data" in payload) return payload.data;
+    return payload.data || payload;
+  };
 
   // Fetch user details for non-group view
   useEffect(() => {
@@ -78,12 +85,16 @@ export const RightSidebarInfo = ({
 
   useEffect(() => {
     const fetchUserDetails = async () => {
-      if (isGroup || !targetUserId) return;
+      if (isGroup || !targetUserId) {
+        setTargetUserDetails(null);
+        return;
+      }
       try {
         const response = await userService.getUserById(targetUserId);
-        setTargetUserDetails(response?.data?.data || response?.data || response || null);
+        setTargetUserDetails(unwrapApiData(response) || null);
       } catch (error) {
         console.error("Failed to fetch target user details", error);
+        setTargetUserDetails(null);
       }
     };
     fetchUserDetails();
@@ -94,7 +105,7 @@ export const RightSidebarInfo = ({
     if (isGroup || !targetUserId) return;
     try {
       const response = await checkFriendRequestStatus(targetUserId);
-      const statusData = response?.data || response || {};
+      const statusData = unwrapApiData(response) || {};
       setFriendStatus(statusData.status || "NONE");
       setFriendRequestId(statusData.requestId || null);
       setFriendDirection(statusData.direction || null);
@@ -123,43 +134,17 @@ export const RightSidebarInfo = ({
     onFriendshipRemoved: fetchStatus,
   });
 
-  const handleAddFriend = async () => {
-    if (!targetUserId) return;
-    setIsProcessingFriend(true);
-    try {
-      await sendFriendRequest(targetUserId);
-      await fetchStatus();
-      window.dispatchEvent(new CustomEvent("friendList_refresh"));
-    } catch (err: any) {
-      console.error("Failed to send friend request:", err);
-      alert(err.message || "Failed to send request");
-    } finally {
-      setIsProcessingFriend(false);
-    }
-  };
-
-  const handleAcceptRequest = async () => {
-    if (!friendRequestId) return;
-    setIsProcessingFriend(true);
-    try {
-      await acceptFriendRequest(friendRequestId);
-      await fetchStatus();
-      window.dispatchEvent(new CustomEvent("friendList_refresh"));
-    } catch (err: any) {
-      console.error("Failed to accept friend request:", err);
-      alert(err.message || "Failed to accept friend request");
-    } finally {
-      setIsProcessingFriend(false);
-    }
-  };
-
   const handleDeleteContact = async () => {
-    if (!targetUserId) return;
+    if (!targetUserId || !canDeleteContact) return;
     setIsDeleting(true);
     try {
       await removeFriend(targetUserId);
       setShowDeleteConfirm(false);
-      window.dispatchEvent(new CustomEvent("friendList_refresh"));
+      setFriendStatus("NONE");
+      setFriendRequestId(null);
+      setFriendDirection(null);
+      window.dispatchEvent(new CustomEvent("friendList_refresh", { detail: { friendId: targetUserId } }));
+      window.dispatchEvent(new Event("chatList:refresh"));
       if (onClose) onClose();
     } catch (err: any) {
       console.error("Failed to delete contact:", err);
@@ -207,7 +192,7 @@ export const RightSidebarInfo = ({
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
       <RightSidebarHeader isGroup={isGroup} onClose={onClose} onEditClick={onEditClick}>
-        {!isGroup && (
+        {canDeleteContact && (
           <MoreMenu
             isOpen={isMoreMenuOpen}
             onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
@@ -229,11 +214,6 @@ export const RightSidebarInfo = ({
           targetUserDetails={targetUserDetails}
           notificationsEnabled={notificationsEnabled}
           setNotificationsEnabled={setNotificationsEnabled}
-          friendStatus={friendStatus}
-          friendDirection={friendDirection}
-          isProcessingFriend={isProcessingFriend}
-          onAddFriend={handleAddFriend}
-          onAcceptRequest={handleAcceptRequest}
         />
 
         {/* Tab Navigation - Members + Media tabs for groups, Media only for private */}

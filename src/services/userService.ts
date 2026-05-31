@@ -169,7 +169,17 @@ export const updatePrivacy = async (privacy) => {
  */
 export const searchUsers = async (query) => {
   try {
-    const params = typeof query === "string" ? { phone: query } : query;
+    const params = typeof query === "string" ? { q: query } : query;
+    if (typeof query === "string" && /^0\d{9}$/.test(query.trim())) {
+      return await api.get("/users/search-by-phone", {
+        params: { phone: query.trim() },
+      });
+    }
+    if (params?.phone && !params?.q) {
+      return await api.get("/users/search-by-phone", {
+        params: { phone: params.phone },
+      });
+    }
     return await api.get("/users/search", { params });
   } catch (error) {
     throw new Error(error.message || "Failed to search users");
@@ -183,7 +193,7 @@ export const searchUsers = async (query) => {
  */
 export const getUserById = async (id: string) => {
   try {
-    return await api.get(`/users/${id}`);
+    return await api.get(`/users/${id}/public`);
   } catch (error) {
     throw new Error(error.message || "Failed to fetch user");
   }

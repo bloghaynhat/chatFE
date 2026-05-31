@@ -19,7 +19,7 @@ import { FriendsListSection } from "./ContactsPanel/FriendsListSection";
 
 export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any) => {
   const { user: currentUser } = useAuth();
-  const { friends, loading, error, fetchFriends, getUserId } = useFriendManagement();
+  const { friends, loading, error, fetchFriends, getUserId, setFriends } = useFriendManagement();
   const { friendRequests, fetchFriendRequests } = useFriendRequestsContext();
 
   const [filteredFriends, setFilteredFriends] = useState([]);
@@ -28,13 +28,35 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
   const [searchResultRequestStatus, setSearchResultRequestStatus] = useState(null);
   const [processingRequestId, setProcessingRequestId] = useState(null);
 
+  const unwrapApiData = (payload: any) => {
+    if (!payload || typeof payload !== "object") return payload;
+    if ("status" in payload && "data" in payload) return payload.data;
+    return payload.data || payload;
+  };
+
+  const normalizePhone = (phone?: string) => String(phone || "").replace(/\s+/g, "");
+
+  const removeFriendFromLocalState = (friendUserId: string) => {
+    if (!friendUserId) return;
+    setFriends((prevFriends: any[]) =>
+      prevFriends.filter((friend) => getUserId(friend) !== friendUserId),
+    );
+    setFilteredFriends((prevFriends: any[]) =>
+      prevFriends.filter((friend) => getUserId(friend) !== friendUserId),
+    );
+
+    if (searchResult && getUserId(searchResult) === friendUserId) {
+      setSearchResultRequestStatus({ status: "NONE" });
+    }
+  };
+
   const refreshSearchResultStatus = async () => {
     if (searchResult) {
       const userId = getUserId(searchResult);
       if (userId) {
         try {
           const response = await checkFriendRequestStatus(userId);
-          const status = response?.data || response || {};
+          const status = unwrapApiData(response) || {};
           setSearchResultRequestStatus({
             status: status.status,
             direction: status.direction,
@@ -50,6 +72,24 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
   useEffect(() => {
     fetchFriends();
     fetchFriendRequests();
+  }, []);
+
+  useEffect(() => {
+    const handleFriendListRefresh = (event: any) => {
+      const friendId = event?.detail?.friendId;
+      if (friendId) {
+        setFriends((prevFriends: any[]) =>
+          prevFriends.filter((friend) => getUserId(friend) !== friendId),
+        );
+        setFilteredFriends((prevFriends: any[]) =>
+          prevFriends.filter((friend) => getUserId(friend) !== friendId),
+        );
+      }
+      fetchFriends();
+    };
+
+    window.addEventListener("friendList_refresh", handleFriendListRefresh);
+    return () => window.removeEventListener("friendList_refresh", handleFriendListRefresh);
   }, []);
 
   useContactsSocketListeners({
@@ -97,7 +137,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
 
     setFilteredFriends(filtered);
 
-    if (/^0\d{9}$/.test(searchQuery)) {
+    if (/^0\d{9}$/.test(searchQuery.trim())) {
       const timer = setTimeout(() => searchNewFriend(), 300);
       return () => clearTimeout(timer);
     } else {
@@ -109,27 +149,39 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
     if (!searchQuery.trim()) return;
 
     try {
-      const result = await searchUserByPhone(searchQuery);
-      const userData = result?.data || result;
+      const result = await searchUserByPhone(searchQuery.trim());
+      const userData = unwrapApiData(result);
+      const searchedUserId = getUserId(userData);
+      const currentUserId = getUserId(currentUser);
 
-      if (!userData || userData.phone === currentUser?.phone) {
+      if (
+        !userData ||
+        searchedUserId === currentUserId ||
+        normalizePhone(userData.phone) === normalizePhone(currentUser?.phone)
+      ) {
         setSearchResult(null);
         setSearchResultRequestStatus(null);
         return;
       }
 
-      const isFriend = friends.some((f) => f.id === userData.id || f.id === userData._id || f.phone === userData.phone);
+      const isFriend = friends.some((friend) => {
+        const friendId = getUserId(friend);
+        return (
+          friendId === searchedUserId ||
+          normalizePhone(friend.phone) === normalizePhone(userData.phone)
+        );
+      });
 
       if (isFriend) {
-        setSearchResult(null);
-        setSearchResultRequestStatus(null);
+        setSearchResult(userData);
+        setSearchResultRequestStatus({ status: "ACCEPTED" });
         return;
       }
 
-      const statusResponse = await checkFriendRequestStatus(userData.id || userData._id);
-      const { status, direction, requestId } = statusResponse?.data || statusResponse || {};
+      const statusResponse = await checkFriendRequestStatus(searchedUserId);
+      const { status, direction, requestId } = unwrapApiData(statusResponse) || {};
 
-      if (status === "SELF" || status === "ACCEPTED") {
+      if (status === "SELF") {
         setSearchResult(null);
         setSearchResultRequestStatus(null);
         return;
@@ -245,7 +297,10 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
 
     try {
       await removeFriend(friendUserId);
+      removeFriendFromLocalState(friendUserId);
       await fetchFriends();
+      window.dispatchEvent(new CustomEvent("friendList_refresh", { detail: { friendId: friendUserId } }));
+      window.dispatchEvent(new Event("chatList:refresh"));
 
       const fallbackTimer = setTimeout(() => {
         fetchFriends().catch((err) => console.error("Failed to refetch after unfriend:", err));

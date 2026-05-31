@@ -94,17 +94,9 @@ export const SearchResultCard = ({
             </button>
           </div>
         ) : isAccepted ? (
-          // Unfriend button (ACCEPTED - already friend)
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUnfriend?.();
-            }}
-            disabled={isProcessing}
-            className="px-3 py-1 text-white text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 transition flex-shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            {isProcessing ? "..." : "Unfriend"}
-          </button>
+          <span className="px-3 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-200 flex-shrink-0">
+            Friends
+          </span>
         ) : (
           // Send Request / Cancel Request button (OUTGOING or NONE/REJECTED)
           <button
