@@ -91,9 +91,7 @@ export const ChatList = ({
       if (!conversationId || !newName) return;
 
       // Optimistic update: update name immediately in UI
-      setChats((prev) =>
-        prev.map((chat) => (chat.id === conversationId ? { ...chat, name: newName } : chat))
-      );
+      setChats((prev) => prev.map((chat) => (chat.id === conversationId ? { ...chat, name: newName } : chat)));
 
       // Refetch to ensure consistency
       fetchChats(false);
@@ -104,9 +102,7 @@ export const ChatList = ({
       if (!conversationId || !avatarUrl) return;
 
       // Optimistic update: update avatar immediately in UI
-      setChats((prev) =>
-        prev.map((chat) => (chat.id === conversationId ? { ...chat, avatarUrl } : chat))
-      );
+      setChats((prev) => prev.map((chat) => (chat.id === conversationId ? { ...chat, avatarUrl } : chat)));
 
       fetchChats(false);
     };
@@ -126,6 +122,11 @@ export const ChatList = ({
       setChats((prevChats) => prevChats.map((c) => (c.id === activeChatId ? { ...c, unreadCount: 0 } : c)));
     }
   }, [activeChatId]);
+
+  useEffect(() => {
+    const totalUnread = chats.reduce((total, chat) => total + Number(chat.unreadCount || 0), 0);
+    document.title = totalUnread > 0 ? `(${totalUnread > 99 ? "99+" : totalUnread}) ChatChit` : "ChatChit";
+  }, [chats]);
 
   useEffect(() => {
     const unsubscribe = socketService.onNewMessage((payload) => {
@@ -289,9 +290,7 @@ export const ChatList = ({
 
             // If the conversation has pendingMembers, add new members to pending list
             if (chat.pendingMembers) {
-              const newPending = chat.pendingMembers.filter(
-                (pendingId: string) => !memberIds.includes(pendingId)
-              );
+              const newPending = chat.pendingMembers.filter((pendingId: string) => !memberIds.includes(pendingId));
               if (newPending.length > 0) {
                 newChat.pendingMembers = newPending;
               } else {
@@ -302,7 +301,7 @@ export const ChatList = ({
             return newChat;
           }
           return chat;
-        })
+        }),
       );
     };
 
