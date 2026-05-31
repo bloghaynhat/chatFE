@@ -1,10 +1,28 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { FiArchive, FiUser, FiSearch } from "react-icons/fi";
-import { userService, conversationService } from "../../services";
+import {
+  FiArchive,
+  FiCopy,
+  FiCornerUpRight,
+  FiDownload,
+  FiExternalLink,
+  FiFile,
+  FiImage,
+  FiLink,
+  FiMapPin,
+  FiMessageCircle,
+  FiMic,
+  FiSearch,
+  FiUser,
+  FiVideo,
+} from "react-icons/fi";
+import { PhotoProvider, PhotoView } from "react-photo-view";
+import { conversationService, searchService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
+import { ForwardModal } from "./ActiveChatPane/ForwardModal";
 import { useAuth } from "../../hooks/useAuth";
+import { useFriendManagement } from "../../hooks";
 import { getChatMessagePreview } from "../../utils/chatPreview";
 import type { Conversation } from "../../types/conversation";
 import type { GroupRenamedPayload, GroupAvatarChangedPayload } from "../../types/socket";
@@ -47,6 +65,339 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
 
     return fetchedChat;
   });
+};
+
+const getMessageId = (message: any) => message?.id || message?._id || message?.messageId;
+
+const getMessageText = (message: any) =>
+  message?.text || message?.content || message?.textPreview || "Matched message";
+
+const formatSearchMessageTime = (value: any) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const normalizeSearchContextMessages = (message: any) => {
+  const contextMessages = [
+    ...(Array.isArray(message?.context?.before) ? message.context.before : []),
+    ...(Array.isArray(message?.context?.after) ? message.context.after : []),
+  ];
+
+  return contextMessages
+    .filter((item) => getMessageId(item))
+    .map((item) => ({
+      ...item,
+      id: getMessageId(item),
+      conversationId: item.conversationId || message.conversationId,
+      type: item.type || "text",
+    }));
+};
+
+const GlobalMessageItem = ({ message, chat, isCollapsed, onSelectChat }: any) => {
+  const messageId = getMessageId(message);
+  const displayName = chat?.name || message?.conversationName || "Conversation";
+  const avatarUrl = chat?.avatarUrl || message?.conversationAvatarUrl;
+  const initial = displayName.charAt(0).toUpperCase();
+  const messageText = getMessageText(message);
+  const messageTime = formatSearchMessageTime(message?.createdAt);
+
+  const handleClick = () => {
+    if (!message?.conversationId || !messageId) return;
+
+    onSelectChat?.({
+      ...(chat || {
+        id: message.conversationId,
+        name: displayName,
+        type: message.conversationType,
+        avatarUrl,
+      }),
+      id: message.conversationId,
+      searchTargetMessageId: messageId,
+      searchTargetMessage: {
+        ...message,
+        id: messageId,
+        type: message.type || "text",
+      },
+      searchContextMessages: normalizeSearchContextMessages(message),
+    });
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      className={`group flex items-center p-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 active:scale-[0.98] hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200 ${
+        isCollapsed ? "justify-center" : ""
+      } animate-search-result`}
+    >
+      <div className="relative flex-shrink-0">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={displayName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-lg shadow-sm">
+            {initial || "?"}
+          </div>
+        )}
+        <span className="absolute -right-0.5 -bottom-0.5 w-5 h-5 rounded-full bg-white dark:bg-slate-900 text-blue-500 flex items-center justify-center shadow-sm ring-1 ring-blue-100 dark:ring-slate-700">
+          <FiMessageCircle className="text-[12px]" />
+        </span>
+      </div>
+
+      {!isCollapsed && (
+        <div className="ml-3 flex-1 overflow-hidden min-w-0">
+          <div className="flex justify-between items-center mb-0.5">
+            <h3 className="text-sm truncate font-semibold text-gray-900 dark:text-white">{displayName}</h3>
+            {messageTime && (
+              <span className="text-[11px] whitespace-nowrap font-medium text-gray-500 ml-2">{messageTime}</span>
+            )}
+          </div>
+          <p className="text-sm truncate text-gray-500 dark:text-gray-400">{messageText}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const getSearchResultConversationName = (item: any, chat: any) =>
+  chat?.name || item?.conversationName || "Conversation";
+
+const buildSearchTargetPayload = (item: any, chat: any, targetMessage: any) => {
+  const messageId = getMessageId(targetMessage);
+  if (!item?.conversationId || !messageId) return null;
+
+  return {
+    ...(chat || {
+      id: item.conversationId,
+      name: getSearchResultConversationName(item, chat),
+      type: item.conversationType,
+      avatarUrl: item.conversationAvatarUrl,
+    }),
+    id: item.conversationId,
+    searchTargetMessageId: messageId,
+    searchTargetMessage: {
+      ...targetMessage,
+      id: messageId,
+      conversationId: item.conversationId,
+      senderId: targetMessage.senderId || item.senderId,
+      createdAt: targetMessage.createdAt || item.createdAt,
+      type: targetMessage.type || "text",
+    },
+    searchContextMessages: normalizeSearchContextMessages(targetMessage),
+  };
+};
+
+const createSearchMediaMessage = (item: any) => {
+  const mediaType = String(item?.type || "file").toLowerCase();
+  const normalizedType =
+    mediaType === "voice" || mediaType === "music" ? "audio" : mediaType;
+
+  return {
+    id: item?.messageId || item?.id,
+    messageId: item?.messageId || item?.id,
+    type: normalizedType,
+    text: "",
+    senderId: item?.senderId,
+    createdAt: item?.createdAt,
+    media: [
+      {
+        type: normalizedType,
+        url: item?.url,
+        name: item?.name,
+        filename: item?.name,
+      },
+    ],
+  };
+};
+
+const createSearchLinkMessage = (item: any) => ({
+  id: item?.messageId || item?.id,
+  messageId: item?.messageId || item?.id,
+  type: "text",
+  text: item?.url || "",
+  senderId: item?.senderId,
+  createdAt: item?.createdAt,
+});
+
+const downloadUrl = (url?: string, filename?: string) => {
+  if (!url) return;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename || "download";
+  anchor.target = "_blank";
+  anchor.rel = "noreferrer";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+};
+
+const getMediaIcon = (type: string) => {
+  switch (String(type || "").toLowerCase()) {
+    case "image":
+      return FiImage;
+    case "video":
+      return FiVideo;
+    case "voice":
+      return FiMic;
+    default:
+      return FiFile;
+  }
+};
+
+const GlobalMediaItem = ({ item, chat, isCollapsed, onShowInChat, onContextMenu }: any) => {
+  const messageId = item?.messageId || item?.id;
+  const displayName = getSearchResultConversationName(item, chat);
+  const MediaIcon = getMediaIcon(item?.type);
+  const mediaName = item?.name || `${item?.type || "Media"} attachment`;
+  const mediaType = String(item?.type || "file").toLowerCase();
+  const messageTime = formatSearchMessageTime(item?.createdAt);
+  const isImage = mediaType === "image" && item?.url;
+  const isOpenableMedia = ["image", "video"].includes(mediaType);
+
+  const handleClick = (event: any) => {
+    if (isImage) return;
+    event.preventDefault();
+    if (isOpenableMedia && item?.url) {
+      window.open(item.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    downloadUrl(item?.url, item?.name);
+  };
+
+  const content = (
+    <div
+      onClick={handleClick}
+      onContextMenu={(event) => onContextMenu?.(event, item, "media", createSearchMediaMessage(item), chat)}
+      className={`group flex items-center p-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 active:scale-[0.98] hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200 ${
+        isCollapsed ? "justify-center" : ""
+      } animate-search-result`}
+    >
+      <div className="relative flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-blue-50 dark:bg-slate-800 flex items-center justify-center shadow-sm">
+        {mediaType === "image" && item?.url ? (
+          <img src={item.url} alt={mediaName} className="w-full h-full object-cover" />
+        ) : (
+          <MediaIcon className="text-xl text-blue-500" />
+        )}
+      </div>
+
+      {!isCollapsed && (
+        <div className="ml-3 flex-1 overflow-hidden min-w-0">
+          <div className="flex justify-between items-center mb-0.5">
+            <h3 className="text-sm truncate font-semibold text-gray-900 dark:text-white">{displayName}</h3>
+            {messageTime && (
+              <span className="text-[11px] whitespace-nowrap font-medium text-gray-500 ml-2">{messageTime}</span>
+            )}
+          </div>
+          <p className="text-sm truncate text-gray-500 dark:text-gray-400">{mediaName}</p>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isImage) {
+    return <PhotoView src={item.url}>{content}</PhotoView>;
+  }
+
+  return content;
+};
+
+const GlobalLinkItem = ({ item, chat, isCollapsed, onContextMenu }: any) => {
+  const messageId = item?.messageId || item?.id;
+  const displayName = getSearchResultConversationName(item, chat);
+  const messageTime = formatSearchMessageTime(item?.createdAt);
+
+  const handleClick = (event: any) => {
+    event.preventDefault();
+    if (item?.url) window.open(item.url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      onContextMenu={(event) => onContextMenu?.(event, item, "link", createSearchLinkMessage(item), chat)}
+      className={`group flex items-center p-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 active:scale-[0.98] hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200 ${
+        isCollapsed ? "justify-center" : ""
+      } animate-search-result`}
+    >
+      <div className="relative flex-shrink-0 w-12 h-12 rounded-full bg-sky-100 dark:bg-slate-800 text-sky-600 flex items-center justify-center shadow-sm">
+        <FiLink className="text-xl" />
+      </div>
+
+      {!isCollapsed && (
+        <div className="ml-3 flex-1 overflow-hidden min-w-0">
+          <div className="flex justify-between items-center mb-0.5">
+            <h3 className="text-sm truncate font-semibold text-gray-900 dark:text-white">{displayName}</h3>
+            {messageTime && (
+              <span className="text-[11px] whitespace-nowrap font-medium text-gray-500 ml-2">{messageTime}</span>
+            )}
+          </div>
+          <p className="text-sm truncate text-gray-500 dark:text-gray-400">{item?.url || "Link"}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SearchResultContextMenu = ({
+  contextMenu,
+  onClose,
+  onForward,
+  onDownload,
+  onShowInChat,
+  onOpenLink,
+  onCopyLink,
+}: any) => {
+  if (!contextMenu) return null;
+  const isLink = contextMenu.kind === "link";
+
+  return (
+    <div
+      className="fixed z-[9999] w-[190px] rounded-xl bg-white dark:bg-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.18)] border border-gray-100 dark:border-slate-700 py-1.5 text-sm text-gray-800 dark:text-gray-100"
+      style={{ top: contextMenu.y, left: contextMenu.x }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+        onClick={onForward}
+      >
+        <FiCornerUpRight className="text-[17px]" />
+        <span>Forward</span>
+      </button>
+      {isLink ? (
+        <>
+          <button
+            className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+            onClick={onOpenLink}
+          >
+            <FiExternalLink className="text-[17px]" />
+            <span>Open link</span>
+          </button>
+          <button
+            className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+            onClick={onCopyLink}
+          >
+            <FiCopy className="text-[17px]" />
+            <span>Copy link</span>
+          </button>
+        </>
+      ) : (
+        <button
+          className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+          onClick={onDownload}
+        >
+          <FiDownload className="text-[17px]" />
+          <span>Download</span>
+        </button>
+      )}
+      <button
+        className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+        onClick={onShowInChat}
+      >
+        <FiMapPin className="text-[17px]" />
+        <span>Show in chat</span>
+      </button>
+    </div>
+  );
 };
 
 const extractSocketMessage = (payload: any) => {
@@ -139,11 +490,19 @@ export const ChatList = ({
   activeChatId = null,
   openingChatId = null,
   isGlobalSearchEnabled = false,
+  isSearchMode = false,
+  isSearchClosing = false,
   onSelectChat,
+  onForwardToTarget,
 }: any) => {
   const { user } = useAuth();
+  const { friends, fetchFriends } = useFriendManagement();
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeSearchTab, setActiveSearchTab] = useState("chats");
+  const [searchContextMenu, setSearchContextMenu] = useState<any>(null);
+  const [forwardModalVisible, setForwardModalVisible] = useState(false);
+  const [messageToForward, setMessageToForward] = useState<any>(null);
 
   const fetchChats = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
@@ -501,17 +860,73 @@ export const ChatList = ({
   }, []);
 
   const [globalUsers, setGlobalUsers] = useState([]);
+  const [globalGroups, setGlobalGroups] = useState([]);
+  const [globalMessages, setGlobalMessages] = useState([]);
+  const [globalMedia, setGlobalMedia] = useState([]);
+  const [globalLinks, setGlobalLinks] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
+  const isSearchView = isSearchMode || Boolean(normalizedQuery);
+  const mediaResults = globalMedia.filter((item: any) =>
+    ["image", "video"].includes(String(item?.type || "").toLowerCase()),
+  );
+  const fileResults = globalMedia.filter((item: any) =>
+    ["file", "audio", "music"].includes(String(item?.type || "").toLowerCase()),
+  );
+  const voiceResults = globalMedia.filter((item: any) => String(item?.type || "").toLowerCase() === "voice");
+  const isGroupChat = (chat: any) =>
+    chat?.type === "group" || chat?.type === "GROUP" || chat?.isGroup === true;
+
+  useEffect(() => {
+    if (!searchContextMenu) return;
+    const handleClose = () => setSearchContextMenu(null);
+    document.addEventListener("click", handleClose);
+    return () => document.removeEventListener("click", handleClose);
+  }, [searchContextMenu]);
+
+  useEffect(() => {
+    if (!forwardModalVisible) return;
+    fetchFriends();
+  }, [forwardModalVisible, fetchFriends]);
+
+  const handleSearchResultContextMenu = (event: any, item: any, kind: string, message: any, chat: any) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const targetPayload = buildSearchTargetPayload(item, chat, message);
+    if (!targetPayload) return;
+    setSearchContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      item,
+      kind,
+      message,
+      targetPayload,
+    });
+  };
+
+  const handleShowSearchResultInChat = () => {
+    if (!searchContextMenu?.targetPayload) return;
+    onSelectChat?.(searchContextMenu.targetPayload);
+    setSearchContextMenu(null);
+  };
+
+  const handleForwardSearchResult = () => {
+    if (!searchContextMenu?.message) return;
+    setMessageToForward(searchContextMenu.message);
+    setForwardModalVisible(true);
+    setSearchContextMenu(null);
+  };
 
   useEffect(() => {
     if (!isGlobalSearchEnabled) return;
 
-    const isPossiblePhone = /^0\d{9}$/.test(normalizedQuery);
-
-    if (!normalizedQuery || !isPossiblePhone) {
+    if (!normalizedQuery) {
       setGlobalUsers([]);
+      setGlobalGroups([]);
+      setGlobalMessages([]);
+      setGlobalMedia([]);
+      setGlobalLinks([]);
       setIsSearchingGlobal(false);
       return;
     }
@@ -519,12 +934,24 @@ export const ChatList = ({
     const fetchGlobalSearch = async () => {
       setIsSearchingGlobal(true);
       try {
-        const response: any = await userService.searchUsers(normalizedQuery);
-        const results = response?.users || response || [];
-        setGlobalUsers(Array.isArray(results) ? results : results.id || results._id ? [results] : []);
+        const response: any = await searchService.globalSearch({
+          query: searchQuery.trim(),
+          type: "ALL",
+          limit: 10,
+          contextLimit: 1,
+        });
+        setGlobalUsers(Array.isArray(response?.users) ? response.users : []);
+        setGlobalGroups(Array.isArray(response?.groups) ? response.groups : response?.conversations || []);
+        setGlobalMessages(Array.isArray(response?.messages) ? response.messages : []);
+        setGlobalMedia(Array.isArray(response?.media) ? response.media : []);
+        setGlobalLinks(Array.isArray(response?.links) ? response.links : []);
       } catch (err) {
         console.error("Global search error:", err);
         setGlobalUsers([]);
+        setGlobalGroups([]);
+        setGlobalMessages([]);
+        setGlobalMedia([]);
+        setGlobalLinks([]);
       } finally {
         setIsSearchingGlobal(false);
       }
@@ -535,7 +962,7 @@ export const ChatList = ({
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [normalizedQuery, isGlobalSearchEnabled]);
+  }, [normalizedQuery, searchQuery, isGlobalSearchEnabled]);
 
   const visibleChats = useMemo(() => {
     let baseList = chats;
@@ -555,67 +982,301 @@ export const ChatList = ({
     );
   }, [chats, filterMode, normalizedQuery]);
 
+  const privateChatResults = useMemo(
+    () => visibleChats.filter((chat) => !isGroupChat(chat)),
+    [visibleChats],
+  );
+
+  const groupResults = useMemo(() => {
+    const localGroups = visibleChats.filter(isGroupChat);
+    const groupById = new Map();
+    [...localGroups, ...globalGroups].forEach((group: any) => {
+      if (!group?.id) return;
+      groupById.set(group.id, {
+        ...group,
+        type: group.type || "group",
+        isGroup: true,
+        lastMessage: group.lastMessage || null,
+      });
+    });
+    return Array.from(groupById.values());
+  }, [visibleChats, globalGroups]);
+
+  const searchTabs = [
+    { id: "chats", label: "Chats", count: privateChatResults.length + globalUsers.length },
+    { id: "groups", label: "Groups", count: groupResults.length },
+    { id: "messages", label: "Messages", count: globalMessages.length },
+    { id: "media", label: "Media", count: mediaResults.length },
+    { id: "links", label: "Links", count: globalLinks.length },
+    { id: "files", label: "Files", count: fileResults.length },
+    { id: "voice", label: "Voice", count: voiceResults.length },
+  ];
+
+  const hasSearchResults = searchTabs.some((tab) => tab.count > 0);
+
+  useEffect(() => {
+    if (!normalizedQuery) {
+      setActiveSearchTab("chats");
+    }
+  }, [
+    normalizedQuery,
+  ]);
+
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex-1 overflow-y-auto pb-20">
-        {normalizedQuery && (
-          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">
-            Recent Chats
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-          </div>
-        ) : visibleChats.length === 0 && !normalizedQuery ? (
-          <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6 text-gray-500 dark:text-gray-400">
-            {!isCollapsed && (
-              <>
-                <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">No matching conversations found</p>
-                <p className="text-sm">Try a different keyword or start a new message from the + button.</p>
-              </>
-            )}
-            {isCollapsed && <FiSearch className="text-xl text-gray-400" />}
-          </div>
+        {!isSearchView ? (
+          isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+            </div>
+          ) : visibleChats.length === 0 ? (
+            <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6 text-gray-500 dark:text-gray-400">
+              {!isCollapsed && (
+                <>
+                  <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">No matching conversations found</p>
+                  <p className="text-sm">Try a different keyword or start a new message from the + button.</p>
+                </>
+              )}
+              {isCollapsed && <FiSearch className="text-xl text-gray-400" />}
+            </div>
+          ) : (
+            visibleChats.map((chat) => (
+              <ConversationItem
+                key={chat.id}
+                chat={chat}
+                isCollapsed={isCollapsed}
+                activeChatId={activeChatId}
+                openingChatId={openingChatId}
+                onSelectChat={onSelectChat}
+              />
+            ))
+          )
         ) : (
-          visibleChats.map((chat) => (
-            <ConversationItem
-              key={chat.id}
-              chat={chat}
-              isCollapsed={isCollapsed}
-              activeChatId={activeChatId}
-              openingChatId={openingChatId}
-              onSelectChat={onSelectChat}
-            />
-          ))
-        )}
-
-        {isGlobalSearchEnabled && normalizedQuery && (
-          <div className="mt-2">
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400 border-t dark:border-slate-700">
-              Global Users
+          <div className={isSearchClosing ? "animate-search-panel-out" : "animate-search-panel"}>
+            <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-gray-200 dark:border-slate-700">
+              <div
+                className="flex overflow-x-auto scrollbar-hide px-2 animate-search-tabs"
+                onWheel={(event) => {
+                  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+                  event.currentTarget.scrollLeft += event.deltaY;
+                }}
+              >
+                {searchTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveSearchTab(tab.id)}
+                    className={`px-3 py-3 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+                      activeSearchTab === tab.id
+                        ? "border-blue-500 text-blue-600 dark:text-blue-400 scale-[1.03]"
+                        : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                    } duration-200 ease-out`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {isSearchingGlobal ? (
-              <div className="flex justify-center py-4">
+            {!normalizedQuery ? (
+              <div className="py-10 px-6 text-center text-sm text-gray-500 dark:text-gray-400 animate-empty-search">
+                Enter a keyword to search
+              </div>
+            ) : isSearchingGlobal ? (
+              <div className="flex justify-center py-6">
                 <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
               </div>
-            ) : globalUsers.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-500">No users found</div>
+            ) : !hasSearchResults ? (
+              <div className="py-8 text-center text-sm text-gray-500">No results found</div>
             ) : (
-              globalUsers.map((user) => (
-                <GlobalUserItem
-                  key={`global-${user.id || user._id}`}
-                  user={user}
-                  isCollapsed={isCollapsed}
-                  onSelectChat={onSelectChat}
-                />
-              ))
+              <div key={activeSearchTab} className="pt-2 animate-search-panel">
+                {activeSearchTab === "chats" &&
+                  (privateChatResults.length > 0 || globalUsers.length > 0 ? (
+                    <>
+                      {privateChatResults.map((chat, index) => (
+                        <div
+                          key={`search-chat-${chat.id}`}
+                          className="animate-search-result"
+                          style={{ animationDelay: `${Math.min(index * 25, 160)}ms` }}
+                        >
+                          <ConversationItem
+                            chat={chat}
+                            isCollapsed={isCollapsed}
+                            activeChatId={activeChatId}
+                            openingChatId={openingChatId}
+                            onSelectChat={onSelectChat}
+                          />
+                        </div>
+                      ))}
+                      {globalUsers.map((searchUser: any, index) => (
+                        <div
+                          key={`global-user-${searchUser.id || searchUser._id}`}
+                          className="animate-search-result"
+                          style={{ animationDelay: `${Math.min((privateChatResults.length + index) * 25, 160)}ms` }}
+                        >
+                          <GlobalUserItem
+                            user={searchUser}
+                            isCollapsed={isCollapsed}
+                            onSelectChat={onSelectChat}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No chats found</div>
+                  ))}
+
+                {activeSearchTab === "groups" &&
+                  (groupResults.length > 0 ? (
+                    groupResults.map((group: any, index) => (
+                      <div
+                        key={`search-group-${group.id}`}
+                        className="animate-search-result"
+                        style={{ animationDelay: `${Math.min(index * 25, 160)}ms` }}
+                      >
+                        <ConversationItem
+                          chat={group}
+                          isCollapsed={isCollapsed}
+                          activeChatId={activeChatId}
+                          openingChatId={openingChatId}
+                          onSelectChat={onSelectChat}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No groups found</div>
+                  ))}
+
+                {activeSearchTab === "messages" &&
+                  (globalMessages.length > 0 ? (
+                    globalMessages.map((message: any) => {
+                      const chat = chats.find((item) => item.id === message.conversationId);
+                      return (
+                        <GlobalMessageItem
+                          key={`global-message-${message.id || message.messageId}`}
+                          message={message}
+                          chat={chat}
+                          isCollapsed={isCollapsed}
+                          onSelectChat={onSelectChat}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No messages found</div>
+                  ))}
+
+                {activeSearchTab === "media" && (
+                  <PhotoProvider maskOpacity={0.85}>
+                    {mediaResults.length > 0 ? (
+                      mediaResults.map((item: any) => {
+                        const chat = chats.find((chatItem) => chatItem.id === item.conversationId);
+                        return (
+                          <GlobalMediaItem
+                            key={`global-media-${item.messageId || item.url}`}
+                            item={item}
+                            chat={chat}
+                            isCollapsed={isCollapsed}
+                            onContextMenu={handleSearchResultContextMenu}
+                          />
+                        );
+                      })
+                    ) : (
+                      <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No media found</div>
+                    )}
+                  </PhotoProvider>
+                )}
+
+                {activeSearchTab === "links" &&
+                  (globalLinks.length > 0 ? (
+                    globalLinks.map((item: any) => {
+                      const chat = chats.find((chatItem) => chatItem.id === item.conversationId);
+                      return (
+                        <GlobalLinkItem
+                          key={`global-link-${item.messageId || item.url}`}
+                          item={item}
+                          chat={chat}
+                          isCollapsed={isCollapsed}
+                          onContextMenu={handleSearchResultContextMenu}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No links found</div>
+                  ))}
+
+                {activeSearchTab === "files" &&
+                  (fileResults.length > 0 ? (
+                    fileResults.map((item: any) => {
+                      const chat = chats.find((chatItem) => chatItem.id === item.conversationId);
+                      return (
+                        <GlobalMediaItem
+                          key={`global-file-${item.messageId || item.url}`}
+                          item={item}
+                          chat={chat}
+                          isCollapsed={isCollapsed}
+                          onContextMenu={handleSearchResultContextMenu}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No files found</div>
+                  ))}
+
+                {activeSearchTab === "voice" &&
+                  (voiceResults.length > 0 ? (
+                    voiceResults.map((item: any) => {
+                      const chat = chats.find((chatItem) => chatItem.id === item.conversationId);
+                      return (
+                        <GlobalMediaItem
+                          key={`global-voice-${item.messageId || item.url}`}
+                          item={item}
+                          chat={chat}
+                          isCollapsed={isCollapsed}
+                          onContextMenu={handleSearchResultContextMenu}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No voice messages found</div>
+                  ))}
+              </div>
             )}
           </div>
         )}
       </div>
+
+      <SearchResultContextMenu
+        contextMenu={searchContextMenu}
+        onClose={() => setSearchContextMenu(null)}
+        onForward={handleForwardSearchResult}
+        onDownload={() => {
+          downloadUrl(searchContextMenu?.item?.url, searchContextMenu?.item?.name);
+          setSearchContextMenu(null);
+        }}
+        onShowInChat={handleShowSearchResultInChat}
+        onOpenLink={() => {
+          if (searchContextMenu?.item?.url) {
+            window.open(searchContextMenu.item.url, "_blank", "noopener,noreferrer");
+          }
+          setSearchContextMenu(null);
+        }}
+        onCopyLink={async () => {
+          if (searchContextMenu?.item?.url) {
+            await navigator.clipboard.writeText(searchContextMenu.item.url).catch(() => {});
+          }
+          setSearchContextMenu(null);
+        }}
+      />
+
+      <ForwardModal
+        forwardModalVisible={forwardModalVisible}
+        setForwardModalVisible={setForwardModalVisible}
+        friends={friends}
+        messageToForward={messageToForward}
+        currentUserId={user?.id}
+        selectedChat={null}
+        onForwardToTarget={onForwardToTarget}
+      />
     </div>
   );
 };

@@ -1,27 +1,42 @@
-import { FiMenu, FiSearch, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiMenu, FiSearch, FiX } from "react-icons/fi";
 
 export const MainTaskbar = ({
   searchValue,
   onSearchChange,
   onOpenMenu,
   onClearSearch,
+  onExitSearch = () => {},
   onSearchFocus = () => {},
   onSearchBlur = () => {},
+  isSearchMode = false,
   friendRequestCount = 0,
   isCollapsed = false,
-  placeholder = "Search conversations...",
+  placeholder = "Search",
 }) => {
   return (
     <div
       className={`flex items-center gap-2 px-3 py-3 border-b dark:border-slate-700 bg-white dark:bg-slate-900 ${isCollapsed ? "justify-center" : ""}`}
     >
       <button
-        onClick={onOpenMenu}
-        className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0 relative"
-        title="Open navigation menu"
+        onClick={isSearchMode ? onExitSearch : onOpenMenu}
+        className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0 relative overflow-hidden"
+        title={isSearchMode ? "Back" : "Open navigation menu"}
       >
-        <FiMenu className="text-xl" />
-        {friendRequestCount > 0 && (
+        <span
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${
+            isSearchMode ? "-rotate-180 scale-75 opacity-0" : "rotate-0 scale-100 opacity-100"
+          }`}
+        >
+          <FiMenu className="text-xl" />
+        </span>
+        <span
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${
+            isSearchMode ? "rotate-0 scale-100 opacity-100" : "rotate-180 scale-75 opacity-0"
+          }`}
+        >
+          <FiArrowLeft className="text-xl" />
+        </span>
+        {!isSearchMode && friendRequestCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
             {friendRequestCount > 9 ? "9+" : friendRequestCount}
           </span>

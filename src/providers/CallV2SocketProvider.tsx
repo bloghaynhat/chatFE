@@ -68,9 +68,20 @@ type CallV2Action =
       busyUserIds: string[];
       remotePeer?: CallV2PeerInfo | null;
       isGroup?: boolean;
+      groupName?: string | null;
     }
   | { type: "SET_INCOMING"; payload: CallV2IncomingPayload }
   | { type: "SET_ONGOING"; payload: CallV2OngoingPayload }
+  | {
+      type: "SET_JOINING";
+      callId: string;
+      conversationId: string;
+      callType: "audio" | "video";
+      roomName?: string | null;
+      participants?: Record<string, CallV2ParticipantInfo>;
+      busyUserIds?: string[];
+      isGroup?: boolean;
+    }
   | { type: "SET_ACTIVE"; roomName: string; startedAt?: number | string | null }
   | { type: "SET_ENDED" }
   | { type: "UPDATE_PARTICIPANT"; callId: string; userId: string; participant: CallV2ParticipantInfo }
@@ -139,7 +150,7 @@ const extractGroupName = (payload: any): string | null => {
 const resolveIncomingGroupContext = async (conversationId: string) => {
   try {
     const groupInfo = await conversationService.getGroupInfo(conversationId);
-    return extractGroupName(groupInfo) || "this group";
+    return extractGroupName(groupInfo);
   } catch {
     return null;
   }
@@ -160,6 +171,7 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         busyUserIds: action.busyUserIds,
         remotePeer: action.remotePeer ?? null,
         isGroup: action.isGroup ?? false,
+        groupName: action.isGroup ? action.groupName ?? null : null,
         localAudioEnabled: true,
         localVideoEnabled: action.callType === "video",
       };
@@ -172,12 +184,12 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         type: action.payload.type,
         conversationId: action.payload.conversationId,
         roomName: action.payload.roomName,
-        isGroup: Boolean((action.payload as any).isGroup),
+        isGroup: false,
         livekitProvider: action.payload.livekitProvider ?? "cloud",
         participants: {},
         busyUserIds: action.payload.busyUserIds ?? [],
         remotePeer: normalizeUserInfo((action.payload as any).caller || (action.payload as any).callerInfo, action.payload.callerId),
-        groupName: (action.payload as any).conversationName || (action.payload as any).groupName || null,
+        groupName: null,
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
       };
@@ -190,14 +202,28 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         type: action.payload.type,
         conversationId: action.payload.conversationId,
         roomName: action.payload.roomName,
-        isGroup: Boolean((action.payload as any).isGroup),
+        isGroup: false,
         livekitProvider: action.payload.livekitProvider ?? "cloud",
         participants: {},
         busyUserIds: action.payload.busyUserIds ?? [],
         remotePeer: normalizeUserInfo((action.payload as any).caller || (action.payload as any).callerInfo, action.payload.callerId),
-        groupName: (action.payload as any).conversationName || (action.payload as any).groupName || null,
+        groupName: null,
         localAudioEnabled: true,
         localVideoEnabled: action.payload.type === "video",
+      };
+    case "SET_JOINING":
+      return {
+        ...state,
+        status: "ringing",
+        callId: action.callId,
+        conversationId: action.conversationId,
+        type: action.callType,
+        roomName: action.roomName ?? state.roomName,
+        isGroup: action.isGroup ?? state.isGroup,
+        participants: action.participants ?? state.participants,
+        busyUserIds: action.busyUserIds ?? state.busyUserIds,
+        localAudioEnabled: true,
+        localVideoEnabled: action.callType === "video",
       };
     case "SET_ACTIVE":
       return {
@@ -231,7 +257,9 @@ function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
         localVideoEnabled: action.videoEnabled ?? state.localVideoEnabled,
       };
     case "SET_GROUP_CONTEXT":
-      return { ...state, isGroup: true, groupName: action.groupName };
+      return action.groupName?.trim()
+        ? { ...state, isGroup: true, groupName: action.groupName.trim() }
+        : state;
     case "TOGGLE_VIDEO":
       return { ...state, localVideoEnabled: !state.localVideoEnabled };
     case "TOGGLE_AUDIO":
@@ -251,9 +279,10 @@ interface CallV2ContextValue {
     inviteeIds?: string[],
     inviteAll?: boolean,
     remotePeer?: CallV2PeerInfo | null,
+    groupName?: string | null,
   ) => Promise<void>;
   joinCallV2: () => Promise<void>;
-  joinExistingCallV2: (callId: string, conversationId: string, type?: "audio" | "video") => Promise<void>;
+  joinExistingCallV2: (callId: string, conversationId: string, type?: "audio" | "video", isGroup?: boolean) => Promise<void>;
   leaveCallV2: () => Promise<void>;
   rejectCallV2: () => Promise<void>;
   endCallV2: () => Promise<void>;
@@ -418,6 +447,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       inviteeIds?: string[],
       inviteAll?: boolean,
       remotePeer?: CallV2PeerInfo | null,
+      groupName?: string | null,
     ) => {
       if (state.status !== "idle") {
         toast.warning("A call is already in progress");
@@ -444,7 +474,8 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           participants: res.call.participants,
           busyUserIds: res.busyUserIds,
           remotePeer,
-          isGroup: Boolean(inviteAll || res.call.isGroup),
+          isGroup: Boolean(inviteAll),
+          groupName: inviteAll ? groupName : null,
         });
         if (res.busyUserIds.length > 0) {
           dispatch({ type: "SET_BUSY", busyUserIds: res.busyUserIds });
@@ -482,7 +513,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
   }, [state.callId, clearIncomingTimer, connectFromJoin]);
 
   const joinExistingCallV2 = useCallback(
-    async (callId: string, conversationId: string, type: "audio" | "video" = "audio") => {
+    async (callId: string, conversationId: string, type: "audio" | "video" = "audio", isGroup = false) => {
       if (!callId || isJoiningRef.current) return;
       isJoiningRef.current = true;
       clearIncomingTimer();
@@ -493,18 +524,14 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
         const callType = res.call.type ?? type;
         currentTypeRef.current = callType;
         dispatch({
-          type: "SET_ONGOING",
-          payload: {
-            callId,
-            callerId: res.call.callerId,
-            conversationId,
-            type: callType,
-            roomName: res.roomName,
-            isGroup: res.call.isGroup,
-            livekitProvider: res.livekitProvider,
-            status: res.call.status,
-            busyUserIds: res.call.busyUserIds,
-          },
+          type: "SET_JOINING",
+          callId,
+          conversationId,
+          callType,
+          roomName: res.roomName,
+          participants: res.call.participants,
+          busyUserIds: res.call.busyUserIds,
+          isGroup,
         });
         callV2Socket.joinCallRoom(callId);
         if (res.token && res.wsUrl && res.roomName) {
@@ -643,6 +670,9 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
 
     const offOngoing = callV2Socket.on<CallV2OngoingPayload>("call:ongoing", (data) => {
       console.log("[CallV2SocketProvider] Received call:ongoing:", data);
+      if (stateRef.current.status === "calling" && !stateRef.current.isGroup) {
+        return;
+      }
       void resolveIncomingGroupContext(data.conversationId).then((groupName) => {
         if (!groupName || (currentCallIdRef.current && currentCallIdRef.current !== data.callId)) return;
         dispatch({ type: "SET_GROUP_CONTEXT", groupName });
