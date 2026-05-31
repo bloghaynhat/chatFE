@@ -6,6 +6,7 @@ import {
   ForgotPasswordPage,
   HomePage,
   TermsPage,
+  InvitePreviewPage,
 } from "./pages";
 import { PrivateRoute, PublicRoute } from "./components/common";
 import { FriendProvider } from "./context/FriendContext";
@@ -46,6 +47,7 @@ function App() {
         }
       />
       <Route path="/terms" element={<TermsPage />} />
+      <Route path="/invite/:token" element={<InvitePreviewPage />} />
       <Route
         path="/"
         element={

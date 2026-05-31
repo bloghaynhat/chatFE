@@ -6,6 +6,7 @@ import { RightSidebarMemberList } from "./RightSideBarTypes/RightSidebarMemberLi
 import { MoreMenu } from "./RightSideBarTypes/MoreMenu";
 import { DeleteContactModal } from "./RightSideBarTypes/DeleteContactModal";
 import { BlockUserModal } from "./RightSideBarTypes/BlockUserModal";
+import { InviteLinkManagerModal } from "./RightSideBarTypes/InviteLinkManagerModal";
 import { MediaGallery } from "./MediaGallery";
 import React, { useState, useEffect, useCallback } from "react";
 import { useContactsSocketListeners } from "../../../hooks";
@@ -80,6 +81,7 @@ export const RightSidebarInfo = ({
   const [isBlocked, setIsBlocked] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const canDeleteContact = !isGroup && !isSavedMessages && friendStatus === "ACCEPTED";
 
@@ -311,6 +313,7 @@ export const RightSidebarInfo = ({
             targetUserDetails={targetUserDetails}
             notificationsEnabled={notificationsEnabled}
             setNotificationsEnabled={setNotificationsEnabled}
+            onOpenInviteLink={() => setIsInviteModalOpen(true)}
           />
         )}
 
@@ -429,6 +432,17 @@ export const RightSidebarInfo = ({
         isLoading={isBlocking}
         isBlocked={isBlocked}
       />
+
+      {isGroup && conversationId && (
+        <InviteLinkManagerModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          groupId={conversationId}
+          isAdmin={currentUserRole === "admin" || currentUserRole === "owner"}
+          groupName={groupName || "Group"}
+          groupAvatar={groupAvatar}
+        />
+      )}
     </div>
   );
 };
