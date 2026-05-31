@@ -3,12 +3,14 @@ import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
+  useQueries,
 } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import {
   getBlockedUsersCursor,
   unblockUser,
 } from "../../services/blockService";
+import { userService } from "../../services/userService";
 import { Loader2, ShieldCheck, ShieldOff, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +47,35 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
     enabled: isOpen,
   });
 
+  const blockedItems = data?.pages.flatMap((page) => page?.items || []) || [];
+  const missingUserIds = Array.from(
+    new Set(
+      blockedItems
+        .map((item: any) =>
+          typeof item.blockedUserId === "string"
+            ? item.blockedUserId
+            : item.blockedId,
+        )
+        .filter(Boolean),
+    ),
+  );
+
+  const userQueries = useQueries({
+    queries: missingUserIds.map((userId) => ({
+      queryKey: ["user", userId],
+      queryFn: async () => {
+        const resp: any = await userService.getUserById(userId);
+        return resp?.data || resp?.user || resp;
+      },
+      enabled: isOpen && Boolean(userId),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const usersById = new Map(
+    missingUserIds.map((userId, index) => [userId, userQueries[index]?.data]),
+  );
+
   const unblockMutation = useMutation({
     mutationFn: (blockedUserId: string) => unblockUser(blockedUserId),
     onSuccess: (_, blockedUserId) => {
@@ -67,7 +98,7 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
 
   if (!isOpen) return null;
 
-  const blockedUsers = data?.pages.flatMap((page) => page?.items || []) || [];
+  const blockedUsers = blockedItems;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -127,12 +158,20 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
                   item.user ||
                   (typeof item.blockedUserId === "object"
                     ? item.blockedUserId
-                    : null);
+                    : null) ||
+                  usersById.get(item.blockedUserId || item.blockedId);
                 const blockedUserId =
                   blockedUser?.id ||
                   blockedUser?._id ||
                   item.blockedUserId ||
                   item.blockedId;
+                const isLoadingUser =
+                  !blockedUser &&
+                  userQueries[
+                    missingUserIds.findIndex(
+                      (userId) => userId === blockedUserId,
+                    )
+                  ]?.isLoading;
                 const isUnblocking =
                   unblockMutation.isPending &&
                   unblockMutation.variables === blockedUserId;
@@ -161,9 +200,12 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
                         )}
                       </div>
                       <div className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                        {blockedUser?.displayName ||
+                        {isLoadingUser
+                          ? "Đang tải..."
+                          : blockedUser?.displayName ||
                           blockedUser?.name ||
-                          "Người dùng ẩn"}
+                            blockedUser?.username ||
+                            "Người dùng ẩn"}
                       </div>
                     </div>
 
