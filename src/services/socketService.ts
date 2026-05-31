@@ -4,6 +4,7 @@ import { authStorage } from "../runtime/storage";
 class SocketService {
   messagesSocket: Socket | null = null;
   friendsSocket: Socket | null = null;
+  blockSocket: Socket | null = null;
   listeners: Map<string, Function[]> = new Map();
   blockedConversations: Set<string> = new Set();
   blockedUsers: Set<string> = new Set();
@@ -11,6 +12,7 @@ class SocketService {
   constructor() {
     this.messagesSocket = null;
     this.friendsSocket = null;
+    this.blockSocket = null;
     this.listeners = new Map();
     this.blockedConversations = new Set();
     this.blockedUsers = new Set();
@@ -85,6 +87,46 @@ class SocketService {
     this.setupFriendListeners();
 
     return this.friendsSocket;
+  }
+
+  async initBlockSocket() {
+    if (this.blockSocket?.connected) {
+      return this.blockSocket;
+    }
+
+    const token = await authStorage.getItem("token");
+    if (!token) return null;
+
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
+
+    const blockNamespace =
+      import.meta.env.VITE_BLOCK_SOCKET_NAMESPACE || "/blocks";
+
+    this.blockSocket = io(`${serverUrl}${blockNamespace}`, {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    this.blockSocket.on("connect", () => {
+      console.log("[Blocks] connected:", this.blockSocket.id);
+    });
+
+    this.blockSocket.on("disconnect", (reason) => {
+      console.log("[Blocks] disconnected:", reason);
+    });
+
+    this.blockSocket.on("connect_error", (err) => {
+      console.error("[Blocks] error:", err.message);
+    });
+
+    this.setupBlockListeners();
+
+    return this.blockSocket;
   }
 
   // ================= LISTENERS =================
@@ -244,6 +286,18 @@ class SocketService {
     });
   }
 
+  setupBlockListeners() {
+    if (!this.blockSocket) return;
+
+    this.blockSocket.on("block:blocked", (payload) => {
+      this.emit("block:blocked", payload);
+    });
+
+    this.blockSocket.on("block:unblocked", (payload) => {
+      this.emit("block:unblocked", payload);
+    });
+  }
+
   // ================= EVENT BUS =================
   emit(eventName, data) {
     if (!this.listeners.has(eventName)) return;
@@ -278,6 +332,7 @@ class SocketService {
   async connect() {
     await this.initMessagesSocket();
     await this.initFriendsSocket();
+    await this.initBlockSocket();
     return this.messagesSocket;
   }
 
@@ -486,6 +541,14 @@ class SocketService {
 
   onGroupSettingsUpdated(callback) {
     return this.on("group:settings_updated", callback);
+  }
+
+  onBlockBlocked(callback) {
+    return this.on("block:blocked", callback);
+  }
+
+  onBlockUnblocked(callback) {
+    return this.on("block:unblocked", callback);
   }
 
   offGroupSettingsUpdated() {
@@ -989,6 +1052,11 @@ class SocketService {
       this.friendsSocket = null;
     }
 
+    if (this.blockSocket) {
+      this.blockSocket.disconnect();
+      this.blockSocket = null;
+    }
+
     this.listeners.clear();
   }
 }
@@ -999,6 +1067,7 @@ export const socketService = new SocketService();
 export const initSocket = async () => {
   await socketService.initMessagesSocket();
   await socketService.initFriendsSocket();
+  await socketService.initBlockSocket();
 };
 
 // Message
@@ -1090,3 +1159,7 @@ export const onFriendRequestRejected = (cb) =>
   socketService.on("friend_request:rejected", cb);
 
 export const onUnfriend = (cb) => socketService.on("friendship:unfriended", cb);
+
+export const onBlockBlocked = (cb) => socketService.on("block:blocked", cb);
+
+export const onBlockUnblocked = (cb) => socketService.on("block:unblocked", cb);

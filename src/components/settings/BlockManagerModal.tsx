@@ -76,6 +76,14 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
     missingUserIds.map((userId, index) => [userId, userQueries[index]?.data]),
   );
 
+  const getUserSubtitle = (user: any) => {
+    if (!user) return "";
+    if (user.username) return `@${user.username}`;
+    if (user.phone) return user.phone;
+    if (user.email) return user.email;
+    return "";
+  };
+
   const unblockMutation = useMutation({
     mutationFn: (blockedUserId: string) => unblockUser(blockedUserId),
     onSuccess: (_, blockedUserId) => {
@@ -179,9 +187,9 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
                 return (
                   <li
                     key={item.id || blockedUserId || index}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg group"
+                    className="flex items-center justify-between gap-3 p-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg group transition-colors"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden shrink-0 filter grayscale">
                         {blockedUser?.avatarUrl ? (
                           <img
@@ -199,13 +207,27 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
                           </div>
                         )}
                       </div>
-                      <div className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                        {isLoadingUser
-                          ? "Đang tải..."
-                          : blockedUser?.displayName ||
-                          blockedUser?.name ||
-                            blockedUser?.username ||
-                            "Người dùng ẩn"}
+                      <div className="min-w-0">
+                        {isLoadingUser ? (
+                          <div className="space-y-1.5">
+                            <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                            <div className="h-3 w-20 rounded bg-gray-100 dark:bg-gray-700/70 animate-pulse" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {blockedUser?.displayName ||
+                                blockedUser?.name ||
+                                blockedUser?.username ||
+                                "Người dùng ẩn"}
+                            </div>
+                            {getUserSubtitle(blockedUser) && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {getUserSubtitle(blockedUser)}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
 

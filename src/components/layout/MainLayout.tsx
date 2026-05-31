@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { conversationService, mediaService } from "../../services";
 import { checkBlockStatus } from "../../services/blockService";
 import { socketService } from "../../services/socketService";
+import { useQueryClient } from "@tanstack/react-query";
 import { ActiveChatPane } from "../chat";
 import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
@@ -31,6 +32,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     Set<string>
   >(new Set());
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Track pending pin/unpin operations to prevent duplicate requests
   const pendingPinOperations = useRef<Set<string>>(new Set());
@@ -450,6 +452,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         socketService.onGroupRenamed(handleGroupRenamed);
         socketService.onGroupAvatarChanged(handleGroupAvatarChanged);
+
       }
     });
 
@@ -531,12 +534,16 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
 
   const setConversationBlockedStatus = useCallback(
-    (conversationId?: string, isBlocked = true) => {
+    (
+      conversationId?: string,
+      isSocketBlocked = true,
+      isContactBlockedByPolicy = isSocketBlocked,
+    ) => {
       if (!conversationId) return;
-      socketService.setConversationBlocked(conversationId, isBlocked);
+      socketService.setConversationBlocked(conversationId, isSocketBlocked);
       setBlockedConversationIds((prev) => {
         const next = new Set(prev);
-        if (isBlocked) {
+        if (isContactBlockedByPolicy) {
           next.add(String(conversationId));
         } else {
           next.delete(String(conversationId));
@@ -610,8 +617,16 @@ const MainLayout = ({ children }: { children?: any }) => {
       try {
         const resp: any = await checkBlockStatus(peerId);
         const payload = resp?.data || resp || {};
-        const isBlocked = Boolean(payload?.isBlocked);
-        setConversationBlockedStatus(conversationId, isBlocked);
+        const blockedByMe = Boolean(
+          payload?.blockedByMe ?? payload?.isBlocked,
+        );
+        const blockedMe = Boolean(payload?.blockedMe);
+        const hasBlockRestriction = blockedByMe || blockedMe;
+        setConversationBlockedStatus(
+          conversationId,
+          hasBlockRestriction,
+          blockedMe,
+        );
         setSelectedChat((prev: any) =>
           prev && String(prev.id || prev.conversationId) === String(conversationId)
             ? {
@@ -619,12 +634,11 @@ const MainLayout = ({ children }: { children?: any }) => {
                 targetUserId: peerId,
                 blockStatus: {
                   ...(prev.blockStatus || {}),
-                  isBlocked,
-                  blockedByMe: isBlocked,
-                  isBlockedByPeer:
-                    prev.blockStatus?.isBlockedByPeer ||
-                    prev.blockStatus?.blockedMe ||
-                    false,
+                  blockedByMe,
+                  blockedMe,
+                  isBlocked: blockedByMe,
+                  isBlocking: blockedMe,
+                  isBlockedByPeer: blockedMe,
                 },
               }
             : prev,
@@ -636,6 +650,133 @@ const MainLayout = ({ children }: { children?: any }) => {
     },
     [resolvePrivatePeerId, setConversationBlockedStatus],
   );
+
+  const applyRealtimeBlockStatus = useCallback(
+    (payload: any, isBlockedEvent: boolean) => {
+      const actorId =
+        payload?.data?.blockedBy ||
+        payload?.data?.unblockedBy ||
+        payload?.blockerId ||
+        payload?.blockedByUserId ||
+        payload?.fromUserId ||
+        payload?.fromUser?.id ||
+        payload?.fromUser?._id ||
+        payload?.blocker?.id ||
+        payload?.blocker?._id ||
+        payload?.userId ||
+        payload?.user?.id ||
+        payload?.user?._id ||
+        payload?.actorId;
+      const targetId =
+        payload?.data?.blockedUserId ||
+        payload?.data?.unblockedUserId ||
+        payload?.blockedUserId ||
+        payload?.blockedId ||
+        payload?.toUserId ||
+        payload?.toUser?.id ||
+        payload?.toUser?._id ||
+        payload?.blockedUser?.id ||
+        payload?.blockedUser?._id ||
+        payload?.targetUserId ||
+        payload?.targetUser?.id ||
+        payload?.targetUser?._id;
+
+      const currentChat = selectedChatRef.current as any;
+      if (!currentChat || !user?.id) return;
+
+      const peerId = resolvePrivatePeerId(currentChat);
+      if (!peerId) return;
+
+      const isCurrentUserActor = actorId && String(actorId) === String(user.id);
+      const isPeerActor = actorId && String(actorId) === String(peerId);
+      const isCurrentUserTarget =
+        targetId && String(targetId) === String(user.id);
+      const isPeerTarget = targetId && String(targetId) === String(peerId);
+
+      const blockedByMe =
+        isBlockedEvent && isCurrentUserActor && (isPeerTarget || !targetId);
+      const blockedMe =
+        isBlockedEvent && isPeerActor && (isCurrentUserTarget || !targetId);
+      const unblockedByMe =
+        !isBlockedEvent && isCurrentUserActor && (isPeerTarget || !targetId);
+      const unblockedMe =
+        !isBlockedEvent && isPeerActor && (isCurrentUserTarget || !targetId);
+
+      if (!blockedByMe && !blockedMe && !unblockedByMe && !unblockedMe) {
+        return;
+      }
+
+      const conversationId = selectedConversationId || currentChat.id;
+      const nextBlockedByMe = blockedByMe
+        ? true
+        : unblockedByMe
+          ? false
+          : Boolean(currentChat.blockStatus?.blockedByMe);
+      const nextBlockedMe = blockedMe
+        ? true
+        : unblockedMe
+          ? false
+          : Boolean(currentChat.blockStatus?.blockedMe);
+
+      setConversationBlockedStatus(
+        conversationId,
+        nextBlockedByMe || nextBlockedMe,
+        nextBlockedMe,
+      );
+      socketService.setUserBlocked(peerId, nextBlockedByMe || nextBlockedMe);
+
+      setSelectedChat((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              targetUserId: peerId,
+              blockStatus: {
+                ...(prev.blockStatus || {}),
+                blockedByMe: nextBlockedByMe,
+                blockedMe: nextBlockedMe,
+                isBlocked: nextBlockedByMe,
+                isBlocking: nextBlockedMe,
+                isBlockedByPeer: nextBlockedMe,
+              },
+            }
+          : prev,
+      );
+
+      queryClient.setQueryData(["block-status", peerId], {
+        blockedByMe: nextBlockedByMe,
+        blockedMe: nextBlockedMe,
+        isBlocked: nextBlockedByMe,
+        isBlocking: nextBlockedMe,
+      });
+      queryClient.invalidateQueries({ queryKey: ["block-status", peerId] });
+      queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
+    },
+    [
+      queryClient,
+      resolvePrivatePeerId,
+      selectedConversationId,
+      setConversationBlockedStatus,
+      user?.id,
+    ],
+  );
+
+  useEffect(() => {
+    void socketService.initBlockSocket();
+
+    const unsubscribeBlocked = socketService.onBlockBlocked((payload: any) => {
+      applyRealtimeBlockStatus(payload, true);
+    });
+    const unsubscribeUnblocked = socketService.onBlockUnblocked(
+      (payload: any) => {
+        applyRealtimeBlockStatus(payload, false);
+      },
+    );
+
+    return () => {
+      unsubscribeBlocked?.();
+      unsubscribeUnblocked?.();
+    };
+  }, [applyRealtimeBlockStatus]);
 
   const openChatByRow = useCallback(
     async (chat) => {

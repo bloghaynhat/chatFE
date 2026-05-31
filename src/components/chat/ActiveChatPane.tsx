@@ -18,12 +18,13 @@ import { AiTranslateMessage } from "./AiTranslateMessage";
 import { VideoPreviewModal } from "./ActiveChatPane/VideoPreviewModal";
 import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
+import { BlockNotice } from "./ActiveChatPane/BlockNotice";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
-import { FiImage, FiFile, FiGift, FiCheckCircle, FiInfo } from "react-icons/fi";
+import { FiImage, FiFile, FiGift, FiCheckCircle } from "react-icons/fi";
 import { useBlockStatus } from "../../hooks/useBlockStatus";
 import { blockUser, unblockUser } from "../../services/blockService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -244,27 +245,28 @@ export const ActiveChatPane = ({
 
     return {
       isBlockedByMe: Boolean(
-        selectedChat?.isBlocked ||
-          selectedChat?.blockedByMe ||
-          rawStatus?.isBlocked ||
-          rawStatus?.blockedByMe,
+        selectedChat?.blockedByMe ??
+          rawStatus?.blockedByMe ??
+          selectedChat?.isBlocked ??
+          rawStatus?.isBlocked,
       ),
       isBlockedByPeer: Boolean(
-        selectedChat?.isBlocking ||
-          selectedChat?.blockedMe ||
-          selectedChat?.isBlockedByPeer ||
-          rawStatus?.isBlocking ||
-          rawStatus?.blockedMe ||
+        selectedChat?.blockedMe ??
+          rawStatus?.blockedMe ??
+          selectedChat?.isBlocking ??
+          selectedChat?.isBlockedByPeer ??
+          rawStatus?.isBlocking ??
           rawStatus?.isBlockedByPeer,
       ),
     };
   }, [selectedChat]);
-  const isBlockedByMe = Boolean(
-    blockStatus?.isBlocked || selectedChatBlockStatus.isBlockedByMe,
-  );
+  const isBlockedByMe = blockStatus
+    ? Boolean(blockStatus.blockedByMe || blockStatus.isBlocked)
+    : selectedChatBlockStatus.isBlockedByMe;
   const isBlockedByPeer = Boolean(
-      blockStatus?.isBlocking ||
-      selectedChatBlockStatus.isBlockedByPeer ||
+    (blockStatus
+      ? blockStatus.blockedMe || blockStatus.isBlocking
+      : selectedChatBlockStatus.isBlockedByPeer) ||
       isContactBlockedByPolicy ||
       isBlockedByPolicy,
   );
@@ -1048,6 +1050,7 @@ export const ActiveChatPane = ({
         onBlockUser={handleToggleBlockUser}
         isBlocked={isBlockedByMe}
         isContactLimited={isBlockedByPeer}
+        isCommunicationDisabled={hasBlockRestriction}
         isBlockActionPending={
           isBlockStatusLoading ||
           blockMutation.isPending ||
@@ -1172,56 +1175,22 @@ export const ActiveChatPane = ({
       )}
 
       {hasBlockRestriction && (
-        <div
-          className={`mx-4 mb-3 p-4 border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left transition-all shadow-sm ${
+        <BlockNotice
+          title={blockNotice.title}
+          description={blockNotice.description}
+          variant={isBlockedByMe ? "blockedByMe" : "contactUnavailable"}
+          actionLabel={isBlockedByMe ? "Bỏ chặn" : undefined}
+          isActionLoading={unblockMutation.isPending}
+          onAction={
             isBlockedByMe
-              ? "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30"
-              : "bg-amber-50 dark:bg-amber-900/15 border-amber-100 dark:border-amber-800/30"
-          }`}
-        >
-          <div className="flex items-start gap-3 min-w-0">
-            <div
-              className={`mt-0.5 h-8 w-8 rounded-full inline-flex items-center justify-center shrink-0 ${
-                isBlockedByMe
-                  ? "bg-red-100 text-red-600 dark:bg-red-800/40 dark:text-red-300"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-800/30 dark:text-amber-300"
-              }`}
-            >
-              <FiInfo className="text-lg" />
-            </div>
-            <div className="min-w-0">
-              <p
-                className={`text-[14px] font-semibold ${
-                  isBlockedByMe
-                    ? "text-red-700 dark:text-red-300"
-                    : "text-amber-800 dark:text-amber-200"
-                }`}
-              >
-                {blockNotice.title}
-              </p>
-              <p
-                className={`mt-0.5 text-[13px] leading-5 ${
-                  isBlockedByMe
-                    ? "text-red-600/90 dark:text-red-300/90"
-                    : "text-amber-700/90 dark:text-amber-200/90"
-                }`}
-              >
-                {blockNotice.description}
-              </p>
-            </div>
-          </div>
-          {isBlockedByMe && (
-            <button
-              onClick={() => {
-                if (callPeerInfo?.id) unblockMutation.mutate(callPeerInfo.id);
-              }}
-              disabled={unblockMutation.isPending}
-              className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/40 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 font-semibold rounded-xl text-sm transition shrink-0 whitespace-nowrap"
-            >
-              {unblockMutation.isPending ? "Đang xử lý..." : "Bỏ chặn"}
-            </button>
-          )}
-        </div>
+              ? () => {
+                  if (callPeerInfo?.id) {
+                    unblockMutation.mutate(callPeerInfo.id);
+                  }
+                }
+              : undefined
+          }
+        />
       )}
 
       {!hasBlockRestriction && (

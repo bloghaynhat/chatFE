@@ -51,11 +51,15 @@ export const ChatHeader = ({
   onBlockUser,
   isBlocked,
   isContactLimited,
+  isCommunicationDisabled,
   isBlockActionPending,
 }: any) => {
   const [isAiSummaryModalOpen, setIsAiSummaryModalOpen] = useState(false);
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
+  const disabledCallTitle = isBlocked
+    ? "Bỏ chặn để bắt đầu cuộc gọi"
+    : "Hiện chưa thể bắt đầu cuộc gọi";
 
   const moreActions: any[] = [
     { id: "ai-summarize", label: "Tóm tắt cuộc trò chuyện (AI)", icon: FiZap },
@@ -76,8 +80,8 @@ export const ChatHeader = ({
       hasChevron: true,
     },
     { id: "mute", label: "Mute", icon: FiBellOff },
-    { id: "call", label: "Call", icon: FiPhone },
-    { id: "video-call", label: "Video Call", icon: FiVideo },
+    { id: "call", label: "Gọi thoại", icon: FiPhone },
+    { id: "video-call", label: "Gọi video", icon: FiVideo },
     { id: "select-messages", label: "Select Messages", icon: FiCheckCircle },
     { id: "share-contact", label: "Share contact", icon: FiShare2 },
     { id: "send-gift", label: "Send a Gift", icon: FiGift },
@@ -174,8 +178,13 @@ export const ChatHeader = ({
               )}
               <button
                 onClick={() => onStartAudioCall?.(selectedConversationId)}
-                className="h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                title="Goi thoai"
+                disabled={isCommunicationDisabled}
+                className={`h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full transition disabled:cursor-not-allowed ${
+                  isCommunicationDisabled
+                    ? "text-gray-300 dark:text-gray-600"
+                    : "hover:bg-gray-100 dark:hover:bg-slate-800"
+                }`}
+                title={isCommunicationDisabled ? disabledCallTitle : "Gọi thoại"}
               >
                 <FiPhone className="text-base lg:text-lg" />
               </button>
@@ -190,8 +199,13 @@ export const ChatHeader = ({
               )}
               <button
                 onClick={() => onStartVideoCall?.(selectedConversationId)}
-                className="h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                title="Goi video"
+                disabled={isCommunicationDisabled}
+                className={`h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full transition disabled:cursor-not-allowed ${
+                  isCommunicationDisabled
+                    ? "text-gray-300 dark:text-gray-600"
+                    : "hover:bg-gray-100 dark:hover:bg-slate-800"
+                }`}
+                title={isCommunicationDisabled ? disabledCallTitle : "Gọi video"}
               >
                 <FiVideo className="text-base lg:text-lg" />
               </button>

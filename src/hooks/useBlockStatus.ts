@@ -5,31 +5,45 @@ export const useBlockStatus = (userId?: string) => {
   return useQuery({
     queryKey: ["block-status", userId],
     queryFn: async () => {
-      if (!userId) return { isBlocked: false, isBlocking: false };
+      if (!userId) {
+        return {
+          blockedByMe: false,
+          blockedMe: false,
+          isBlocked: false,
+          isBlocking: false,
+        };
+      }
       try {
         const resp: any = await checkBlockStatus(userId);
         const payload = resp?.data || resp;
-        const isBlocked = Boolean(
-          payload?.isBlocked ??
+        const blockedByMe = Boolean(
+          payload?.blockedByMe ??
+            payload?.isBlocked ??
             payload?.blocked ??
-            payload?.blockedByMe ??
             payload?.isBlockedByMe,
         );
-        const isBlocking = Boolean(
-          payload?.isBlocking ??
-            payload?.blockedMe ??
+        const blockedMe = Boolean(
+          payload?.blockedMe ??
+            payload?.isBlocking ??
             payload?.isBlockedByUser ??
             payload?.isBlockedByTarget ??
             payload?.isBlockedByPeer,
         );
 
         return {
-          isBlocked,
-          isBlocking,
+          blockedByMe,
+          blockedMe,
+          isBlocked: blockedByMe,
+          isBlocking: blockedMe,
         };
       } catch (err: any) {
         if (err?.status === 404) {
-          return { isBlocked: false, isBlocking: false };
+          return {
+            blockedByMe: false,
+            blockedMe: false,
+            isBlocked: false,
+            isBlocking: false,
+          };
         }
         throw err;
       }
