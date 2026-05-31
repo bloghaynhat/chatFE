@@ -27,6 +27,13 @@ export {
 export { uploadMedia, uploadMultipleMedia, deleteMedia, mediaService } from "./mediaService";
 export { conversationService } from "./conversationService";
 export {
+  blockService,
+  blockUser,
+  unblockUser,
+  checkBlockStatus,
+  getBlockedUsers,
+} from "./blockService";
+export {
   socketService,
   initSocket,
   onFriendRequest,

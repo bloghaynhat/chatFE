@@ -41,7 +41,7 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
         {
           icon: FiInfoIcon,
           label: "Bio",
-          value: formatProfileValue(targetUserDetails.bio),
+          value: targetUserDetails.bio ? String(targetUserDetails.bio) : "",
         },
       ]
     : [];

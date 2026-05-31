@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { userService } from "../../services/userService";
 import { conversationService } from "../../services/conversationService";
+import { checkBlockStatus, checkFriendRequestStatus } from "../../services";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -83,6 +84,7 @@ export const ActiveChatPane = ({
   const [contextMenu, setContextMenu] = useState(null);
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState(null);
+  const [chatRestriction, setChatRestriction] = useState<string | null>(null);
 
   const callV2 = useCallV2();
   const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
@@ -174,6 +176,99 @@ export const ActiveChatPane = ({
         null,
     };
   }, [selectedChat]);
+
+  const privateTargetUserId = useMemo(() => {
+    if (!selectedChat) return null;
+    const isGroup =
+      selectedChat?.type === "GROUP" ||
+      selectedChat?.type === "group" ||
+      (selectedChat?.members && selectedChat.members.length > 2);
+
+    if (isGroup) return null;
+
+    const target =
+      selectedChat.targetUser ||
+      selectedChat.participant ||
+      selectedChat.user ||
+      selectedChat.receiver ||
+      selectedChat.friend ||
+      null;
+
+    return (
+      selectedChat.targetUserId ||
+      selectedChat.participantId ||
+      target?.id ||
+      target?._id ||
+      (selectedChat?.pairKey
+        ? selectedChat.pairKey.split("_").find((id: string) => id !== currentUserId)
+        : null) ||
+      null
+    );
+  }, [currentUserId, selectedChat]);
+
+  const refreshChatRestriction = useCallback(async () => {
+    if (!privateTargetUserId) {
+      setChatRestriction(null);
+      return;
+    }
+
+    try {
+      const [blockStatus, relationshipStatus] = await Promise.all([
+        checkBlockStatus(privateTargetUserId).catch(() => ({ isBlocked: false })),
+        checkFriendRequestStatus(privateTargetUserId).catch(() => null),
+      ]);
+
+      const relationshipPayload =
+        relationshipStatus &&
+        typeof relationshipStatus === "object" &&
+        "status" in relationshipStatus &&
+        "data" in relationshipStatus
+          ? (relationshipStatus as any).data
+          : (relationshipStatus as any)?.data || relationshipStatus || {};
+
+      if (blockStatus?.isBlocked || relationshipPayload?.direction === "BLOCKING") {
+        setChatRestriction("You blocked this user");
+        return;
+      }
+
+      if (relationshipPayload?.status === "BLOCKED" && relationshipPayload?.direction === "BLOCKED_BY") {
+        setChatRestriction("You can't message this user");
+        return;
+      }
+
+      setChatRestriction(null);
+    } catch (err) {
+      console.error("Failed to refresh chat restriction", err);
+      setChatRestriction(null);
+    }
+  }, [privateTargetUserId]);
+
+  useEffect(() => {
+    refreshChatRestriction();
+  }, [refreshChatRestriction]);
+
+  useEffect(() => {
+    void socketService.initBlocksSocket();
+
+    const handleBlockStatusChanged = (event: any) => {
+      if (!event?.detail?.userId || event.detail.userId === privateTargetUserId) {
+        refreshChatRestriction();
+      }
+    };
+
+    const handleSocketBlockStatusChanged = (payload: any) => {
+      if (!payload?.userId || payload.userId === privateTargetUserId) {
+        refreshChatRestriction();
+      }
+    };
+
+    const unsubscribeSocket = socketService.on("blockStatus:changed", handleSocketBlockStatusChanged);
+    window.addEventListener("blockStatus:changed", handleBlockStatusChanged);
+    return () => {
+      unsubscribeSocket();
+      window.removeEventListener("blockStatus:changed", handleBlockStatusChanged);
+    };
+  }, [privateTargetUserId, refreshChatRestriction]);
 
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
@@ -607,6 +702,7 @@ export const ActiveChatPane = ({
   }, [selectedChat?.id]);
 
   const handleInputChange = (event) => {
+    if (chatRestriction) return;
     setDraftMessage(event.target.value);
     const isGroup =
       selectedChat?.type === "GROUP" ||
@@ -630,6 +726,8 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
+    if (chatRestriction) return;
+
     if (
       !draftMessage.trim() &&
       !forwardingMessage &&
@@ -677,6 +775,8 @@ export const ActiveChatPane = ({
   };
 
   const handleSendVoice = (voiceFile: any) => {
+    if (chatRestriction) return;
+
     if (onSendMessage) {
       const fileWithPreview = Object.assign(voiceFile, {
         preview: URL.createObjectURL(voiceFile),
@@ -881,6 +981,7 @@ export const ActiveChatPane = ({
         onClearForwarding={onClearForwarding}
         currentUserId={currentUserId}
         handleSendVoice={handleSendVoice}
+        disabledReason={chatRestriction}
       />
 
       <VideoPreviewModal previewVideoUrl={previewVideoUrl} onClose={() => setPreviewVideoUrl(null)} />

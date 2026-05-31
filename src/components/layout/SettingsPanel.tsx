@@ -88,7 +88,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
         <div className="flex flex-col py-2 border-b border-gray-100/60 dark:border-slate-800">
            <SettingsMenuItem icon={<FiBell />} label="Notifications and Sounds" />
            <SettingsMenuItem icon={<FiDatabase />} label="Data and Storage" />
-           <SettingsMenuItem icon={<FiLock />} label="Privacy and Security" />
+           <SettingsMenuItem icon={<FiLock />} label="Privacy and Security" onClick={() => onNavigate("privacy-security")} />
            <SettingsMenuItem icon={<FiSettings />} label="General Settings" />
            <SettingsMenuItem icon={<FiFolder />} label="Chat Folders" />
            <SettingsMenuItem icon={<FiSmile />} label="Stickers and Emoji" />

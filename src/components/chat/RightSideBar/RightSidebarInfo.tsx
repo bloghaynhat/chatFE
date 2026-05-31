@@ -5,10 +5,18 @@ import { RightSidebarSettings } from "./RightSideBarTypes/RightSidebarSettings";
 import { RightSidebarMemberList } from "./RightSideBarTypes/RightSidebarMemberList";
 import { MoreMenu } from "./RightSideBarTypes/MoreMenu";
 import { DeleteContactModal } from "./RightSideBarTypes/DeleteContactModal";
+import { BlockUserModal } from "./RightSideBarTypes/BlockUserModal";
 import { MediaGallery } from "./MediaGallery";
 import React, { useState, useEffect, useCallback } from "react";
 import { useContactsSocketListeners } from "../../../hooks";
-import { removeFriend, checkFriendRequestStatus } from "../../../services";
+import {
+  blockUser,
+  checkBlockStatus,
+  checkFriendRequestStatus,
+  removeFriend,
+  socketService,
+  unblockUser,
+} from "../../../services";
 import { userService } from "../../../services";
 
 interface RightSidebarInfoProps {
@@ -64,7 +72,10 @@ export const RightSidebarInfo = ({
   const [friendDirection, setFriendDirection] = useState<"INCOMING" | "OUTGOING" | null>(null);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
 
@@ -83,22 +94,23 @@ export const RightSidebarInfo = ({
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      if (isGroup || !targetUserId) {
-        setTargetUserDetails(null);
-        return;
-      }
-      try {
-        const response = await userService.getUserById(targetUserId);
-        setTargetUserDetails(unwrapApiData(response) || null);
-      } catch (error) {
-        console.error("Failed to fetch target user details", error);
-        setTargetUserDetails(null);
-      }
-    };
-    fetchUserDetails();
+  const fetchUserDetails = useCallback(async () => {
+    if (isGroup || !targetUserId) {
+      setTargetUserDetails(null);
+      return;
+    }
+    try {
+      const response = await userService.getUserById(targetUserId);
+      setTargetUserDetails(unwrapApiData(response) || null);
+    } catch (error) {
+      console.error("Failed to fetch target user details", error);
+      setTargetUserDetails(null);
+    }
   }, [isGroup, targetUserId]);
+
+  useEffect(() => {
+    fetchUserDetails();
+  }, [fetchUserDetails]);
 
   // Check friend status for non-group
   const fetchStatus = useCallback(async () => {
@@ -121,10 +133,55 @@ export const RightSidebarInfo = ({
     fetchStatus();
   }, [fetchStatus]);
 
+  const fetchBlockStatus = useCallback(async () => {
+    if (isGroup || !targetUserId) {
+      setIsBlocked(false);
+      return;
+    }
+
+    try {
+      const status = await checkBlockStatus(targetUserId);
+      setIsBlocked(Boolean(status?.isBlocked));
+    } catch (err) {
+      console.error("Failed to check block status", err);
+      setIsBlocked(false);
+    }
+  }, [isGroup, targetUserId]);
+
   useEffect(() => {
-    window.addEventListener("friendList_refresh", fetchStatus);
-    return () => window.removeEventListener("friendList_refresh", fetchStatus);
-  }, [fetchStatus]);
+    fetchBlockStatus();
+  }, [fetchBlockStatus]);
+
+  useEffect(() => {
+    void socketService.initBlocksSocket();
+
+    const handleRelationshipRefresh = () => {
+      fetchStatus();
+      fetchBlockStatus();
+      fetchUserDetails();
+    };
+
+    const handleSocketBlockStatusChanged = (payload: any) => {
+      if (!payload?.userId || payload.userId === targetUserId) {
+        handleRelationshipRefresh();
+      }
+    };
+
+    const handleWindowBlockStatusChanged = (event: any) => {
+      if (!event?.detail?.userId || event.detail.userId === targetUserId) {
+        handleRelationshipRefresh();
+      }
+    };
+
+    const unsubscribeSocket = socketService.on("blockStatus:changed", handleSocketBlockStatusChanged);
+    window.addEventListener("friendList_refresh", handleRelationshipRefresh);
+    window.addEventListener("blockStatus:changed", handleWindowBlockStatusChanged);
+    return () => {
+      unsubscribeSocket();
+      window.removeEventListener("friendList_refresh", handleRelationshipRefresh);
+      window.removeEventListener("blockStatus:changed", handleWindowBlockStatusChanged);
+    };
+  }, [targetUserId, fetchStatus, fetchBlockStatus, fetchUserDetails]);
 
   useContactsSocketListeners({
     onFriendRequestReceived: fetchStatus,
@@ -151,6 +208,37 @@ export const RightSidebarInfo = ({
       alert(err.message || "Failed to delete contact");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleBlockToggle = async () => {
+    if (!targetUserId) return;
+    setIsBlocking(true);
+    try {
+      if (isBlocked) {
+        await unblockUser(targetUserId);
+        setIsBlocked(false);
+      } else {
+        await blockUser(targetUserId);
+        setIsBlocked(true);
+        setFriendStatus("NONE");
+        setFriendRequestId(null);
+        setFriendDirection(null);
+      }
+
+      setShowBlockConfirm(false);
+      window.dispatchEvent(
+        new CustomEvent("blockStatus:changed", {
+          detail: { userId: targetUserId, isBlocked: !isBlocked },
+        }),
+      );
+      window.dispatchEvent(new CustomEvent("friendList_refresh", { detail: { friendId: targetUserId } }));
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (err: any) {
+      console.error("Failed to update block status:", err);
+      alert(err.message || "Failed to update block status");
+    } finally {
+      setIsBlocking(false);
     }
   };
 
@@ -192,11 +280,14 @@ export const RightSidebarInfo = ({
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
       <RightSidebarHeader isGroup={isGroup} onClose={onClose} onEditClick={onEditClick}>
-        {canDeleteContact && (
+        {!isGroup && targetUserId && (
           <MoreMenu
             isOpen={isMoreMenuOpen}
             onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
             onDeleteClick={() => setShowDeleteConfirm(true)}
+            onBlockClick={() => setShowBlockConfirm(true)}
+            showDelete={canDeleteContact}
+            isBlocked={isBlocked}
           />
         )}
       </RightSidebarHeader>
@@ -321,6 +412,15 @@ export const RightSidebarInfo = ({
         onConfirm={handleDeleteContact}
         contactName={displayName}
         isLoading={isDeleting}
+      />
+
+      <BlockUserModal
+        isOpen={showBlockConfirm}
+        onClose={() => setShowBlockConfirm(false)}
+        onConfirm={handleBlockToggle}
+        userName={displayName}
+        isLoading={isBlocking}
+        isBlocked={isBlocked}
       />
     </div>
   );

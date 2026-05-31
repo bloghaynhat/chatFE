@@ -4,6 +4,8 @@ import { ChatList } from "../chat/ChatList";
 import { ContactsPanel } from "../chat/ContactsPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { DevicesPanel } from "./DevicesPanel";
+import { PrivacySecurityPanel } from "./PrivacySecurityPanel";
+import { BlockListPanel } from "./BlockListPanel";
 import { UserProfileModal, CreateGroupModal } from "../common";
 import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
@@ -375,11 +377,22 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
 
           {/* Settings View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <SettingsPanel
               isCollapsed={isCollapsed}
               onBack={() => onViewChange("chats")}
+              onNavigate={onViewChange}
+            />
+          </div>
+
+          {/* Privacy and Security View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+          >
+            <PrivacySecurityPanel
+              isCollapsed={isCollapsed}
+              onBack={() => onViewChange("settings")}
               onNavigate={onViewChange}
             />
           </div>
@@ -391,6 +404,16 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
             <DevicesPanel
               isCollapsed={isCollapsed}
               onBack={() => onViewChange("settings")}
+            />
+          </div>
+
+          {/* Block List View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-50 pointer-events-auto ${activeView === "block-list" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+          >
+            <BlockListPanel
+              isCollapsed={isCollapsed}
+              onBack={() => onViewChange("privacy-security")}
             />
           </div>
         </div>
