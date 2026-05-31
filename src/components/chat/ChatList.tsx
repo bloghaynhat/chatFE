@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { FiArchive, FiUser, FiSearch } from "react-icons/fi";
 import { userService, conversationService } from "../../services";
 import { socketService } from "../../services/socketService";
@@ -11,6 +11,7 @@ import type { GroupRenamedPayload, GroupAvatarChangedPayload } from "../../types
 
 const APP_TITLE = "ChatChit";
 const TAB_LOGO_PATH = "/Logo_Tab.png";
+const MEMBER_EVENT_DEDUPE_MS = 2500;
 
 const getTimeValue = (value: any) => {
   if (!value) return 0;
@@ -30,6 +31,9 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
     const previousChat = previousById.get(fetchedChat.id);
     if (!previousChat?.lastMessage) return fetchedChat;
 
+    const previousUnread = Number(previousChat.unreadCount || 0);
+    const fetchedUnread = Number(fetchedChat.unreadCount || 0);
+    const unreadCount = Math.max(previousUnread, fetchedUnread);
     const fetchedPreviewIsMissing = !hasRealPreview(fetchedChat.lastMessage);
     const previousPreviewIsValid = hasRealPreview(previousChat.lastMessage);
     const fetchedTime = getTimeValue(fetchedChat.lastMessageAt || fetchedChat.lastMessage?.createdAt);
@@ -38,6 +42,7 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
     if (previousPreviewIsValid && (fetchedPreviewIsMissing || fetchedTime < previousTime)) {
       return {
         ...fetchedChat,
+        unreadCount,
         lastMessage: previousChat.lastMessage,
         lastMessageAt: previousChat.lastMessageAt,
         lastMessageStatus: previousChat.lastMessageStatus,
@@ -45,7 +50,7 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
       };
     }
 
-    return fetchedChat;
+    return { ...fetchedChat, unreadCount };
   });
 };
 
@@ -144,6 +149,83 @@ export const ChatList = ({
   const { user } = useAuth();
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
+
+  const touchConversationActivity = useCallback(
+    (
+      conversationId: string,
+      message: any,
+      options: { memberCountDelta?: number; fallbackText?: string } = {},
+    ) => {
+      if (!conversationId) return;
+
+      const createdAt =
+        message?.createdAt || message?.updatedAt || new Date().toISOString();
+      const activityMessage = {
+        ...(message || {}),
+        messageId: message?.messageId || message?.id || message?._id,
+        id: message?.id || message?._id || message?.messageId,
+        createdAt,
+        senderId: message?.senderId || message?.sender?.id || message?.sender?._id,
+        textPreview:
+          message?.textPreview ||
+          message?.preview ||
+          message?.text ||
+          message?.content ||
+          options.fallbackText ||
+          "Group updated",
+        type: message?.type || "system",
+      };
+
+      setChats((prevChats) => {
+        const isCurrentlyActive =
+          activeChatId === conversationId || openingChatId === conversationId;
+
+        return prevChats.map((chat) => {
+          if (chat.id !== conversationId) return chat;
+
+          const currentCount = Number(chat.membersCount || chat.memberCount || 0);
+          const memberCountDelta = options.memberCountDelta || 0;
+
+          return {
+            ...chat,
+            membersCount:
+              currentCount || memberCountDelta
+                ? Math.max(0, currentCount + memberCountDelta)
+                : chat.membersCount,
+            lastMessage: activityMessage,
+            lastMessageAt: createdAt,
+            lastMessageTimeFormatted: new Date(createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            unreadCount: isCurrentlyActive ? 0 : Number(chat.unreadCount || 0) + 1,
+          };
+        });
+      });
+    },
+    [activeChatId, openingChatId],
+  );
+
+  const shouldSkipDuplicateMemberRemoval = useCallback(
+    (conversationId?: string, userId?: string) => {
+      if (!conversationId || !userId) return false;
+
+      const now = Date.now();
+      const key = `${conversationId}:${userId}`;
+      const lastSeenAt = recentMemberRemovalEvents.current.get(key);
+
+      recentMemberRemovalEvents.current.forEach((seenAt, seenKey) => {
+        if (now - seenAt > MEMBER_EVENT_DEDUPE_MS) {
+          recentMemberRemovalEvents.current.delete(seenKey);
+        }
+      });
+
+      recentMemberRemovalEvents.current.set(key, now);
+      return Boolean(lastSeenAt && now - lastSeenAt < MEMBER_EVENT_DEDUPE_MS);
+    },
+    [],
+  );
 
   const fetchChats = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
@@ -167,7 +249,15 @@ export const ChatList = ({
   // Listen for local trigger to refresh the chat list (e.g. when accepting friend request)
   useEffect(() => {
     const handleRefresh = () => fetchChats(false);
+    const handleCurrentUserLeftGroup = (event: any) => {
+      const conversationId = event?.detail?.conversationId;
+      if (conversationId) {
+        setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
+      }
+      fetchChats(false);
+    };
     window.addEventListener("chatList:refresh", handleRefresh);
+    window.addEventListener("group:currentUserLeft", handleCurrentUserLeftGroup);
 
     // Also listen to socket event if the other party accepted our request
     const unsubFriendAccepted = socketService.on("friend_request:accepted", () => {
@@ -176,6 +266,10 @@ export const ChatList = ({
 
     return () => {
       window.removeEventListener("chatList:refresh", handleRefresh);
+      window.removeEventListener(
+        "group:currentUserLeft",
+        handleCurrentUserLeftGroup,
+      );
       if (unsubFriendAccepted) unsubFriendAccepted();
     };
   }, [fetchChats]);
@@ -183,20 +277,28 @@ export const ChatList = ({
   // Handle member removed from conversation (including self leave)
   useEffect(() => {
     const handleMemberRemoved = (data: any) => {
-      const { conversationId, removedUserId } = data;
+      const { conversationId, removedUserId, message, reason } = data;
+      if (shouldSkipDuplicateMemberRemoval(conversationId, removedUserId)) {
+        return;
+      }
 
       // If current user was removed, remove the conversation from local state
       if (removedUserId === user?.id) {
         setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
       } else {
-        // Other member was removed, refresh the list to update member counts
-        fetchChats(false);
+        touchConversationActivity(conversationId, message, {
+          memberCountDelta: -1,
+          fallbackText:
+            reason === "left"
+              ? "Một thành viên đã rời khỏi nhóm"
+              : "Một thành viên đã bị xoá khỏi nhóm",
+        });
       }
     };
 
     const cleanup = socketService.on("conversation:member_removed", handleMemberRemoved);
     return () => cleanup();
-  }, [user?.id, fetchChats]);
+  }, [user?.id, shouldSkipDuplicateMemberRemoval, touchConversationActivity]);
 
   // Handle conversation deleted
   useEffect(() => {
@@ -398,16 +500,29 @@ export const ChatList = ({
   // Handle members added to a conversation
   useEffect(() => {
     const handleMembersAdded = (data: any) => {
-      const { conversationId, memberIds } = data;
-      if (!conversationId || !Array.isArray(memberIds)) return;
+      const { conversationId, message } = data;
+      const memberIds = Array.isArray(data?.newMembers)
+        ? data.newMembers.map((member: any) => member?.userId).filter(Boolean)
+        : Array.isArray(data?.memberIds)
+          ? data.memberIds
+          : [];
+      if (!conversationId || memberIds.length === 0) return;
+
+      // If current user is one of the added members, fetch chats to show the new group
+      if (memberIds.includes(user?.id) || memberIds.includes(user?._id)) {
+        fetchChats(false);
+      }
+
+      touchConversationActivity(conversationId, message, {
+        memberCountDelta: memberIds.length,
+        fallbackText: "Có thành viên mới được thêm vào nhóm",
+      });
 
       setChats((prev) =>
         prev.map((chat) => {
           if (chat.id === conversationId) {
-            const currentCount = chat.membersCount || 0;
             const newChat = {
               ...chat,
-              membersCount: currentCount + memberIds.length,
             };
 
             // If the conversation has pendingMembers, add new members to pending list
@@ -429,7 +544,7 @@ export const ChatList = ({
 
     const cleanup = socketService.on("conversation:members_added", handleMembersAdded);
     return () => cleanup();
-  }, []);
+  }, [fetchChats, touchConversationActivity, user?.id, user?._id]);
 
   // Handle conversation admin actions: pin, archive, mute
   useEffect(() => {
@@ -474,20 +589,26 @@ export const ChatList = ({
   // Handle group member left (kicked or voluntary leave)
   useEffect(() => {
     const handleMemberLeft = (data: any) => {
-      const { conversationId, userId } = data;
+      const { conversationId, userId, message } = data;
+      const leftUserId = userId || data?.removedUserId;
+      if (shouldSkipDuplicateMemberRemoval(conversationId, leftUserId)) {
+        return;
+      }
 
       // If current user was removed/kicked, remove conversation from list
-      if (userId === user?.id) {
+      if (leftUserId === user?.id) {
         setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
       } else {
-        // Other member left, refresh to update member count
-        fetchChats(false);
+        touchConversationActivity(conversationId, message, {
+          memberCountDelta: -1,
+          fallbackText: "Một thành viên đã rời khỏi nhóm",
+        });
       }
     };
 
     const cleanup = socketService.on("group:member_left", handleMemberLeft);
     return () => cleanup();
-  }, [user?.id, fetchChats]);
+  }, [user?.id, shouldSkipDuplicateMemberRemoval, touchConversationActivity]);
 
   // Handle group dissolved
   useEffect(() => {

@@ -28,6 +28,8 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
+  const confirmLabel = isAdmin && deleteForAll ? "Delete Group" : "Leave Group";
+  const loadingLabel = isAdmin && deleteForAll ? "Deleting..." : "Leaving...";
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget && !isLoading) {
@@ -142,10 +144,10 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>{isAdmin ? "Deleting..." : "Leaving..."}</span>
+                <span>{loadingLabel}</span>
               </>
             ) : (
-              isAdmin ? "Delete Group" : "Leave Group"
+              confirmLabel
             )}
           </button>
         </div>

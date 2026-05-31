@@ -30,6 +30,27 @@ const MainLayout = ({ children }: { children?: any }) => {
 
   // Track pending pin/unpin operations to prevent duplicate requests
   const pendingPinOperations = useRef<Set<string>>(new Set());
+  const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
+
+  const shouldSkipDuplicateMemberRemoval = useCallback(
+    (conversationId?: string, userId?: string) => {
+      if (!conversationId || !userId) return false;
+
+      const now = Date.now();
+      const key = `${conversationId}:${userId}`;
+      const lastSeenAt = recentMemberRemovalEvents.current.get(key);
+
+      recentMemberRemovalEvents.current.forEach((seenAt, seenKey) => {
+        if (now - seenAt > 2500) {
+          recentMemberRemovalEvents.current.delete(seenKey);
+        }
+      });
+
+      recentMemberRemovalEvents.current.set(key, now);
+      return Boolean(lastSeenAt && now - lastSeenAt < 2500);
+    },
+    [],
+  );
 
   const appendLocalMessage = useCallback((message: any) => {
     if (!message?.id && !message?._id) return;
@@ -450,6 +471,96 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
         });
 
+        socketService.on("conversation:members_added", (payload: any) => {
+          const { conversationId, message } = payload;
+          if (String(conversationId) === String(selectedConversationId)) {
+            if (message) {
+              appendLocalMessage(message);
+            } else {
+              conversationService.getConversationMessages(conversationId).then(messageResult => {
+                const sortedMessages = (messageResult.messages || []).sort((a: any, b: any) => {
+                  const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+                  const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+                  return dateA - dateB;
+                });
+                setMessages(sortedMessages);
+              }).catch(console.error);
+            }
+          }
+        });
+
+        socketService.onGroupMemberLeft((payload: any) => {
+          const { conversationId, message, userId, removedUserId } = payload;
+          const leftUserId = userId || removedUserId;
+          if (shouldSkipDuplicateMemberRemoval(conversationId, leftUserId)) {
+            return;
+          }
+
+          if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
+            if (String(conversationId) === String(selectedConversationId)) {
+              setSelectedChat(null);
+              setSelectedConversationId(null);
+              setMessages([]);
+              setChatError("Bạn đã rời khỏi nhóm này.");
+            }
+            window.dispatchEvent(new Event("chatList:refresh"));
+            return;
+          }
+
+          if (String(conversationId) === String(selectedConversationId)) {
+            if (message) {
+              appendLocalMessage(message);
+            } else {
+              conversationService.getConversationMessages(conversationId).then(messageResult => {
+                const sortedMessages = (messageResult.messages || []).sort((a: any, b: any) => {
+                  const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+                  const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+                  return dateA - dateB;
+                });
+                setMessages(sortedMessages);
+              }).catch(console.error);
+            }
+          }
+        });
+
+        socketService.on("conversation:member_removed", (payload: any) => {
+          const { conversationId, message, userId, removedUserId, reason } = payload;
+          const leftUserId = userId || removedUserId;
+          if (shouldSkipDuplicateMemberRemoval(conversationId, leftUserId)) {
+            return;
+          }
+
+          if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
+            if (String(conversationId) === String(selectedConversationId)) {
+              setSelectedChat(null);
+              setSelectedConversationId(null);
+              setMessages([]);
+              setChatError(
+                reason === "left"
+                  ? "Bạn đã rời khỏi nhóm này."
+                  : "Bạn đã bị xoá khỏi nhóm này.",
+              );
+            }
+            window.dispatchEvent(new Event("chatList:refresh"));
+            return;
+          }
+
+          if (String(conversationId) === String(selectedConversationId)) {
+            if (message) {
+              appendLocalMessage(message);
+            } else {
+              conversationService.getConversationMessages(conversationId).then(messageResult => {
+                const sortedMessages = (messageResult.messages || []).sort((a: any, b: any) => {
+                  const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+                  const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+                  return dateA - dateB;
+                });
+                setMessages(sortedMessages);
+              }).catch(console.error);
+            }
+          }
+        });
+
         // Handle group dissolution - this group has been deleted by an admin
         socketService.onGroupDissolved((payload: any) => {
           const { conversationId } = payload;
@@ -512,22 +623,58 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.off("poll:vote");
       socketService.off("poll:closed");
       socketService.off("conversation:updated");
+      socketService.off("conversation:members_added");
+      socketService.off("conversation:member_removed");
+      socketService.offGroupMemberLeft();
       socketService.offGroupDissolved();
       socketService.offGroupRenamed();
       socketService.offGroupAvatarChanged();
       // Do not disconnect the socket here to preserve global connectivity
     };
-  }, [selectedConversationId, appendLocalMessage, updatePollInMessages]);
+  }, [
+    selectedConversationId,
+    appendLocalMessage,
+    updatePollInMessages,
+    shouldSkipDuplicateMemberRemoval,
+  ]);
 
   useEffect(() => {
     setTypingUsers(new Set());
-    if (selectedConversationId) {
-      socketService.joinRoom(selectedConversationId);
+    const isGroupChat =
+      selectedChat?.type === "group" || selectedChat?.type === "GROUP";
+    if (selectedConversationId && isGroupChat) {
+      socketService.joinRoom(selectedConversationId).catch((error) => {
+        console.warn("Failed to join group socket room", error);
+      });
     }
     return () => {
-      if (selectedConversationId) {
-        socketService.leaveRoom(selectedConversationId);
+      if (selectedConversationId && isGroupChat) {
+        socketService.leaveRoom(selectedConversationId).catch((error) => {
+          console.warn("Failed to leave group socket room", error);
+        });
       }
+    };
+  }, [selectedConversationId, selectedChat?.type]);
+
+  useEffect(() => {
+    const handleCurrentUserLeftGroup = (event: any) => {
+      const conversationId = event?.detail?.conversationId;
+      if (!conversationId) return;
+
+      if (String(conversationId) === String(selectedConversationId)) {
+        setSelectedChat(null);
+        setSelectedConversationId(null);
+        setMessages([]);
+        setChatError("Bạn đã rời khỏi nhóm này.");
+      }
+    };
+
+    window.addEventListener("group:currentUserLeft", handleCurrentUserLeftGroup);
+    return () => {
+      window.removeEventListener(
+        "group:currentUserLeft",
+        handleCurrentUserLeftGroup,
+      );
     };
   }, [selectedConversationId]);
 

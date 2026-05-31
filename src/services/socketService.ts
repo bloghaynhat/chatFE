@@ -669,16 +669,6 @@ class SocketService {
     });
   }
 
-  notifyAddMembers(conversationId: string, memberIds: string[]) {
-    if (!this.messagesSocket?.connected) return;
-    this.messagesSocket.emit("addMember", { conversationId, memberIds });
-  }
-
-  notifyRemoveMember(conversationId: string, userId: string) {
-    if (!this.messagesSocket?.connected) return;
-    this.messagesSocket.emit("removeMember", { conversationId, userId });
-  }
-
   startTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
 

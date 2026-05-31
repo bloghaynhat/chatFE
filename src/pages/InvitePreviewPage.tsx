@@ -31,6 +31,7 @@ export const InvitePreviewPage: React.FC = () => {
         alert("Your request to join the group is pending approval from administrators.");
         navigate("/");
       } else if (data?.conversationId || preview?.groupId) {
+        window.dispatchEvent(new Event("chatList:refresh"));
         navigate(`/?conversation=${data?.conversationId || preview?.groupId}`);
       } else {
         navigate("/");

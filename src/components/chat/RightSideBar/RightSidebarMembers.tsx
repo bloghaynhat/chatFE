@@ -24,6 +24,11 @@ export const RightSidebarMembers = ({
   }, []);
 
   const title = type === "admins" ? "Administrators" : "Members";
+  const canManageMembers =
+    currentUserRole === "admin" ||
+    currentUserRole === "ADMIN" ||
+    currentUserRole === "owner" ||
+    currentUserRole === "OWNER";
 
   const displayMembers = members.filter((m: any) => {
     if (type === "admins") {
@@ -118,12 +123,14 @@ export const RightSidebarMembers = ({
       </div>
 
       {/* Add Member Button - Only for Admin/Owner */}
-      <button 
-        className="absolute bottom-6 right-6 w-14 h-14 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30"
-        onClick={onAddMemberClick}
-      >
-        <FiUserPlus className="text-[26px]" />
-      </button>
+      {canManageMembers && (
+        <button
+          className="absolute bottom-6 right-6 w-14 h-14 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30"
+          onClick={onAddMemberClick}
+        >
+          <FiUserPlus className="text-[26px]" />
+        </button>
+      )}
       
 
       {/* Context Menu Dropdown */}
