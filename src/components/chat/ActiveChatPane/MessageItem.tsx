@@ -14,6 +14,7 @@ import { MessageAudio } from "./MessageTypes/MessageAudio";
 import { MessageDocument } from "./MessageTypes/MessageDocument";
 import { MessageText } from "./MessageTypes/MessageText";
 import { PollMessage } from "./MessageTypes/PollMessage";
+import { ReminderMessage, extractReminderFromMessage } from "./MessageTypes/ReminderMessage";
 import { CallMessageBubble, parseCallMessage } from "./MessageTypes/CallMessageBubble";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
@@ -163,6 +164,7 @@ export const MessageItem = ({
 
   const isSystem = message?.type === "system" || message?.type === "SYSTEM";
   const isPoll = message?.type === "poll" || message?.type === "POLL" || Boolean(message?.poll);
+  const isReminder = Boolean(extractReminderFromMessage(message, text));
   const callMessage = parseCallMessage(message, text);
   const isCallMessage = Boolean(callMessage);
 
@@ -178,6 +180,7 @@ export const MessageItem = ({
     !isForwarded &&
     !isSystem &&
     !isCallMessage &&
+    !isReminder &&
     !isPoll;
 
   const onlyImagesOrVideos =
@@ -326,7 +329,9 @@ export const MessageItem = ({
           />
         )}
 
-        {isPoll ? (
+        {isReminder ? (
+          <ReminderMessage message={message} text={text} mine={mine} />
+        ) : isPoll ? (
           <PollMessage
             message={message}
             mine={mine}

@@ -113,6 +113,67 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
   }, []);
 
+  const getPayloadConversationId = useCallback((payload: any) => {
+    const rawId =
+      payload?.conversationId ||
+      payload?.groupId ||
+      payload?.note?.conversationId ||
+      payload?.note?.groupId ||
+      payload?.reminder?.conversationId ||
+      payload?.reminder?.groupId ||
+      payload?.message?.conversationId ||
+      payload?.data?.conversationId ||
+      payload?.data?.groupId;
+
+    if (rawId && typeof rawId === "object") {
+      return rawId.id || rawId._id || rawId.conversationId || rawId.groupId;
+    }
+
+    return rawId;
+  }, []);
+
+  const upsertMessageFromPayload = useCallback(
+    (payload: any) => {
+      const message =
+        payload?.message ||
+        payload?.systemMessage ||
+        payload?.data?.message ||
+        payload?.data?.systemMessage ||
+        payload?.reminder?.message ||
+        payload?.reminder?.timelineMessage ||
+        payload?.data?.reminder?.message ||
+        payload?.data?.reminder?.timelineMessage ||
+        null;
+
+      if (!message) return;
+
+      const conversationId = getPayloadConversationId(payload);
+      if (String(conversationId || message.conversationId) !== String(selectedConversationId)) {
+        return;
+      }
+
+      setMessages((prev) => {
+        const messageId = message.id || message._id || message.messageId;
+        if (!messageId) return prev;
+
+        const exists = prev.some(
+          (item: any) => String(item.id || item._id || item.messageId) === String(messageId),
+        );
+
+        if (exists) {
+          return prev.map((item: any) =>
+            String(item.id || item._id || item.messageId) === String(messageId)
+              ? { ...item, ...message }
+              : item,
+          );
+        }
+
+        return sortMessagesByCreatedAt([...prev, message]);
+      });
+    },
+    [getPayloadConversationId, selectedConversationId],
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -435,6 +496,24 @@ const MainLayout = ({ children }: { children?: any }) => {
           if (payload?.poll) updatePollInMessages(payload.poll);
         });
 
+        const handleUtilityChanged = (payload: any) => {
+          upsertMessageFromPayload(payload);
+          const conversationId = getPayloadConversationId(payload);
+          if (String(conversationId) === String(selectedConversationId)) {
+            window.dispatchEvent(new Event("chatList:refresh"));
+          }
+        };
+
+        socketService.onGroupNoteCreated(handleUtilityChanged);
+        socketService.onGroupNoteUpdated(handleUtilityChanged);
+        socketService.onGroupNoteDeleted(handleUtilityChanged);
+        socketService.onGroupReminderCreated(handleUtilityChanged);
+        socketService.onGroupReminderUpdated(handleUtilityChanged);
+        socketService.onGroupReminderDeleted(handleUtilityChanged);
+        socketService.onGroupReminderPinned(handleUtilityChanged);
+        socketService.onGroupReminderUnpinned(handleUtilityChanged);
+        socketService.onGroupReminderDue(handleUtilityChanged);
+
         // Handle message pin
         socketService.onMessagePinned((payload: any) => {
           const { conversationId, message } = payload;
@@ -660,6 +739,15 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.off("poll:new");
       socketService.off("poll:vote");
       socketService.off("poll:closed");
+      socketService.off("group:note:created");
+      socketService.off("group:note:updated");
+      socketService.off("group:note:deleted");
+      socketService.off("group:reminder:created");
+      socketService.off("group:reminder:updated");
+      socketService.off("group:reminder:deleted");
+      socketService.off("group:reminder:pinned");
+      socketService.off("group:reminder:unpinned");
+      socketService.off("group:reminder:due");
       socketService.off("conversation:updated");
       socketService.off("conversation:members_added");
       socketService.off("conversation:member_removed");
@@ -673,6 +761,8 @@ const MainLayout = ({ children }: { children?: any }) => {
     selectedConversationId,
     appendLocalMessage,
     updatePollInMessages,
+    getPayloadConversationId,
+    upsertMessageFromPayload,
     shouldSkipDuplicateMemberRemoval,
   ]);
 
