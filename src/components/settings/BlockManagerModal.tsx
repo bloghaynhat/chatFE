@@ -9,7 +9,7 @@ import {
   getBlockedUsersCursor,
   unblockUser,
 } from "../../services/blockService";
-import { Loader2, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, ShieldCheck, ShieldOff, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface BlockManagerProps {
@@ -74,15 +74,23 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <ShieldOff className="w-5 h-5 text-red-500" />
-            Danh sách chặn
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <ShieldOff className="w-5 h-5 text-red-500" />
+              Danh sách chặn
+            </h2>
+            {!isLoading && !isError && (
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                {blockedUsers.length} người dùng
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
+            title="Đóng"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -97,13 +105,18 @@ export const BlockManagerModal: React.FC<BlockManagerProps> = ({
               <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
             </div>
           ) : isError ? (
-            <div className="text-center p-4 text-red-500">
-              Có lỗi xảy ra khi tải dữ liệu
+            <div className="text-center p-6 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300">
+              Không thể tải danh sách chặn. Vui lòng thử lại sau.
             </div>
           ) : blockedUsers.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-gray-500">
               <ShieldCheck className="w-12 h-12 mb-2 opacity-50" />
-              <p>Bạn chưa chặn ai</p>
+              <p className="font-medium text-gray-700 dark:text-gray-200">
+                Bạn chưa chặn ai
+              </p>
+              <p className="mt-1 text-sm text-center text-gray-500 dark:text-gray-400">
+                Những người bạn chặn sẽ xuất hiện tại đây.
+              </p>
             </div>
           ) : (
             <ul className="space-y-3">

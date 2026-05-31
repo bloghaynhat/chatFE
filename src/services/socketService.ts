@@ -565,7 +565,11 @@ class SocketService {
 
           if (code === "blocked" || /blocked/i.test(message)) {
             this.setConversationBlocked(conversationId, true);
-            this.emit("conversation:blocked", { conversationId });
+            this.emit("conversation:blocked", {
+              conversationId,
+              code: "blocked",
+              message,
+            });
           }
 
           reject(

@@ -16,6 +16,7 @@ import {
   FiTrash2,
   FiMapPin,
   FiZap,
+  FiInfo,
 } from "react-icons/fi";
 import { useState } from "react";
 import { AiSummaryModal } from "../AiSummaryModal";
@@ -49,6 +50,7 @@ export const ChatHeader = ({
   onJoinActiveCallV2,
   onBlockUser,
   isBlocked,
+  isContactLimited,
   isBlockActionPending,
 }: any) => {
   const [isAiSummaryModalOpen, setIsAiSummaryModalOpen] = useState(false);
@@ -84,8 +86,8 @@ export const ChatHeader = ({
       label: isBlockActionPending
         ? "Đang xử lý..."
         : isBlocked
-          ? "Unblock user"
-          : "Block user",
+          ? "Bỏ chặn người dùng"
+          : "Chặn người dùng",
       icon: FiLock,
       danger: !isBlocked,
       disabled: isBlockActionPending,
@@ -139,9 +141,21 @@ export const ChatHeader = ({
                     "Unknown"}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  {isLoading
-                    ? "Opening conversation..."
-                    : "last seen 1 hour ago"}
+                  {isLoading ? (
+                    "Opening conversation..."
+                  ) : isBlocked ? (
+                    <span className="inline-flex items-center gap-1 text-red-500 dark:text-red-400">
+                      <FiLock className="text-[12px]" />
+                      Đã chặn
+                    </span>
+                  ) : isContactLimited ? (
+                    <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300">
+                      <FiInfo className="text-[12px]" />
+                      Tạm thời không thể liên hệ
+                    </span>
+                  ) : (
+                    "last seen 1 hour ago"
+                  )}
                 </p>
               </div>
             </div>

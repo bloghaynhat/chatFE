@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { conversationService, mediaService } from "../../services";
+import { checkBlockStatus } from "../../services/blockService";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
 import { RightSidebar } from "../chat/RightSidebar";
@@ -26,6 +27,9 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [chatError, setChatError] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  const [blockedConversationIds, setBlockedConversationIds] = useState<
+    Set<string>
+  >(new Set());
   const { user } = useAuth();
 
   // Track pending pin/unpin operations to prevent duplicate requests
@@ -526,6 +530,113 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
   };
 
+  const setConversationBlockedStatus = useCallback(
+    (conversationId?: string, isBlocked = true) => {
+      if (!conversationId) return;
+      socketService.setConversationBlocked(conversationId, isBlocked);
+      setBlockedConversationIds((prev) => {
+        const next = new Set(prev);
+        if (isBlocked) {
+          next.add(String(conversationId));
+        } else {
+          next.delete(String(conversationId));
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const markConversationBlocked = useCallback(
+    (conversationId?: string) => {
+      setConversationBlockedStatus(conversationId, true);
+    },
+    [setConversationBlockedStatus],
+  );
+
+  const resolvePrivatePeerId = useCallback(
+    (chat: any) => {
+      const target =
+        chat?.targetUser ||
+        chat?.participant ||
+        chat?.user ||
+        chat?.receiver ||
+        chat?.friend ||
+        null;
+      const participantPeer = (chat?.participants || []).find(
+        (participant: any) =>
+          (participant?.userId || participant?.id || participant?._id) !==
+          user?.id,
+      );
+      const participantPeerUser =
+        participantPeer?.user ||
+        participantPeer?.profile ||
+        participantPeer?.member ||
+        participantPeer ||
+        null;
+
+      return (
+        chat?.targetUserId ||
+        chat?.participantId ||
+        target?.id ||
+        target?._id ||
+        participantPeer?.userId ||
+        participantPeerUser?.id ||
+        participantPeerUser?._id ||
+        null
+      );
+    },
+    [user?.id],
+  );
+
+  const syncConversationBlockStatus = useCallback(
+    async (conversationId: string, chat: any) => {
+      const isGroupChat =
+        chat?.type === "group" ||
+        chat?.type === "GROUP" ||
+        (Array.isArray(chat?.members) && chat.members.length > 2);
+
+      if (isGroupChat) {
+        setConversationBlockedStatus(conversationId, false);
+        return;
+      }
+
+      const peerId = resolvePrivatePeerId(chat);
+      if (!peerId) {
+        setConversationBlockedStatus(conversationId, false);
+        return;
+      }
+
+      try {
+        const resp: any = await checkBlockStatus(peerId);
+        const payload = resp?.data || resp || {};
+        const isBlocked = Boolean(payload?.isBlocked);
+        setConversationBlockedStatus(conversationId, isBlocked);
+        setSelectedChat((prev: any) =>
+          prev && String(prev.id || prev.conversationId) === String(conversationId)
+            ? {
+                ...prev,
+                targetUserId: peerId,
+                blockStatus: {
+                  ...(prev.blockStatus || {}),
+                  isBlocked,
+                  blockedByMe: isBlocked,
+                  isBlockedByPeer:
+                    prev.blockStatus?.isBlockedByPeer ||
+                    prev.blockStatus?.blockedMe ||
+                    false,
+                },
+              }
+            : prev,
+        );
+      } catch (error) {
+        console.warn("Failed to check block status", error);
+        setConversationBlockedStatus(conversationId, false);
+      }
+    },
+    [resolvePrivatePeerId, setConversationBlockedStatus],
+  );
+
   const openChatByRow = useCallback(
     async (chat) => {
       if (!chat?.id) {
@@ -547,6 +658,10 @@ const MainLayout = ({ children }: { children?: any }) => {
         processedChat.targetUserId = processedChat.pairKey
           .split("_")
           .find((id) => id !== user?.id);
+      }
+      const peerId = resolvePrivatePeerId(processedChat);
+      if (peerId && !processedChat.targetUserId) {
+        processedChat.targetUserId = peerId;
       }
 
       setSelectedChat(processedChat);
@@ -587,6 +702,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
 
         setSelectedConversationId(conversationId);
+        await syncConversationBlockStatus(conversationId, processedChat);
 
         // Nếu là group chat, fetch thông tin nhóm mới nhất và update selectedChat
         const isGroupChat =
@@ -652,7 +768,13 @@ const MainLayout = ({ children }: { children?: any }) => {
         setOpeningChatId(null);
       }
     },
-    [isOpeningConversation, openingChatId],
+    [
+      isOpeningConversation,
+      openingChatId,
+      resolvePrivatePeerId,
+      syncConversationBlockStatus,
+      user?.id,
+    ],
   );
 
   const retryOpenCurrentChat = useCallback(() => {
@@ -673,6 +795,22 @@ const MainLayout = ({ children }: { children?: any }) => {
   const clearForwardingMessage = useCallback(() => {
     setForwardingMessage(null);
   }, []);
+
+  const isBlockedError = (error: any) => {
+    const message =
+      error?.message ||
+      error?.payload?.message ||
+      error?.payload?.msg ||
+      error?.payload?.error ||
+      "";
+    const code =
+      error?.code ||
+      error?.payload?.code ||
+      error?.payload?.details?.code ||
+      error?.details?.code;
+
+    return code === "blocked" || /blocked/i.test(String(message));
+  };
 
   const handleSendMessage = async (payloadOrText, mediaFiles = []) => {
     let conversationId = selectedConversationId || selectedChat?.id;
@@ -946,6 +1084,12 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
       } catch (error) {
         console.error("Failed to send message via socket", error);
+        if (isBlockedError(error)) {
+          markConversationBlocked(conversationId);
+          setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+          return;
+        }
+
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === tempId ? { ...msg, status: "failed" } : msg,
@@ -1347,6 +1491,9 @@ const MainLayout = ({ children }: { children?: any }) => {
               onForwardToTarget={handleForwardToTarget}
               forwardingMessage={forwardingMessage}
               onClearForwarding={clearForwardingMessage}
+              isContactBlockedByPolicy={blockedConversationIds.has(
+                String(selectedConversationId || selectedChat?.id),
+              )}
               isRightSidebarOpen={isRightSidebarOpen}
               setIsRightSidebarOpen={setIsRightSidebarOpen}
               onPinMessage={handlePinMessage}

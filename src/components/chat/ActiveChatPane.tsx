@@ -45,6 +45,7 @@ export const ActiveChatPane = ({
   onForwardToTarget,
   forwardingMessage,
   onClearForwarding,
+  isContactBlockedByPolicy = false,
   isRightSidebarOpen,
   setIsRightSidebarOpen,
   onPinMessage,
@@ -262,14 +263,26 @@ export const ActiveChatPane = ({
     blockStatus?.isBlocked || selectedChatBlockStatus.isBlockedByMe,
   );
   const isBlockedByPeer = Boolean(
-    blockStatus?.isBlocking ||
+      blockStatus?.isBlocking ||
       selectedChatBlockStatus.isBlockedByPeer ||
+      isContactBlockedByPolicy ||
       isBlockedByPolicy,
   );
   const hasBlockRestriction = !isGroup && (isBlockedByMe || isBlockedByPeer);
-  const messageUnavailableText = isBlockedByMe
-    ? "Bạn đã chặn người này. Bỏ chặn để tiếp tục trò chuyện."
-    : "Hiện chưa thể gửi tin nhắn trong cuộc trò chuyện này. Bạn có thể thử lại sau.";
+  const blockNotice = isBlockedByMe
+    ? {
+        title: "Bạn đã chặn người này",
+        description:
+          "Tin nhắn và cuộc gọi đang được tạm dừng. Bỏ chặn để tiếp tục trò chuyện.",
+        tone: "danger",
+      }
+    : {
+        title: "Chưa thể liên hệ lúc này",
+        description:
+          "Tin nhắn và cuộc gọi chưa thể gửi đi trong cuộc trò chuyện này. Vui lòng thử lại sau.",
+        tone: "warning",
+      };
+  const messageUnavailableText = `${blockNotice.title}. ${blockNotice.description}`;
   const callUnavailableText = isBlockedByMe
     ? "Bạn đã chặn người này. Bỏ chặn để bắt đầu cuộc gọi."
     : "Hiện chưa thể bắt đầu cuộc gọi với người này. Vui lòng thử lại sau.";
@@ -318,14 +331,17 @@ export const ActiveChatPane = ({
       "conversation:blocked",
       (payload: any) => {
         const conversationId = selectedConversationId || selectedChat?.id;
-        if (payload?.conversationId === conversationId) {
+        if (
+          payload?.conversationId === conversationId ||
+          payload?.conversationId === callPeerInfo?.id
+        ) {
           setIsBlockedByPolicy(true);
         }
       },
     );
 
     return () => unsubscribe?.();
-  }, [selectedChat?.id, selectedConversationId]);
+  }, [callPeerInfo?.id, selectedChat?.id, selectedConversationId]);
 
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
@@ -1031,6 +1047,7 @@ export const ActiveChatPane = ({
         onJoinActiveCallV2={() => void handleJoinActiveCallV2()}
         onBlockUser={handleToggleBlockUser}
         isBlocked={isBlockedByMe}
+        isContactLimited={isBlockedByPeer}
         isBlockActionPending={
           isBlockStatusLoading ||
           blockMutation.isPending ||
@@ -1156,21 +1173,42 @@ export const ActiveChatPane = ({
 
       {hasBlockRestriction && (
         <div
-          className={`mx-4 mb-4 p-4 border rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all ${
+          className={`mx-4 mb-3 p-4 border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left transition-all shadow-sm ${
             isBlockedByMe
               ? "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30"
               : "bg-amber-50 dark:bg-amber-900/15 border-amber-100 dark:border-amber-800/30"
           }`}
         >
-          <div
-            className={`flex items-center gap-2 text-[15px] font-medium ${
-              isBlockedByMe
-                ? "text-red-600 dark:text-red-400"
-                : "text-amber-700 dark:text-amber-300"
-            }`}
-          >
-            <FiInfo className="text-lg shrink-0" />
-            <span>{messageUnavailableText}</span>
+          <div className="flex items-start gap-3 min-w-0">
+            <div
+              className={`mt-0.5 h-8 w-8 rounded-full inline-flex items-center justify-center shrink-0 ${
+                isBlockedByMe
+                  ? "bg-red-100 text-red-600 dark:bg-red-800/40 dark:text-red-300"
+                  : "bg-amber-100 text-amber-700 dark:bg-amber-800/30 dark:text-amber-300"
+              }`}
+            >
+              <FiInfo className="text-lg" />
+            </div>
+            <div className="min-w-0">
+              <p
+                className={`text-[14px] font-semibold ${
+                  isBlockedByMe
+                    ? "text-red-700 dark:text-red-300"
+                    : "text-amber-800 dark:text-amber-200"
+                }`}
+              >
+                {blockNotice.title}
+              </p>
+              <p
+                className={`mt-0.5 text-[13px] leading-5 ${
+                  isBlockedByMe
+                    ? "text-red-600/90 dark:text-red-300/90"
+                    : "text-amber-700/90 dark:text-amber-200/90"
+                }`}
+              >
+                {blockNotice.description}
+              </p>
+            </div>
           </div>
           {isBlockedByMe && (
             <button
@@ -1186,7 +1224,7 @@ export const ActiveChatPane = ({
         </div>
       )}
 
-      {isBlockedByMe ? null : (
+      {!hasBlockRestriction && (
         <ChatInput
           draftMessage={draftMessage}
           setDraftMessage={setDraftMessage}
@@ -1214,6 +1252,8 @@ export const ActiveChatPane = ({
           isTyping={typingUsers.size > 0}
           isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
           isMessageUnavailable={hasBlockRestriction}
+          unavailablePlaceholder="Soạn nháp..."
+          unavailableTitle={blockNotice.title}
           onUnavailableAction={showMessageUnavailableNotice}
         />
       )}

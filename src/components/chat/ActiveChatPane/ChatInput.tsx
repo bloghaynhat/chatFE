@@ -54,6 +54,8 @@ export const ChatInput = ({
   isTyping,
   isLastMessageFromCurrentUser,
   isMessageUnavailable = false,
+  unavailablePlaceholder = "Soạn nháp...",
+  unavailableTitle = "Chưa thể gửi tin nhắn",
   onUnavailableAction,
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
@@ -195,6 +197,14 @@ export const ChatInput = ({
       setIsRecordingAudio(false);
       clearInterval(recordIntervalRef.current);
     }
+  };
+
+  const handleUnavailableCommand = () => {
+    setIsAttachMenuOpen(false);
+    setIsEmojiPickerOpen(false);
+    setIsMoreMenuOpen(false);
+    setIsVoiceMenuOpen(false);
+    onUnavailableAction?.();
   };
 
   const formatRecordingTime = (seconds: number) => {
@@ -343,7 +353,13 @@ export const ChatInput = ({
         ) : (
         <div
           ref={attachMenuRef}
-          className={`relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${isListeningText ? "border-blue-300 dark:border-blue-500/50 shadow-blue-500/10" : "border-white/90 dark:border-slate-700/90"}`}
+          className={`relative flex-1 h-11 lg:h-12 rounded-full shadow-lg border outline outline-2 outline-transparent transition-all ${
+            isMessageUnavailable
+              ? "bg-amber-50/95 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60"
+              : isListeningText
+                ? "bg-white/95 dark:bg-slate-800/95 border-blue-300 dark:border-blue-500/50 shadow-blue-500/10"
+                : "bg-white/95 dark:bg-slate-800/95 border-white/90 dark:border-slate-700/90"
+          }`}
         >
           <div
             className={`absolute right-0 bottom-14 w-[260px] max-w-[78vw] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-xl p-2 border border-white/70 dark:border-slate-700 z-50 origin-bottom-right will-change-transform transition-all duration-200 ease-out ${isAttachMenuOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
@@ -355,6 +371,10 @@ export const ChatInput = ({
                 <button
                   key={action.id}
                   onClick={() => {
+                    if (isMessageUnavailable) {
+                      handleUnavailableCommand();
+                      return;
+                    }
                     setIsAttachMenuOpen(false);
                     if (action.onClick) action.onClick();
                   }}
@@ -399,27 +419,53 @@ export const ChatInput = ({
               handleInputChange(event);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSendMessage();
+              if (e.key === "Enter") {
+                if (isMessageUnavailable) {
+                  e.preventDefault();
+                  handleUnavailableCommand();
+                  return;
+                }
+                handleSendMessage();
+              }
             }}
-            placeholder="Message"
-            className="absolute left-11 right-20 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none"
+            placeholder={isMessageUnavailable ? unavailablePlaceholder : "Message"}
+            aria-label={
+              isMessageUnavailable
+                ? `${unavailableTitle}. Tin nhắn sẽ chưa được gửi.`
+                : "Message"
+            }
+            className={`absolute left-11 right-20 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] outline-none ${
+              isMessageUnavailable
+                ? "text-amber-900 dark:text-amber-100 placeholder:text-amber-500 dark:placeholder:text-amber-300/70"
+                : "text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            }`}
           />
 
-          <div className="absolute right-9 top-1/2 -translate-y-1/2">
-            <AiToneAdjustMenu 
-              currentText={draftMessage}
-              onApplyTone={(newText) => setDraftMessage(newText)}
-            />
-          </div>
+          {!isMessageUnavailable && (
+            <div className="absolute right-9 top-1/2 -translate-y-1/2">
+              <AiToneAdjustMenu 
+                currentText={draftMessage}
+                onApplyTone={(newText) => setDraftMessage(newText)}
+              />
+            </div>
+          )}
 
           <button
             onClick={() => {
+              if (isMessageUnavailable) {
+                handleUnavailableCommand();
+                return;
+              }
               setIsAttachMenuOpen((prev) => !prev);
               setIsMoreMenuOpen(false);
               setIsEmojiPickerOpen(false);
             }}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
-            title="Open attachment actions"
+            className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full transition ${
+              isMessageUnavailable
+                ? "text-amber-600 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                : "text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+            }`}
+            title={isMessageUnavailable ? unavailableTitle : "Open attachment actions"}
           >
             <FiPaperclip className="text-[20px] lg:text-[22px]" />
           </button>
@@ -470,7 +516,7 @@ export const ChatInput = ({
               }`}
               onClick={() => {
                 if (isMessageUnavailable) {
-                  onUnavailableAction?.();
+                  handleUnavailableCommand();
                 } else if (
                   editingMessage ||
                   draftMessage.trim() ||
@@ -487,7 +533,7 @@ export const ChatInput = ({
                 }
               }}
             >
-              {editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage ? (
+              {editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage || isMessageUnavailable ? (
                 <FiSend className="text-[20px] lg:text-[22px]" />
               ) : (
                 <FiMic className="text-[20px] lg:text-[22px]" />
