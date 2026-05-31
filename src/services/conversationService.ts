@@ -18,7 +18,35 @@ const normalizeMessages = (payload: any): Message[] => {
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.messages)) return payload.messages;
   if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.messages)) return payload.data.messages;
+  if (Array.isArray(payload?.data?.items)) return payload.data.items;
   return [];
+};
+
+const normalizeMessagePage = (payload: any) => {
+  const data = payload?.data || payload || {};
+  const page = Array.isArray(data) ? payload : data;
+
+  return {
+    nextCursor:
+      page?.nextCursor ??
+      data?.nextCursor ??
+      payload?.nextCursor ??
+      payload?.meta?.nextCursor ??
+      null,
+    hasMore: Boolean(
+      page?.hasMore ??
+        data?.hasMore ??
+        payload?.hasMore ??
+        payload?.meta?.hasMore ??
+        false,
+    ),
+    memberSeenMap:
+      page?.memberSeenMap ??
+      data?.memberSeenMap ??
+      payload?.memberSeenMap ??
+      {},
+  };
 };
 
 export const conversationService = {
@@ -136,24 +164,37 @@ export const conversationService = {
 
   async getConversationMessages(
     conversationId: string,
-    params: { limit?: number; [key: string]: any } = {},
-  ): Promise<{ raw: any; messages: Message[] }> {
+    params: { limit?: number; cursor?: string | null; [key: string]: any } = {},
+  ): Promise<{
+    raw: any;
+    messages: Message[];
+    nextCursor: string | null;
+    hasMore: boolean;
+    memberSeenMap: Record<string, string>;
+  }> {
+    const { cursor, ...restParams } = params;
     // Limit tối đa backend cho phép là 100
-    const limit = Math.min(params.limit || 100, 100);
+    const limit = Math.min(params.limit || 30, 100);
 
     const response = await api.get(
       `/conversations/${conversationId}/messages`,
       {
         params: {
           limit,
-          ...params,
+          ...(cursor ? { cursor } : {}),
+          ...restParams,
         },
       },
     );
+    const payload = (response as any).data || response;
+    const page = normalizeMessagePage(payload);
 
     return {
       raw: response,
-      messages: normalizeMessages((response as any).data || response),
+      messages: normalizeMessages(payload),
+      nextCursor: page.nextCursor,
+      hasMore: page.hasMore,
+      memberSeenMap: page.memberSeenMap,
     };
   },
 

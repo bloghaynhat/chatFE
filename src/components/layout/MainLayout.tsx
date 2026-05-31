@@ -10,6 +10,27 @@ import type {
   UnpinMessagePayload,
 } from "../../types/socket";
 
+const MESSAGE_PAGE_SIZE = 30;
+
+const sortMessagesByCreatedAt = (items: any[] = []) =>
+  [...items].sort((a, b) => {
+    const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+    const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+    return dateA - dateB;
+  });
+
+const mergeUniqueMessages = (olderMessages: any[], currentMessages: any[]) => {
+  const seen = new Set<string>();
+  const merged = [...olderMessages, ...currentMessages].filter((message) => {
+    const id = message?.id || message?._id || message?.messageId;
+    if (!id) return true;
+    if (seen.has(String(id))) return false;
+    seen.add(String(id));
+    return true;
+  });
+  return sortMessagesByCreatedAt(merged);
+};
+
 const MainLayout = ({ children }: { children?: any }) => {
   const [activeView, setActiveView] = useState("chats"); // 'chats', 'contacts'
   const [darkMode, setDarkMode] = useState(false);
@@ -20,6 +41,11 @@ const MainLayout = ({ children }: { children?: any }) => {
   }, [selectedChat]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [messagePageInfo, setMessagePageInfo] = useState<{
+    nextCursor: string | null;
+    hasMore: boolean;
+  }>({ nextCursor: null, hasMore: false });
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [typingUsers, setTypingUsers] = useState(new Set());
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
   const [openingChatId, setOpeningChatId] = useState(null);
@@ -477,14 +503,18 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (message) {
               appendLocalMessage(message);
             } else {
-              conversationService.getConversationMessages(conversationId).then(messageResult => {
-                const sortedMessages = (messageResult.messages || []).sort((a: any, b: any) => {
-                  const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-                  const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-                  return dateA - dateB;
-                });
-                setMessages(sortedMessages);
-              }).catch(console.error);
+              conversationService
+                .getConversationMessages(conversationId, {
+                  limit: MESSAGE_PAGE_SIZE,
+                })
+                .then((messageResult) => {
+                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessagePageInfo({
+                    nextCursor: messageResult.nextCursor,
+                    hasMore: messageResult.hasMore,
+                  });
+                })
+                .catch(console.error);
             }
           }
         });
@@ -511,14 +541,18 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (message) {
               appendLocalMessage(message);
             } else {
-              conversationService.getConversationMessages(conversationId).then(messageResult => {
-                const sortedMessages = (messageResult.messages || []).sort((a: any, b: any) => {
-                  const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-                  const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-                  return dateA - dateB;
-                });
-                setMessages(sortedMessages);
-              }).catch(console.error);
+              conversationService
+                .getConversationMessages(conversationId, {
+                  limit: MESSAGE_PAGE_SIZE,
+                })
+                .then((messageResult) => {
+                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessagePageInfo({
+                    nextCursor: messageResult.nextCursor,
+                    hasMore: messageResult.hasMore,
+                  });
+                })
+                .catch(console.error);
             }
           }
         });
@@ -549,14 +583,18 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (message) {
               appendLocalMessage(message);
             } else {
-              conversationService.getConversationMessages(conversationId).then(messageResult => {
-                const sortedMessages = (messageResult.messages || []).sort((a: any, b: any) => {
-                  const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-                  const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-                  return dateA - dateB;
-                });
-                setMessages(sortedMessages);
-              }).catch(console.error);
+              conversationService
+                .getConversationMessages(conversationId, {
+                  limit: MESSAGE_PAGE_SIZE,
+                })
+                .then((messageResult) => {
+                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessagePageInfo({
+                    nextCursor: messageResult.nextCursor,
+                    hasMore: messageResult.hasMore,
+                  });
+                })
+                .catch(console.error);
             }
           }
         });
@@ -640,6 +678,11 @@ const MainLayout = ({ children }: { children?: any }) => {
 
   useEffect(() => {
     setTypingUsers(new Set());
+    if (!selectedConversationId) {
+      setMessagePageInfo({ nextCursor: null, hasMore: false });
+      setIsLoadingOlderMessages(false);
+    }
+
     const isGroupChat =
       selectedChat?.type === "group" || selectedChat?.type === "GROUP";
     if (selectedConversationId && isGroupChat) {
@@ -850,18 +893,22 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
 
         const messageResult =
-          await conversationService.getConversationMessages(conversationId);
+          await conversationService.getConversationMessages(conversationId, {
+            limit: MESSAGE_PAGE_SIZE,
+          });
 
         // Sort messages by createdAt in ascending order (oldest first)
-        const sortedMessages = (messageResult.messages || []).sort((a, b) => {
-          const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-          const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-          return dateA - dateB;
-        });
+        const sortedMessages = sortMessagesByCreatedAt(
+          messageResult.messages || [],
+        );
 
         setMessages(
           mergeSearchTargetMessages(sortedMessages, processedChat, conversationId),
         );
+        setMessagePageInfo({
+          nextCursor: messageResult.nextCursor,
+          hasMore: messageResult.hasMore,
+        });
 
         // fire-and-forget status sync with last message ID
         const lastMessage = sortedMessages[sortedMessages.length - 1];
@@ -932,6 +979,58 @@ const MainLayout = ({ children }: { children?: any }) => {
     if (!selectedChat) return;
     openChatByRow(selectedChat);
   }, [openChatByRow, selectedChat]);
+
+  const handleLoadOlderMessages = useCallback(async () => {
+    if (
+      !selectedConversationId ||
+      isLoadingOlderMessages ||
+      !messagePageInfo.hasMore ||
+      !messagePageInfo.nextCursor
+    ) {
+      return;
+    }
+
+    setIsLoadingOlderMessages(true);
+    const chatContainer = document.querySelector("[data-chat-container]");
+    const previousScrollHeight = chatContainer?.scrollHeight || 0;
+    const previousScrollTop = chatContainer?.scrollTop || 0;
+
+    try {
+      const messageResult = await conversationService.getConversationMessages(
+        selectedConversationId,
+        {
+          cursor: messagePageInfo.nextCursor,
+          limit: MESSAGE_PAGE_SIZE,
+        },
+      );
+
+      setMessages((prev) =>
+        mergeUniqueMessages(messageResult.messages || [], prev),
+      );
+      requestAnimationFrame(() => {
+        const updatedContainer = document.querySelector(
+          "[data-chat-container]",
+        );
+        if (!updatedContainer) return;
+        const heightDelta =
+          updatedContainer.scrollHeight - previousScrollHeight;
+        updatedContainer.scrollTop = previousScrollTop + heightDelta;
+      });
+      setMessagePageInfo({
+        nextCursor: messageResult.nextCursor,
+        hasMore: messageResult.hasMore,
+      });
+    } catch (error) {
+      console.error("Failed to load older messages:", error);
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  }, [
+    isLoadingOlderMessages,
+    messagePageInfo.hasMore,
+    messagePageInfo.nextCursor,
+    selectedConversationId,
+  ]);
 
   const handleForwardToTarget = useCallback(
     (targetChat, msg) => {
@@ -1628,6 +1727,9 @@ const MainLayout = ({ children }: { children?: any }) => {
               onUnpinMessage={handleUnpinMessage}
               onPollCreated={appendLocalMessage}
               onPollUpdated={updatePollInMessages}
+              hasMoreMessages={messagePageInfo.hasMore}
+              isLoadingOlderMessages={isLoadingOlderMessages}
+              onLoadOlderMessages={handleLoadOlderMessages}
             />
           )}
         </div>

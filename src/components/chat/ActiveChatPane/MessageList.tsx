@@ -8,7 +8,8 @@ export const MessageList = ({
   error,
   messages,
   visibleMessages,
-  displayCount,
+  hasMoreMessages = false,
+  isLoadingOlderMessages = false,
   onRetry,
   currentUserId,
   typingUsers,
@@ -74,11 +75,13 @@ export const MessageList = ({
         <PhotoProvider maskOpacity={0.8}>
           <div className="flex flex-col gap-0 items-start max-w-4xl mx-auto w-full">
             <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
-              {displayCount < messages.length ? (
+              {isLoadingOlderMessages ? (
                 <div className="flex items-center gap-2">
                   <FiRefreshCw className="animate-spin" />
                   Loading older messages...
                 </div>
+              ) : hasMoreMessages ? (
+                "Kéo lên để tải thêm tin nhắn"
               ) : (
                 getDateLabel(visibleMessages[0]?.createdAt) || "Today"
               )}

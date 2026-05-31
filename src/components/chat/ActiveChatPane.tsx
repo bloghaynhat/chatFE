@@ -50,6 +50,9 @@ export const ActiveChatPane = ({
   onUnpinMessage,
   onPollCreated,
   onPollUpdated,
+  hasMoreMessages = false,
+  isLoadingOlderMessages = false,
+  onLoadOlderMessages,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -80,8 +83,6 @@ export const ActiveChatPane = ({
   const photoVideoInputRef = useRef(null);
   const documentInputRef = useRef(null);
   const userCache = useRef<Map<string, any>>(new Map());
-
-  const [displayCount, setDisplayCount] = useState(20);
 
   // File upload state for UI/UX
   const [dragType, setDragType] = useState(null); // 'image' or 'file'
@@ -414,16 +415,6 @@ export const ActiveChatPane = ({
 
   // Navigate to a specific message
   const handleNavigateToMessage = (messageId: string) => {
-    // Find the message index in the full messages array
-    const messageIndex = messages.findIndex(
-      (m) => String(m.id || m._id || m.messageId) === String(messageId),
-    );
-    if (messageIndex !== -1) {
-      // Calculate required displayCount to ensure this message is visible
-      const requiredDisplayCount = messages.length - messageIndex;
-      setDisplayCount((prev) => Math.max(prev, requiredDisplayCount));
-    }
-
     // Scroll after a short delay to allow DOM update
     setTimeout(() => {
       const messageElement = document.getElementById(`message-${messageId}`);
@@ -644,12 +635,21 @@ export const ActiveChatPane = ({
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages.length, typingUsers]);
+  const visibleMessages = useMemo(() => messages, [messages]);
+
+  const lastMessage = messages[messages.length - 1];
+  const lastMessageId =
+    lastMessage?.id || lastMessage?._id || lastMessage?.messageId || "";
+  const isLastMessageFromCurrentUser =
+    Boolean(lastMessage?.senderId) && lastMessage.senderId === currentUserId;
 
   useEffect(() => {
-    setDisplayCount(20);
+    if (!isLoadingOlderMessages) {
+      scrollToBottom();
+    }
+  }, [lastMessageId, typingUsers]);
+
+  useEffect(() => {
     setTimeout(() => scrollToBottom("auto"), 100);
   }, [selectedConversationId]);
 
@@ -659,34 +659,27 @@ export const ActiveChatPane = ({
     }
   }, [isLoading]);
 
-  const visibleMessages = useMemo(() => {
-    return messages.length > displayCount
-      ? messages.slice(messages.length - displayCount)
-      : messages;
-  }, [messages, displayCount]);
-
-  const lastMessage = messages[messages.length - 1];
-  const lastMessageId =
-    lastMessage?.id || lastMessage?._id || lastMessage?.messageId || "";
-  const isLastMessageFromCurrentUser =
-    Boolean(lastMessage?.senderId) && lastMessage.senderId === currentUserId;
-
   useEffect(() => {
-    if (firstMessageRef.current) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && displayCount < messages.length) {
-            setDisplayCount((prev) => Math.min(prev + 20, messages.length));
-          }
-        },
-        { rootMargin: "100px", threshold: 0.1 },
-      );
+    const el = firstMessageRef.current;
+    if (!el || !hasMoreMessages || isLoadingOlderMessages) return;
 
-      const el = firstMessageRef.current;
-      observer.observe(el);
-      return () => observer.unobserve(el);
-    }
-  }, [displayCount, messages.length, visibleMessages]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadOlderMessages?.();
+        }
+      },
+      { rootMargin: "160px", threshold: 0.1 },
+    );
+
+    observer.observe(el);
+    return () => observer.unobserve(el);
+  }, [
+    hasMoreMessages,
+    isLoadingOlderMessages,
+    onLoadOlderMessages,
+    visibleMessages,
+  ]);
 
   const attachActions = [
     {
@@ -819,7 +812,6 @@ export const ActiveChatPane = ({
     setIsHeaderSearchOpen(false);
     setIsCalendarModalOpen(false);
     setHeaderSearchValue("");
-    setDisplayCount(20);
   }, [selectedChat?.id]);
 
   useEffect(() => {
@@ -1029,7 +1021,8 @@ export const ActiveChatPane = ({
         error={error}
         messages={messages}
         visibleMessages={visibleMessages}
-        displayCount={displayCount}
+        hasMoreMessages={hasMoreMessages}
+        isLoadingOlderMessages={isLoadingOlderMessages}
         onRetry={onRetry}
         currentUserId={currentUserId}
         typingUsers={typingUsers}
