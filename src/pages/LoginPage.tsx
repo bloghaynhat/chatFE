@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { LoginForm } from "../components/auth/LoginForm";
 import { User } from "../types/user";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLoginSuccess = (userProfile: User) => {
     // eslint-disable-next-line no-console
@@ -18,7 +19,10 @@ export const LoginPage = () => {
       });
       return;
     }
-    navigate("/");
+    
+    const params = new URLSearchParams(location.search);
+    const redirectUrl = params.get("redirect");
+    navigate(redirectUrl || "/");
   };
 
   return (

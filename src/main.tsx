@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { AuthProvider } from "./context";
 import { CallV2SocketProvider } from "./providers/CallV2SocketProvider";
 import { Toaster } from "sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App.tsx";
 import "./styles/globals.css";
 import IncomingCallModal from "./components/call/IncomingCallModal";
@@ -14,10 +15,13 @@ configureRuntime({
   apiUrl: import.meta.env.VITE_API_URL || "/v1",
 });
 
+const queryClient = new QueryClient();
+
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
-    <AuthProvider>
-      <CallV2SocketProvider>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <AuthProvider>
+        <CallV2SocketProvider>
         <Toaster richColors />
         <App />
         <IncomingCallModal />
@@ -25,5 +29,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <ActiveCallView />
       </CallV2SocketProvider>
     </AuthProvider>
-  </BrowserRouter>,
+  </BrowserRouter>
+  </QueryClientProvider>,
 );
