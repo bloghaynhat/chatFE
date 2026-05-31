@@ -8,6 +8,7 @@ import { DeleteContactModal } from "./RightSideBarTypes/DeleteContactModal";
 import { BlockUserModal } from "./RightSideBarTypes/BlockUserModal";
 import { InviteLinkManagerModal } from "./RightSideBarTypes/InviteLinkManagerModal";
 import { MediaGallery } from "./MediaGallery";
+import { GroupNotesPanel, GroupRemindersPanel } from "./GroupUtilities/GroupUtilitiesPanel";
 import React, { useState, useEffect, useCallback } from "react";
 import { useContactsSocketListeners } from "../../../hooks";
 import {
@@ -80,7 +81,9 @@ export const RightSidebarInfo = ({
   const [isBlocking, setIsBlocking] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
+  const [activeTab, setActiveTab] = useState<
+    "members" | "images" | "files" | "links" | "voice" | "notes" | "reminders"
+  >("images");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const canDeleteContact = !isGroup && !isSavedMessages && friendStatus === "ACCEPTED";
@@ -315,12 +318,12 @@ export const RightSidebarInfo = ({
 
         {/* Tab Navigation - Members + Media tabs for groups, Media only for private */}
         {(isGroup || conversationId) && (
-          <div className="flex border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
+          <div className="flex flex-wrap border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
             {/* Members tab - only for groups */}
             {isGroup && (
               <button
                 onClick={() => setActiveTab("members")}
-                className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                className={`min-w-[92px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === "members"
                     ? "border-blue-500 text-blue-600 dark:text-blue-400"
                     : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
@@ -335,7 +338,7 @@ export const RightSidebarInfo = ({
               <>
                 <button
                   onClick={() => setActiveTab("images")}
-                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  className={`min-w-[76px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
                     activeTab === "images"
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
@@ -345,7 +348,7 @@ export const RightSidebarInfo = ({
                 </button>
                 <button
                   onClick={() => setActiveTab("files")}
-                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  className={`min-w-[70px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
                     activeTab === "files"
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
@@ -355,7 +358,7 @@ export const RightSidebarInfo = ({
                 </button>
                 <button
                   onClick={() => setActiveTab("links")}
-                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  className={`min-w-[70px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
                     activeTab === "links"
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
@@ -365,13 +368,37 @@ export const RightSidebarInfo = ({
                 </button>
                 <button
                   onClick={() => setActiveTab("voice")}
-                  className={`flex-1 min-w-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  className={`min-w-[70px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
                     activeTab === "voice"
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
                   }`}
                 >
                   Voice
+                </button>
+              </>
+            )}
+            {isGroup && conversationId && (
+              <>
+                <button
+                  onClick={() => setActiveTab("notes")}
+                  className={`min-w-[76px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "notes"
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Notes
+                </button>
+                <button
+                  onClick={() => setActiveTab("reminders")}
+                  className={`min-w-[104px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === "reminders"
+                      ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                  }`}
+                >
+                  Reminders
                 </button>
               </>
             )}
@@ -403,6 +430,18 @@ export const RightSidebarInfo = ({
               />
             </div>
           )}
+
+        {activeTab === "notes" && isGroup && conversationId && (
+          <div className="flex-1 overflow-hidden">
+            <GroupNotesPanel groupId={conversationId} />
+          </div>
+        )}
+
+        {activeTab === "reminders" && isGroup && conversationId && (
+          <div className="flex-1 overflow-hidden">
+            <GroupRemindersPanel groupId={conversationId} />
+          </div>
+        )}
       </div>
 
       <ContextMenuDropdown

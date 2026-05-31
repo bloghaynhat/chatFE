@@ -273,6 +273,74 @@ class SocketService {
     this.messagesSocket.on("poll:unpinned", (data) => {
       this.emit("poll:unpinned", data);
     });
+
+    const forwardUtilityEvent = (
+      socketEvent: string,
+      internalEvent: string,
+    ) => {
+      this.messagesSocket?.on(socketEvent, (data) => {
+        this.emit(internalEvent, data);
+        this.emit("group:utilities:changed", {
+          ...data,
+          event: internalEvent,
+        });
+      });
+    };
+
+    [
+      "note:created",
+      "notes:created",
+      "group:note_created",
+      "group:note:created",
+    ].forEach((event) => forwardUtilityEvent(event, "group:note:created"));
+    [
+      "note:updated",
+      "notes:updated",
+      "group:note_updated",
+      "group:note:updated",
+    ].forEach((event) => forwardUtilityEvent(event, "group:note:updated"));
+    [
+      "note:deleted",
+      "notes:deleted",
+      "group:note_deleted",
+      "group:note:deleted",
+    ].forEach((event) => forwardUtilityEvent(event, "group:note:deleted"));
+
+    [
+      "reminder:created",
+      "reminders:created",
+      "group:reminder_created",
+      "group:reminder:created",
+    ].forEach((event) => forwardUtilityEvent(event, "group:reminder:created"));
+    [
+      "reminder:updated",
+      "reminders:updated",
+      "group:reminder_updated",
+      "group:reminder:updated",
+    ].forEach((event) => forwardUtilityEvent(event, "group:reminder:updated"));
+    [
+      "reminder:deleted",
+      "reminder:cancelled",
+      "reminders:deleted",
+      "group:reminder_deleted",
+      "group:reminder_cancelled",
+      "group:reminder:deleted",
+    ].forEach((event) => forwardUtilityEvent(event, "group:reminder:deleted"));
+    [
+      "reminder:pinned",
+      "group:reminder_pinned",
+      "group:reminder:pinned",
+    ].forEach((event) => forwardUtilityEvent(event, "group:reminder:pinned"));
+    [
+      "reminder:unpinned",
+      "group:reminder_unpinned",
+      "group:reminder:unpinned",
+    ].forEach((event) => forwardUtilityEvent(event, "group:reminder:unpinned"));
+    [
+      "reminder:due",
+      "group:reminder_due",
+      "group:reminder:due",
+    ].forEach((event) => forwardUtilityEvent(event, "group:reminder:due"));
   }
 
   setupFriendListeners() {
@@ -582,6 +650,46 @@ class SocketService {
 
   onPollClosed(callback) {
     return this.on("poll:closed", callback);
+  }
+
+  onGroupNoteCreated(callback) {
+    return this.on("group:note:created", callback);
+  }
+
+  onGroupNoteUpdated(callback) {
+    return this.on("group:note:updated", callback);
+  }
+
+  onGroupNoteDeleted(callback) {
+    return this.on("group:note:deleted", callback);
+  }
+
+  onGroupReminderCreated(callback) {
+    return this.on("group:reminder:created", callback);
+  }
+
+  onGroupReminderUpdated(callback) {
+    return this.on("group:reminder:updated", callback);
+  }
+
+  onGroupReminderDeleted(callback) {
+    return this.on("group:reminder:deleted", callback);
+  }
+
+  onGroupReminderPinned(callback) {
+    return this.on("group:reminder:pinned", callback);
+  }
+
+  onGroupReminderUnpinned(callback) {
+    return this.on("group:reminder:unpinned", callback);
+  }
+
+  onGroupReminderDue(callback) {
+    return this.on("group:reminder:due", callback);
+  }
+
+  onGroupUtilitiesChanged(callback) {
+    return this.on("group:utilities:changed", callback);
   }
 
   joinRoom(conversationId) {
@@ -1103,6 +1211,36 @@ export const onGroupMemberRejected = (cb) =>
 
 export const onGroupSettingsUpdated = (cb) =>
   socketService.on("group:settings_updated", cb);
+
+export const onGroupNoteCreated = (cb) =>
+  socketService.on("group:note:created", cb);
+
+export const onGroupNoteUpdated = (cb) =>
+  socketService.on("group:note:updated", cb);
+
+export const onGroupNoteDeleted = (cb) =>
+  socketService.on("group:note:deleted", cb);
+
+export const onGroupReminderCreated = (cb) =>
+  socketService.on("group:reminder:created", cb);
+
+export const onGroupReminderUpdated = (cb) =>
+  socketService.on("group:reminder:updated", cb);
+
+export const onGroupReminderDeleted = (cb) =>
+  socketService.on("group:reminder:deleted", cb);
+
+export const onGroupReminderPinned = (cb) =>
+  socketService.on("group:reminder:pinned", cb);
+
+export const onGroupReminderUnpinned = (cb) =>
+  socketService.on("group:reminder:unpinned", cb);
+
+export const onGroupReminderDue = (cb) =>
+  socketService.on("group:reminder:due", cb);
+
+export const onGroupUtilitiesChanged = (cb) =>
+  socketService.on("group:utilities:changed", cb);
 
 // Friend
 export const onFriendRequest = (cb) =>

@@ -423,7 +423,8 @@ export const RightSidebar = ({
       setMembers(enrichedMembers);
       if (Array.isArray(addedMembers) && onGroupUpdated) {
         onGroupUpdated({
-          membersCount: Math.max(membersCount, members.length) + addedMembers.length,
+          membersCount:
+            Math.max(membersCount, members.length) + addedMembers.length,
         });
       }
       setActiveSubView("members");
@@ -585,12 +586,12 @@ export const RightSidebar = ({
     <div
       className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 flex flex-col h-full z-20 shadow-[-5px_0_15px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out relative overflow-hidden ${
         isOpen
-          ? "w-[320px] lg:w-[350px] border-l opacity-100"
+          ? "w-[360px] lg:w-[390px] border-l opacity-100"
           : "w-0 border-l-0 opacity-0"
       }`}
     >
       <div
-        className={`w-[320px] lg:w-[350px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}
+        className={`w-[360px] lg:w-[390px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}
       >
         <div
           className="flex h-full shrink-0 transition-transform duration-300 ease-in-out"
@@ -727,7 +728,8 @@ export const RightSidebar = ({
             </div>
             <div className="px-5 py-4">
               <p className="text-[14px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                Are you sure you want to remove {removeMemberState.targetName} from this group?
+                Are you sure you want to remove {removeMemberState.targetName}{" "}
+                from this group?
               </p>
               {removeMemberState.error && (
                 <p className="mt-3 text-[13px] text-red-500">
