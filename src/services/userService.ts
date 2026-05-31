@@ -193,7 +193,7 @@ export const searchUsers = async (query) => {
  */
 export const getUserById = async (id: string) => {
   try {
-    return await api.get(`/users/${id}/public`);
+    return await api.get(`/users/${id}`);
   } catch (error) {
     throw new Error(error.message || "Failed to fetch user");
   }
