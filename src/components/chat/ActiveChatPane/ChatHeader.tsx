@@ -65,6 +65,7 @@ export const ChatHeader = ({
   pinnedCount = 0,
   onStartAudioCall,
   onStartVideoCall,
+  onBlockUser,
   activeCallV2,
   callV2Status,
   onJoinActiveCallV2,
@@ -77,6 +78,10 @@ export const ChatHeader = ({
     selectedChat?.type === "saved_messages" ||
     selectedChat?.isSavedMessages ||
     selectedChat?.isSelfChat;
+  const isGroup =
+    selectedChat?.type === "GROUP" ||
+    selectedChat?.type === "group" ||
+    selectedChat?.isGroup === true;
 
   const visibleMoreActions = isSavedMessages
     ? moreActions.filter(
@@ -90,7 +95,7 @@ export const ChatHeader = ({
             "disable-sharing",
           ].includes(action.id),
       )
-    : moreActions;
+    : moreActions.filter((action) => (isGroup ? action.id !== "block-user" : true));
 
   const otherParticipant = (selectedChat?.participants || []).find(
     (p: any) => p.userId !== currentUserId,
@@ -155,6 +160,21 @@ export const ChatHeader = ({
       setTimeout(() => {
         headerSearchInputRef.current?.focus();
       }, 0);
+      return;
+    }
+
+    if (action.id === "call") {
+      onStartAudioCall?.(selectedConversationId);
+      return;
+    }
+
+    if (action.id === "video-call") {
+      onStartVideoCall?.(selectedConversationId);
+      return;
+    }
+
+    if (action.id === "block-user") {
+      onBlockUser?.();
     }
   };
 

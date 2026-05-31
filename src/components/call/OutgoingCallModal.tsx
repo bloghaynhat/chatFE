@@ -21,8 +21,8 @@ export default function OutgoingCallModal() {
     ).length + busyCount;
   const peerName = state.remotePeer?.name || "Recipient";
   const peerInitial = peerName.trim().charAt(0).toUpperCase() || "?";
-  const isGroupCall = state.isGroup;
-  const groupName = state.groupName || (isGroupCall ? peerName : "");
+  const groupName = typeof state.groupName === "string" ? state.groupName.trim() : "";
+  const isGroupCall = groupName.length > 0;
   const callLabel = isGroupCall
     ? state.type === "video"
       ? "Group video call"
