@@ -42,3 +42,4 @@ export {
   onFriendRequestRejected,
   onReceiveMessage,
 } from "./socketService";
+export { inviteService } from "./inviteService";

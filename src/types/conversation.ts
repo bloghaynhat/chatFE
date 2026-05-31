@@ -10,7 +10,6 @@ export interface Message {
   _id?: string;
   messageId?: string;
   id?: string;
-  _id?: string;
 
   createdAt: string;
   updatedAt?: string;
