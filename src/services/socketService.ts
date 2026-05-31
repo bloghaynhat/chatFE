@@ -253,6 +253,26 @@ class SocketService {
     this.messagesSocket.on("group:settings_updated", (data) => {
       this.emit("group:settings_updated", data);
     });
+
+    this.messagesSocket.on("poll:new", (data) => {
+      this.emit("poll:new", data);
+    });
+
+    this.messagesSocket.on("poll:vote", (data) => {
+      this.emit("poll:vote", data);
+    });
+
+    this.messagesSocket.on("poll:closed", (data) => {
+      this.emit("poll:closed", data);
+    });
+
+    this.messagesSocket.on("poll:pinned", (data) => {
+      this.emit("poll:pinned", data);
+    });
+
+    this.messagesSocket.on("poll:unpinned", (data) => {
+      this.emit("poll:unpinned", data);
+    });
   }
 
   setupFriendListeners() {
@@ -550,6 +570,18 @@ class SocketService {
 
   offGroupSettingsUpdated() {
     this.off("group:settings_updated");
+  }
+
+  onPollNew(callback) {
+    return this.on("poll:new", callback);
+  }
+
+  onPollVote(callback) {
+    return this.on("poll:vote", callback);
+  }
+
+  onPollClosed(callback) {
+    return this.on("poll:closed", callback);
   }
 
   joinRoom(conversationId) {

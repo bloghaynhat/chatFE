@@ -18,12 +18,14 @@ import { MessageContextMenu } from "./ActiveChatPane/MessageContextMenu";
 import { VideoPreviewModal } from "./ActiveChatPane/VideoPreviewModal";
 import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
+import { CreatePollModal } from "./ActiveChatPane/CreatePollModal";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
+import { pollService } from "../../services/pollService";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
-import { FiImage, FiFile, FiGift, FiCheckCircle } from "react-icons/fi";
+import { FiImage, FiFile, FiGift, FiCheckCircle, FiBarChart2 } from "react-icons/fi";
 
 export const ActiveChatPane = ({
   selectedChat,
@@ -45,6 +47,8 @@ export const ActiveChatPane = ({
   setIsRightSidebarOpen,
   onPinMessage,
   onUnpinMessage,
+  onPollCreated,
+  onPollUpdated,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -60,6 +64,8 @@ export const ActiveChatPane = ({
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
+  const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
+  const [isCreatingPoll, setIsCreatingPoll] = useState(false);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -596,6 +602,13 @@ export const ActiveChatPane = ({
       onClick: () => documentInputRef.current?.click(),
     },
     {
+      id: "poll",
+      label: "Poll",
+      icon: FiBarChart2,
+      onClick: () => setIsCreatePollOpen(true),
+      groupOnly: true,
+    },
+    {
       id: "gift-premium",
       label: "Gift Premium",
       icon: FiGift,
@@ -606,6 +619,29 @@ export const ActiveChatPane = ({
       icon: FiCheckCircle,
     },
   ];
+
+  const visibleAttachActions = attachActions.filter((action: any) => {
+    if (!action.groupOnly) return true;
+    return selectedChat?.type === "group" || selectedChat?.type === "GROUP";
+  });
+
+  const handleCreatePoll = async (payload: any) => {
+    if (!selectedConversationId) return;
+    setIsCreatingPoll(true);
+    try {
+      const result = await pollService.createPoll(selectedConversationId, payload);
+      const poll = result?.poll || result;
+      const message = result?.message || poll?.timelineMessage;
+      if (message) onPollCreated?.(message);
+      if (poll) onPollUpdated?.(poll);
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (error: any) {
+      alert(error?.message || "Could not create poll.");
+      throw error;
+    } finally {
+      setIsCreatingPoll(false);
+    }
+  };
 
   const calendarMonthLabel = calendarMonth.toLocaleDateString("en-US", {
     month: "long",
@@ -900,6 +936,7 @@ export const ActiveChatPane = ({
         handleContextMenu={handleContextMenu}
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
+        onPollUpdated={onPollUpdated}
       />
 
       {contextMenu && (
@@ -978,7 +1015,7 @@ export const ActiveChatPane = ({
         setIsMoreMenuOpen={setIsMoreMenuOpen}
         attachMenuRef={attachMenuRef}
         emojiMenuRef={emojiMenuRef}
-        attachActions={attachActions}
+        attachActions={visibleAttachActions}
         editingMessage={editingMessage}
         setEditingMessage={setEditingMessage}
         replyingMessage={replyingMessage}
@@ -988,6 +1025,13 @@ export const ActiveChatPane = ({
         currentUserId={currentUserId}
         handleSendVoice={handleSendVoice}
         disabledReason={chatRestriction}
+      />
+
+      <CreatePollModal
+        isOpen={isCreatePollOpen}
+        onClose={() => setIsCreatePollOpen(false)}
+        onCreate={handleCreatePoll}
+        isCreating={isCreatingPoll}
       />
 
       <VideoPreviewModal previewVideoUrl={previewVideoUrl} onClose={() => setPreviewVideoUrl(null)} />

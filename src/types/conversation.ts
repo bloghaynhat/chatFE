@@ -2,11 +2,12 @@ import { User } from "./user";
 
 export interface Reaction {
   emoji: string;
-  users: (User | { id: string })[];
+  users: (User | { id: string; _id?: string })[];
 }
 
 export interface Message {
   // ID fields (backend may use either)
+  _id?: string;
   messageId?: string;
   id?: string;
 
@@ -24,7 +25,7 @@ export interface Message {
   textPreview: string;
 
   // Message type and status
-  type: "text" | "media" | "mixed" | "call";
+  type: "text" | "media" | "mixed" | "call" | "poll" | "system";
   status?: "sent" | "delivered" | "seen";
   isSeen?: boolean;
   readAt?: string;
@@ -46,6 +47,8 @@ export interface Message {
     durationSeconds?: number;
     participantOutcomes?: Record<string, unknown>;
   };
+  pollId?: string;
+  poll?: Poll;
 
   // Forwarded message
   originalMessageId?: string;
@@ -71,6 +74,34 @@ export interface Message {
   // Additional fields used in codebase
   reactions?: Reaction[];
   id_sender?: string;
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  voteCount?: number;
+  votedUserIds?: string[];
+  voters?: string[];
+}
+
+export interface Poll {
+  id: string;
+  conversationId: string;
+  messageId?: string;
+  question: string;
+  options: PollOption[];
+  createdBy?: string;
+  isMultipleChoice?: boolean;
+  allowAddOption?: boolean;
+  allowChangeVote?: boolean;
+  showResultsBeforeClose?: boolean;
+  hideVoters?: boolean;
+  status?: "active" | "closed";
+  pinned?: boolean;
+  totalVotes?: number;
+  createdAt?: string;
+  expiresAt?: string;
+  closedAt?: string;
 }
 
 export interface MediaFile {

@@ -18,6 +18,7 @@ export const MessageList = ({
   handleContextMenu,
   setPreviewVideoUrl,
   onNavigateToMessage,
+  onPollUpdated,
 }: any) => {
   if (isLoading) {
     return (
@@ -136,6 +137,7 @@ export const MessageList = ({
                   setPreviewVideoUrl={setPreviewVideoUrl}
                   currentUserId={currentUserId}
                   onNavigateToMessage={onNavigateToMessage}
+                  onPollUpdated={onPollUpdated}
                 />
               );
             })}

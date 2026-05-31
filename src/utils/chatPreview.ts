@@ -17,6 +17,8 @@ export const getChatMessagePreview = (message: any) => {
   }
 
   const type = String(message.type || message.messageType || "").toLowerCase();
+  if (type.includes("poll")) return message.poll?.question ? `Poll: ${message.poll.question}` : "Poll";
+
   const media = message.media || message.files || message.attachments || [];
   const firstMedia = Array.isArray(media) ? media[0] : media;
   const mediaType = String(firstMedia?.type || firstMedia?.mimetype || firstMedia?.mimeType || "").toLowerCase();
