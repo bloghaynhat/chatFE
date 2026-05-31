@@ -416,7 +416,7 @@ export const ActiveChatPane = ({
   const handleNavigateToMessage = (messageId: string) => {
     // Find the message index in the full messages array
     const messageIndex = messages.findIndex(
-      (m) => (m.id || m._id) === messageId,
+      (m) => String(m.id || m._id || m.messageId) === String(messageId),
     );
     if (messageIndex !== -1) {
       // Calculate required displayCount to ensure this message is visible
@@ -447,6 +447,28 @@ export const ActiveChatPane = ({
       }
     }, 100);
   };
+
+  const lastSearchTargetRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const targetMessageId = selectedChat?.searchTargetMessageId;
+    if (!targetMessageId || !selectedConversationId || messages.length === 0 || isLoading) return;
+
+    const targetKey = `${selectedConversationId}:${targetMessageId}`;
+    if (lastSearchTargetRef.current === targetKey) return;
+    lastSearchTargetRef.current = targetKey;
+
+    const timer = setTimeout(() => {
+      handleNavigateToMessage(String(targetMessageId));
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [
+    selectedChat?.searchTargetMessageId,
+    selectedConversationId,
+    messages.length,
+    isLoading,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
