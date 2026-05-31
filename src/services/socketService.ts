@@ -5,11 +5,15 @@ class SocketService {
   messagesSocket: Socket | null = null;
   friendsSocket: Socket | null = null;
   listeners: Map<string, Function[]> = new Map();
+  blockedConversations: Set<string> = new Set();
+  blockedUsers: Set<string> = new Set();
 
   constructor() {
     this.messagesSocket = null;
     this.friendsSocket = null;
     this.listeners = new Map();
+    this.blockedConversations = new Set();
+    this.blockedUsers = new Set();
   }
 
   // ================= INIT =================
@@ -497,7 +501,46 @@ class SocketService {
   }
 
   // ================= MESSAGE ACTIONS =================
+  setConversationBlocked(conversationId, isBlocked = true) {
+    if (!conversationId) return;
+
+    if (isBlocked) {
+      this.blockedConversations.add(conversationId);
+      return;
+    }
+
+    this.blockedConversations.delete(conversationId);
+  }
+
+  isConversationBlocked(conversationId) {
+    return Boolean(conversationId && this.blockedConversations.has(conversationId));
+  }
+
+  setUserBlocked(userId, isBlocked = true) {
+    if (!userId) return;
+
+    if (isBlocked) {
+      this.blockedUsers.add(userId);
+      return;
+    }
+
+    this.blockedUsers.delete(userId);
+  }
+
+  isUserBlocked(userId) {
+    return Boolean(userId && this.blockedUsers.has(userId));
+  }
+
   sendMessage(conversationId, text, media = []) {
+    if (this.isConversationBlocked(conversationId)) {
+      return Promise.reject(
+        Object.assign(new Error("Message unavailable"), {
+          code: "blocked",
+          statusCode: 403,
+        }),
+      );
+    }
+
     if (!this.messagesSocket?.connected) {
       return Promise.reject(new Error("Socket not connected"));
     }
@@ -513,7 +556,24 @@ class SocketService {
         if (res?.success || res?.status === "success") {
           resolve(res.message || res.data || res);
         } else {
-          reject(new Error(res?.error || res?.msg || "Send failed"));
+          const code =
+            res?.details?.code ||
+            res?.data?.details?.code ||
+            res?.code ||
+            res?.errorCode;
+          const message = res?.error || res?.msg || res?.message || "Send failed";
+
+          if (code === "blocked" || /blocked/i.test(message)) {
+            this.setConversationBlocked(conversationId, true);
+            this.emit("conversation:blocked", { conversationId });
+          }
+
+          reject(
+            Object.assign(new Error(message), {
+              code,
+              payload: res,
+            }),
+          );
         }
       });
     });
@@ -587,6 +647,7 @@ class SocketService {
 
   startTyping(conversationId, isGroup = false) {
     if (!this.messagesSocket?.connected) return;
+    if (!isGroup && this.isUserBlocked(conversationId)) return;
 
     const payload = isGroup
       ? { groupId: conversationId }

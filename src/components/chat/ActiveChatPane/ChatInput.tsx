@@ -53,6 +53,8 @@ export const ChatInput = ({
   smartReplyTriggerKey,
   isTyping,
   isLastMessageFromCurrentUser,
+  isMessageUnavailable = false,
+  onUnavailableAction,
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
 
@@ -100,6 +102,11 @@ export const ChatInput = ({
   }, [isVoiceMenuOpen]);
 
   const toggleVoiceToText = () => {
+    if (isMessageUnavailable) {
+      onUnavailableAction?.();
+      return;
+    }
+
     setIsVoiceMenuOpen(false);
     if (isListeningText) {
       if (recognitionRef.current) recognitionRef.current.stop();
@@ -139,6 +146,11 @@ export const ChatInput = ({
   };
 
   const startVoiceRecording = async () => {
+    if (isMessageUnavailable) {
+      onUnavailableAction?.();
+      return;
+    }
+
     setIsVoiceMenuOpen(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -291,6 +303,7 @@ export const ChatInput = ({
           setDraftMessage(text);
         }}
         shouldFetch={
+          !isMessageUnavailable &&
           Boolean(selectedConversationId) &&
           !draftMessage.trim() &&
           !isTyping &&
@@ -382,7 +395,9 @@ export const ChatInput = ({
           <input
             type="text"
             value={draftMessage}
-            onChange={handleInputChange}
+            onChange={(event) => {
+              handleInputChange(event);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSendMessage();
             }}
@@ -454,7 +469,14 @@ export const ChatInput = ({
                   : "bg-[#2ea6f3] text-white hover:bg-[#1f97e5]"
               }`}
               onClick={() => {
-                if (editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage) {
+                if (isMessageUnavailable) {
+                  onUnavailableAction?.();
+                } else if (
+                  editingMessage ||
+                  draftMessage.trim() ||
+                  forwardingMessage ||
+                  replyingMessage
+                ) {
                   handleSendMessage();
                 } else if (isListeningText) {
                   toggleVoiceToText();

@@ -23,7 +23,11 @@ import type { Message } from "../../types/conversation";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
-import { FiImage, FiFile, FiGift, FiCheckCircle } from "react-icons/fi";
+import { FiImage, FiFile, FiGift, FiCheckCircle, FiInfo } from "react-icons/fi";
+import { useBlockStatus } from "../../hooks/useBlockStatus";
+import { blockUser, unblockUser } from "../../services/blockService";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const ActiveChatPane = ({
   selectedChat,
@@ -61,6 +65,7 @@ export const ActiveChatPane = ({
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -91,6 +96,7 @@ export const ActiveChatPane = ({
 
   const callV2 = useCallV2();
   const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
+  const [isBlockedByPolicy, setIsBlockedByPolicy] = useState(false);
 
   // Computed pinned messages from messages (real-time from socket)
   const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<
@@ -166,6 +172,11 @@ export const ActiveChatPane = ({
     return inviteeIds.filter((id) => id && id !== currentUserId);
   }, [selectedChat, selectedConversationId, currentUserId]);
 
+  const isGroup =
+    selectedChat?.type === "GROUP" ||
+    selectedChat?.type === "group" ||
+    (selectedChat?.members && selectedChat.members.length > 2);
+
   const callPeerInfo = useMemo(() => {
     if (!selectedChat) return null;
     const target =
@@ -175,6 +186,17 @@ export const ActiveChatPane = ({
       selectedChat.receiver ||
       selectedChat.friend ||
       null;
+    const participantPeer = (selectedChat?.participants || []).find(
+      (participant: any) =>
+        (participant?.userId || participant?.id || participant?._id) !==
+        currentUserId,
+    );
+    const participantPeerUser =
+      participantPeer?.user ||
+      participantPeer?.profile ||
+      participantPeer?.member ||
+      participantPeer ||
+      null;
 
     return {
       id:
@@ -182,6 +204,9 @@ export const ActiveChatPane = ({
         selectedChat.participantId ||
         target?.id ||
         target?._id ||
+        participantPeer?.userId ||
+        participantPeerUser?.id ||
+        participantPeerUser?._id ||
         null,
       name:
         selectedChat.name ||
@@ -189,6 +214,9 @@ export const ActiveChatPane = ({
         target?.displayName ||
         target?.name ||
         target?.username ||
+        participantPeerUser?.displayName ||
+        participantPeerUser?.name ||
+        participantPeerUser?.username ||
         null,
       avatarUrl:
         selectedChat.avatarUrl ||
@@ -196,12 +224,119 @@ export const ActiveChatPane = ({
         target?.avatarUrl ||
         target?.avatar ||
         target?.profilePicture ||
+        participantPeerUser?.avatarUrl ||
+        participantPeerUser?.avatar ||
+        participantPeerUser?.profilePicture ||
         null,
     };
+  }, [currentUserId, selectedChat]);
+
+  const { data: blockStatus, isLoading: isBlockStatusLoading } = useBlockStatus(
+    !isGroup ? callPeerInfo?.id : undefined,
+  );
+  const selectedChatBlockStatus = useMemo(() => {
+    const rawStatus =
+      selectedChat?.blockStatus ||
+      selectedChat?.relationship ||
+      selectedChat?.privacy ||
+      {};
+
+    return {
+      isBlockedByMe: Boolean(
+        selectedChat?.isBlocked ||
+          selectedChat?.blockedByMe ||
+          rawStatus?.isBlocked ||
+          rawStatus?.blockedByMe,
+      ),
+      isBlockedByPeer: Boolean(
+        selectedChat?.isBlocking ||
+          selectedChat?.blockedMe ||
+          selectedChat?.isBlockedByPeer ||
+          rawStatus?.isBlocking ||
+          rawStatus?.blockedMe ||
+          rawStatus?.isBlockedByPeer,
+      ),
+    };
   }, [selectedChat]);
+  const isBlockedByMe = Boolean(
+    blockStatus?.isBlocked || selectedChatBlockStatus.isBlockedByMe,
+  );
+  const isBlockedByPeer = Boolean(
+    blockStatus?.isBlocking ||
+      selectedChatBlockStatus.isBlockedByPeer ||
+      isBlockedByPolicy,
+  );
+  const hasBlockRestriction = !isGroup && (isBlockedByMe || isBlockedByPeer);
+  const messageUnavailableText = isBlockedByMe
+    ? "Bạn đã chặn người này. Bỏ chặn để tiếp tục trò chuyện."
+    : "Hiện chưa thể gửi tin nhắn trong cuộc trò chuyện này. Bạn có thể thử lại sau.";
+  const callUnavailableText = isBlockedByMe
+    ? "Bạn đã chặn người này. Bỏ chặn để bắt đầu cuộc gọi."
+    : "Hiện chưa thể bắt đầu cuộc gọi với người này. Vui lòng thử lại sau.";
+
+  const unblockMutation = useMutation({
+    mutationFn: (blockedUserId: string) => unblockUser(blockedUserId),
+    onSuccess: () => {
+      toast.success("Đã gỡ chặn thành công");
+      queryClient.invalidateQueries({
+        queryKey: ["block-status", callPeerInfo?.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
+    },
+    onError: () => toast.error("Có lỗi xảy ra khi gỡ chặn."),
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: (blockedUserId: string) => blockUser(blockedUserId),
+    onSuccess: () => {
+      toast.success("Đã chặn người dùng này");
+      queryClient.invalidateQueries({
+        queryKey: ["block-status", callPeerInfo?.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
+    },
+    onError: () => toast.error("Có lỗi xảy ra khi chặn."),
+  });
+
+  useEffect(() => {
+    setIsBlockedByPolicy(false);
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    const conversationId = selectedConversationId || selectedChat?.id;
+    socketService.setConversationBlocked(conversationId, hasBlockRestriction);
+    socketService.setUserBlocked(callPeerInfo?.id, hasBlockRestriction);
+  }, [
+    callPeerInfo?.id,
+    hasBlockRestriction,
+    selectedChat?.id,
+    selectedConversationId,
+  ]);
+
+  useEffect(() => {
+    const unsubscribe = socketService.on(
+      "conversation:blocked",
+      (payload: any) => {
+        const conversationId = selectedConversationId || selectedChat?.id;
+        if (payload?.conversationId === conversationId) {
+          setIsBlockedByPolicy(true);
+        }
+      },
+    );
+
+    return () => unsubscribe?.();
+  }, [selectedChat?.id, selectedConversationId]);
 
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
+      if (hasBlockRestriction) {
+        if (isBlockedByMe) {
+          toast.error(callUnavailableText);
+        } else {
+          toast.info(callUnavailableText);
+        }
+        return;
+      }
       const conversationId = selectedConversationId || selectedChat?.id;
       if (!conversationId) return;
 
@@ -225,8 +360,43 @@ export const ActiveChatPane = ({
       resolveInviteeIds,
       selectedConversationId,
       selectedChat,
+      hasBlockRestriction,
+      isBlockedByMe,
+      callUnavailableText,
     ],
   );
+
+  const showMessageUnavailableNotice = useCallback(() => {
+    if (!hasBlockRestriction) return false;
+
+    if (isBlockedByMe) {
+      toast.error(messageUnavailableText);
+    } else {
+      toast.info(messageUnavailableText);
+    }
+
+    return true;
+  }, [hasBlockRestriction, isBlockedByMe, messageUnavailableText]);
+
+  const handleToggleBlockUser = useCallback(() => {
+    if (isGroup || !callPeerInfo?.id) {
+      toast.error("Không thể chặn cuộc trò chuyện này.");
+      return;
+    }
+
+    if (isBlockedByMe) {
+      unblockMutation.mutate(callPeerInfo.id);
+      return;
+    }
+
+    blockMutation.mutate(callPeerInfo.id);
+  }, [
+    blockMutation,
+    callPeerInfo?.id,
+    isBlockedByMe,
+    isGroup,
+    unblockMutation,
+  ]);
 
   const refreshActiveCallV2 = useCallback(async () => {
     const conversationId = selectedConversationId || selectedChat?.id;
@@ -423,6 +593,7 @@ export const ActiveChatPane = ({
   });
 
   const handleSendAttachedFiles = () => {
+    if (showMessageUnavailableNotice()) return;
     if (previewFiles.length === 0) return;
     onSendMessage(draftMessage, previewFiles, { compress: compressImage });
     previewFiles.forEach((file) => URL.revokeObjectURL(file.preview));
@@ -668,6 +839,11 @@ export const ActiveChatPane = ({
 
   const handleInputChange = (event) => {
     setDraftMessage(event.target.value);
+
+    if (hasBlockRestriction) {
+      return;
+    }
+
     const isGroup =
       selectedChat?.type === "GROUP" ||
       selectedChat?.type === "group" ||
@@ -690,6 +866,8 @@ export const ActiveChatPane = ({
   };
 
   const executeSend = (textToSend: string) => {
+    if (showMessageUnavailableNotice()) return;
+
     if (onSendMessage) {
       if (editingMessage) {
         const payload = {
@@ -728,6 +906,18 @@ export const ActiveChatPane = ({
     }
   };
 
+  useEffect(() => {
+    if (!hasBlockRestriction || !isTypingRef.current) return;
+
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    const targetId = isGroup ? selectedConversationId : selectedChat?.targetUserId;
+    if (targetId) {
+      socketService.stopTyping(targetId, isGroup);
+    }
+  }, [hasBlockRestriction, isGroup, selectedChat?.targetUserId, selectedConversationId]);
+
   const handleSendMessage = () => {
     if (
       !draftMessage.trim() &&
@@ -741,6 +931,8 @@ export const ActiveChatPane = ({
   };
 
   const handleSendVoice = (voiceFile: any) => {
+    if (showMessageUnavailableNotice()) return;
+
     if (onSendMessage) {
       const fileWithPreview = Object.assign(voiceFile, {
         preview: URL.createObjectURL(voiceFile),
@@ -837,6 +1029,13 @@ export const ActiveChatPane = ({
         activeCallV2={activeCallV2}
         callV2Status={callV2.state.status}
         onJoinActiveCallV2={() => void handleJoinActiveCallV2()}
+        onBlockUser={handleToggleBlockUser}
+        isBlocked={isBlockedByMe}
+        isBlockActionPending={
+          isBlockStatusLoading ||
+          blockMutation.isPending ||
+          unblockMutation.isPending
+        }
       />
 
       {/* Pinned Messages Bar */}
@@ -955,33 +1154,69 @@ export const ActiveChatPane = ({
         </div>
       )}
 
-      <ChatInput
-        draftMessage={draftMessage}
-        setDraftMessage={setDraftMessage}
-        handleInputChange={handleInputChange}
-        handleSendMessage={handleSendMessage}
-        isAttachMenuOpen={isAttachMenuOpen}
-        setIsAttachMenuOpen={setIsAttachMenuOpen}
-        isEmojiPickerOpen={isEmojiPickerOpen}
-        setIsEmojiPickerOpen={setIsEmojiPickerOpen}
-        isMoreMenuOpen={isMoreMenuOpen}
-        setIsMoreMenuOpen={setIsMoreMenuOpen}
-        attachMenuRef={attachMenuRef}
-        emojiMenuRef={emojiMenuRef}
-        attachActions={attachActions}
-        editingMessage={editingMessage}
-        setEditingMessage={setEditingMessage}
-        replyingMessage={replyingMessage}
-        setReplyingMessage={setReplyingMessage}
-        forwardingMessage={forwardingMessage}
-        onClearForwarding={onClearForwarding}
-        currentUserId={currentUserId}
-        handleSendVoice={handleSendVoice}
-        selectedConversationId={selectedConversationId}
-        smartReplyTriggerKey={lastMessageId}
-        isTyping={typingUsers.size > 0}
-        isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
-      />
+      {hasBlockRestriction && (
+        <div
+          className={`mx-4 mb-4 p-4 border rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all ${
+            isBlockedByMe
+              ? "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30"
+              : "bg-amber-50 dark:bg-amber-900/15 border-amber-100 dark:border-amber-800/30"
+          }`}
+        >
+          <div
+            className={`flex items-center gap-2 text-[15px] font-medium ${
+              isBlockedByMe
+                ? "text-red-600 dark:text-red-400"
+                : "text-amber-700 dark:text-amber-300"
+            }`}
+          >
+            <FiInfo className="text-lg shrink-0" />
+            <span>{messageUnavailableText}</span>
+          </div>
+          {isBlockedByMe && (
+            <button
+              onClick={() => {
+                if (callPeerInfo?.id) unblockMutation.mutate(callPeerInfo.id);
+              }}
+              disabled={unblockMutation.isPending}
+              className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/40 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 font-semibold rounded-xl text-sm transition shrink-0 whitespace-nowrap"
+            >
+              {unblockMutation.isPending ? "Đang xử lý..." : "Bỏ chặn"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {isBlockedByMe ? null : (
+        <ChatInput
+          draftMessage={draftMessage}
+          setDraftMessage={setDraftMessage}
+          handleInputChange={handleInputChange}
+          handleSendMessage={handleSendMessage}
+          isAttachMenuOpen={isAttachMenuOpen}
+          setIsAttachMenuOpen={setIsAttachMenuOpen}
+          isEmojiPickerOpen={isEmojiPickerOpen}
+          setIsEmojiPickerOpen={setIsEmojiPickerOpen}
+          isMoreMenuOpen={isMoreMenuOpen}
+          setIsMoreMenuOpen={setIsMoreMenuOpen}
+          attachMenuRef={attachMenuRef}
+          emojiMenuRef={emojiMenuRef}
+          attachActions={attachActions}
+          editingMessage={editingMessage}
+          setEditingMessage={setEditingMessage}
+          replyingMessage={replyingMessage}
+          setReplyingMessage={setReplyingMessage}
+          forwardingMessage={forwardingMessage}
+          onClearForwarding={onClearForwarding}
+          currentUserId={currentUserId}
+          handleSendVoice={handleSendVoice}
+          selectedConversationId={selectedConversationId}
+          smartReplyTriggerKey={lastMessageId}
+          isTyping={typingUsers.size > 0}
+          isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
+          isMessageUnavailable={hasBlockRestriction}
+          onUnavailableAction={showMessageUnavailableNotice}
+        />
+      )}
 
       <VideoPreviewModal
         previewVideoUrl={previewVideoUrl}

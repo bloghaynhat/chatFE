@@ -21,26 +21,6 @@ import { useState } from "react";
 import { AiSummaryModal } from "../AiSummaryModal";
 import { aiService } from "../../../services/aiService";
 
-const moreActions = [
-  { id: "ai-summarize", label: "Tóm tắt cuộc trò chuyện (AI)", icon: FiZap },
-  { id: "ai-smart-search", label: "Tìm kiếm thông minh (AI)", icon: FiSearch },
-  {
-    id: "ai-extract-tasks",
-    label: "Trích xuất công việc (AI)",
-    icon: FiCheckCircle,
-  },
-  { id: "auto-delete", label: "Auto-delete", icon: FiClock, hasChevron: true },
-  { id: "mute", label: "Mute", icon: FiBellOff },
-  { id: "call", label: "Call", icon: FiPhone },
-  { id: "video-call", label: "Video Call", icon: FiVideo },
-  { id: "select-messages", label: "Select Messages", icon: FiCheckCircle },
-  { id: "share-contact", label: "Share contact", icon: FiShare2 },
-  { id: "send-gift", label: "Send a Gift", icon: FiGift },
-  { id: "block-user", label: "Block user", icon: FiLock },
-  { id: "disable-sharing", label: "Disable Sharing", icon: FiEyeOff },
-  { id: "delete-chat", label: "Delete Chat", icon: FiTrash2, danger: true },
-];
-
 export const ChatHeader = ({
   selectedChat,
   selectedConversationId,
@@ -67,10 +47,52 @@ export const ChatHeader = ({
   activeCallV2,
   callV2Status,
   onJoinActiveCallV2,
+  onBlockUser,
+  isBlocked,
+  isBlockActionPending,
 }: any) => {
   const [isAiSummaryModalOpen, setIsAiSummaryModalOpen] = useState(false);
-  const [isAiSearching, setIsAiSearching] = useState(false);
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+
+  const moreActions: any[] = [
+    { id: "ai-summarize", label: "Tóm tắt cuộc trò chuyện (AI)", icon: FiZap },
+    {
+      id: "ai-smart-search",
+      label: "Tìm kiếm thông minh (AI)",
+      icon: FiSearch,
+    },
+    {
+      id: "ai-extract-tasks",
+      label: "Trích xuất công việc (AI)",
+      icon: FiCheckCircle,
+    },
+    {
+      id: "auto-delete",
+      label: "Auto-delete",
+      icon: FiClock,
+      hasChevron: true,
+    },
+    { id: "mute", label: "Mute", icon: FiBellOff },
+    { id: "call", label: "Call", icon: FiPhone },
+    { id: "video-call", label: "Video Call", icon: FiVideo },
+    { id: "select-messages", label: "Select Messages", icon: FiCheckCircle },
+    { id: "share-contact", label: "Share contact", icon: FiShare2 },
+    { id: "send-gift", label: "Send a Gift", icon: FiGift },
+    {
+      id: "block-user",
+      label: isBlockActionPending
+        ? "Đang xử lý..."
+        : isBlocked
+          ? "Unblock user"
+          : "Block user",
+      icon: FiLock,
+      danger: !isBlocked,
+      disabled: isBlockActionPending,
+    },
+    { id: "disable-sharing", label: "Disable Sharing", icon: FiEyeOff },
+    { id: "delete-chat", label: "Delete Chat", icon: FiTrash2, danger: true },
+  ];
 
   return (
     <>
@@ -193,7 +215,9 @@ export const ChatHeader = ({
                     return (
                       <button
                         key={action.id}
+                        disabled={action.disabled}
                         onClick={() => {
+                          if (action.disabled) return;
                           setIsMoreMenuOpen(false);
                           if (action.id === "ai-summarize") {
                             setIsAiSummaryModalOpen(true);
@@ -225,9 +249,11 @@ export const ChatHeader = ({
                               setHeaderSearchValue("/ai ");
                               headerSearchInputRef.current.focus();
                             }
+                          } else if (action.id === "block-user") {
+                            if (onBlockUser) onBlockUser();
                           }
                         }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none hover:bg-white/75 dark:hover:bg-slate-700/80 transition ${action.danger ? "text-red-500" : "text-gray-900 dark:text-gray-100"}`}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[14px] leading-none hover:bg-white/75 dark:hover:bg-slate-700/80 transition disabled:cursor-not-allowed disabled:opacity-60 ${action.danger ? "text-red-500" : "text-gray-900 dark:text-gray-100"}`}
                       >
                         {isExtractingTasks &&
                         action.id === "ai-extract-tasks" ? (
