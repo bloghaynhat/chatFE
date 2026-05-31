@@ -2,6 +2,7 @@ import React from "react";
 import { FiCheck, FiEye } from "react-icons/fi";
 import { Conversation } from "../../../types/conversation";
 import { useAuth } from "../../../hooks";
+import { getChatMessagePreview } from "../../../utils/chatPreview";
 
 interface ConversationItemProps {
   chat: Conversation;
@@ -75,8 +76,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             <p
               className={`text-sm truncate transition-colors duration-200 ${isActive ? "text-blue-100" : chat.unreadCount ? "text-gray-900 dark:text-gray-200 font-medium" : "text-gray-500"}`}
             >
-              {chat.lastMessage?.textPreview ||
-                (chat.lastMessage?.type === "media" ? "Sent a media file" : "No messages")}
+              {getChatMessagePreview(chat.lastMessage)}
             </p>
             {chat.unreadCount && chat.unreadCount > 0 ? (
               <span

@@ -5,8 +5,132 @@ import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
 import { useAuth } from "../../hooks/useAuth";
+import { getChatMessagePreview } from "../../utils/chatPreview";
 import type { Conversation } from "../../types/conversation";
 import type { GroupRenamedPayload, GroupAvatarChangedPayload } from "../../types/socket";
+
+const APP_TITLE = "ChatChit";
+const TAB_LOGO_PATH = "/Logo_Tab.png";
+
+const getTimeValue = (value: any) => {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
+const hasRealPreview = (message: any) => {
+  if (!message) return false;
+  return getChatMessagePreview(message) !== "No messages";
+};
+
+const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
+  const previousById = new Map(previousChats.map((chat) => [chat.id, chat]));
+
+  return fetchedChats.map((fetchedChat) => {
+    const previousChat = previousById.get(fetchedChat.id);
+    if (!previousChat?.lastMessage) return fetchedChat;
+
+    const fetchedPreviewIsMissing = !hasRealPreview(fetchedChat.lastMessage);
+    const previousPreviewIsValid = hasRealPreview(previousChat.lastMessage);
+    const fetchedTime = getTimeValue(fetchedChat.lastMessageAt || fetchedChat.lastMessage?.createdAt);
+    const previousTime = getTimeValue(previousChat.lastMessageAt || previousChat.lastMessage?.createdAt);
+
+    if (previousPreviewIsValid && (fetchedPreviewIsMissing || fetchedTime < previousTime)) {
+      return {
+        ...fetchedChat,
+        lastMessage: previousChat.lastMessage,
+        lastMessageAt: previousChat.lastMessageAt,
+        lastMessageStatus: previousChat.lastMessageStatus,
+        lastMessageTimeFormatted: previousChat.lastMessageTimeFormatted,
+      };
+    }
+
+    return fetchedChat;
+  });
+};
+
+const extractSocketMessage = (payload: any) => {
+  const candidates = [
+    payload?.payload?.message,
+    Array.isArray(payload?.message?.messages) ? payload.message.messages[0] : null,
+    payload?.message?.message,
+    Array.isArray(payload?.messages) ? payload.messages[0] : null,
+    payload?.message,
+    payload,
+  ].filter(Boolean);
+
+  const message =
+    candidates.find((candidate) => {
+      if (candidate?.success && Array.isArray(candidate?.messages)) return false;
+      return (
+        candidate?.id ||
+        candidate?._id ||
+        candidate?.messageId ||
+        candidate?.text ||
+        candidate?.content ||
+        candidate?.textPreview ||
+        candidate?.media ||
+        candidate?.files ||
+        candidate?.attachments
+      );
+    }) ||
+    candidates.find((candidate) => Array.isArray(candidate?.messages))?.messages?.[0] ||
+    payload;
+
+  const conversationId =
+    payload?.payload?.conversationId ||
+    message?.conversationId ||
+    message?.conversation?.id ||
+    message?.conversation?._id ||
+    payload?.conversationId;
+
+  return { message, conversationId, candidates };
+};
+
+const setTabFavicon = (unreadCount: number) => {
+  const link =
+    document.querySelector<HTMLLinkElement>('link[rel="icon"]') ||
+    document.createElement("link");
+
+  link.rel = "icon";
+  link.type = "image/png";
+
+  if (unreadCount <= 0) {
+    link.href = TAB_LOGO_PATH;
+    document.head.appendChild(link);
+    return;
+  }
+
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const size = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(img, 0, 0, size, size);
+
+    ctx.beginPath();
+    ctx.arc(50, 14, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#ef4444";
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+
+    link.href = canvas.toDataURL("image/png");
+    document.head.appendChild(link);
+  };
+  img.onerror = () => {
+    link.href = TAB_LOGO_PATH;
+    document.head.appendChild(link);
+  };
+  img.src = TAB_LOGO_PATH;
+};
 
 export const ChatList = ({
   searchQuery = "",
@@ -26,7 +150,8 @@ export const ChatList = ({
     try {
       const response: any = await conversationService.getConversations();
       const data = response?.data || response || [];
-      setChats(Array.isArray(data) ? data : []);
+      const fetchedChats = Array.isArray(data) ? data : [];
+      setChats((previousChats) => mergeFetchedChats(previousChats, fetchedChats));
     } catch (err) {
       console.error("Fetch conversations error:", err);
       setChats([]);
@@ -125,13 +250,14 @@ export const ChatList = ({
 
   useEffect(() => {
     const totalUnread = chats.reduce((total, chat) => total + Number(chat.unreadCount || 0), 0);
-    document.title = totalUnread > 0 ? `(${totalUnread > 99 ? "99+" : totalUnread}) ChatChit` : "ChatChit";
+    document.title = totalUnread > 0 ? `(${totalUnread > 99 ? "99+" : totalUnread}) ${APP_TITLE}` : APP_TITLE;
+    setTabFavicon(totalUnread);
   }, [chats]);
 
   useEffect(() => {
     const unsubscribe = socketService.onNewMessage((payload) => {
-      const message = payload?.message || payload;
-      let msgConvId = message.conversationId || payload?.conversationId;
+      const { message, conversationId } = extractSocketMessage(payload);
+      let msgConvId = conversationId;
       if (msgConvId && typeof msgConvId === "object") {
         msgConvId = msgConvId._id || msgConvId.id;
       }
@@ -145,11 +271,7 @@ export const ChatList = ({
           messageId: message.id || message._id,
           createdAt: message.createdAt || new Date().toISOString(),
           senderId: message.senderId || message.sender?.id || message.sender?._id || message.id_sender,
-          textPreview:
-            message.textPreview ||
-            message.text ||
-            message.content ||
-            (message.type === "media" ? "Sent a media file" : "No messages"),
+          textPreview: getChatMessagePreview(message),
           type: message.type || "text",
         };
 
