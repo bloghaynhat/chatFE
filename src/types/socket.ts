@@ -46,14 +46,25 @@ export interface ConversationUpdatedPayload {
 
 export interface ConversationMembersAddedPayload {
   conversationId: string;
-  memberIds: string[];
-  addedBy: string;
+  newMembers?: Array<{
+    id?: string;
+    _id?: string;
+    conversationId?: string;
+    userId: string;
+    role?: string;
+    status?: string;
+    joinedAt?: string;
+    [key: string]: any;
+  }>;
+  memberIds?: string[];
+  addedBy?: string;
 }
 
 export interface ConversationMemberRemovedPayload {
   conversationId: string;
   removedUserId: string;
-  removedBy: string;
+  removedBy?: string;
+  reason?: "removed" | "left";
 }
 
 export interface ConversationPinToggledPayload {

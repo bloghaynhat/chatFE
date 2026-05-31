@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   conversationService,
+  groupChatService,
   userService,
   mediaService,
   socketService,
@@ -11,6 +12,31 @@ import { RightSidebarMembers } from "./RightSideBar/RightSidebarMembers";
 import { RightSidebarAddMember } from "./RightSideBar/RightSidebarAddMember";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
+
+const getMemberUserId = (member: any) =>
+  member?.userId || member?.user?.id || member?.user?._id || member?.id;
+
+const getMemberDisplayName = (member: any) => {
+  const participant = member?.user || member;
+  return (
+    participant?.displayName ||
+    participant?.name ||
+    participant?.username ||
+    "this member"
+  );
+};
+
+const isPrivilegedRole = (role?: string) =>
+  role === "admin" || role === "ADMIN" || role === "owner" || role === "OWNER";
+
+const notifyCurrentUserLeftGroup = (conversationId: string) => {
+  window.dispatchEvent(
+    new CustomEvent("group:currentUserLeft", {
+      detail: { conversationId },
+    }),
+  );
+  window.dispatchEvent(new Event("chatList:refresh"));
+};
 
 export const RightSidebar = ({
   isOpen,
@@ -36,6 +62,16 @@ export const RightSidebar = ({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSelectAdminModalOpen, setIsSelectAdminModalOpen] = useState(false);
+  const [removeMemberState, setRemoveMemberState] = useState<{
+    targetUserId?: string;
+    targetName?: string;
+    isConfirmOpen: boolean;
+    isSubmitting: boolean;
+    error?: string;
+  }>({
+    isConfirmOpen: false,
+    isSubmitting: false,
+  });
 
   const isGroup =
     selectedChat?.type === "group" || selectedChat?.type === "GROUP";
@@ -284,7 +320,7 @@ export const RightSidebar = ({
       m.id === currentUserId,
   );
   const currentUserRole = currentUserMember?.role || "member";
-  const canEditGroup = currentUserRole === "admin";
+  const canEditGroup = isPrivilegedRole(currentUserRole);
 
   const handleEditClick = () => {
     setEditName(groupName);
@@ -354,10 +390,10 @@ export const RightSidebar = ({
   const handleAddMembers = async (memberIds: string[]) => {
     try {
       setIsLoading(true);
-      await conversationService.addGroupMembers(selectedChat.id, memberIds);
-
-      // Emit socket over to the added users
-      socketService.notifyAddMembers(selectedChat.id, memberIds);
+      const addedMembers = await groupChatService.addMembers(
+        selectedChat.id,
+        memberIds,
+      );
 
       const membersData = await conversationService.getGroupMembers(
         selectedChat.id,
@@ -385,37 +421,60 @@ export const RightSidebar = ({
         }),
       );
       setMembers(enrichedMembers);
+      if (Array.isArray(addedMembers) && onGroupUpdated) {
+        onGroupUpdated({
+          membersCount: Math.max(membersCount, members.length) + addedMembers.length,
+        });
+      }
       setActiveSubView("members");
     } catch (error) {
       console.error("Failed to add members", error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRemoveMember = async (userId: string) => {
-    try {
-      setIsLoading(true);
-      await conversationService.removeGroupMember(selectedChat.id, userId);
+    const targetMember = members.find(
+      (m: any) => String(getMemberUserId(m)) === String(userId),
+    );
+    setRemoveMemberState({
+      targetUserId: userId,
+      targetName: getMemberDisplayName(targetMember),
+      isConfirmOpen: true,
+      isSubmitting: false,
+    });
+  };
 
-      socketService.notifyRemoveMember(selectedChat.id, userId);
+  const handleConfirmRemoveMember = async () => {
+    const userId = removeMemberState.targetUserId;
+    if (!userId) return;
+
+    try {
+      setRemoveMemberState((prev) => ({
+        ...prev,
+        isSubmitting: true,
+        error: undefined,
+      }));
+      await groupChatService.removeMember(selectedChat.id, userId);
 
       setMembers((prev) =>
-        prev.filter(
-          (m: any) => (m.userId || m.user?.id || m.user?._id) !== userId,
-        ),
+        prev.filter((m: any) => String(getMemberUserId(m)) !== String(userId)),
       );
-
-      if (socketService.messagesSocket?.connected) {
-        socketService.messagesSocket.emit("conversation:updated", {
-          conversationId: selectedChat.id,
-          updates: {},
-        });
-      }
+      setRemoveMemberState({ isConfirmOpen: false, isSubmitting: false });
     } catch (error) {
       console.error("Failed to remove member", error);
+      setRemoveMemberState((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to remove this member.",
+      }));
     } finally {
-      setIsLoading(false);
+      window.dispatchEvent(new Event("chatList:refresh"));
     }
   };
 
@@ -448,20 +507,11 @@ export const RightSidebar = ({
   const handleLeaveGroup = async () => {
     try {
       setIsLoading(true);
-      await socketService.leaveGroup(selectedChat.id);
+      await groupChatService.leaveGroup(selectedChat.id);
       onClose();
-      // Notify ChatList to refresh and remove the conversation
-      window.dispatchEvent(new Event("chatList:refresh"));
+      notifyCurrentUserLeftGroup(selectedChat.id);
     } catch (error) {
-      console.error("Failed to leave group via socket", error);
-      // Fallback
-      try {
-        await conversationService.leaveGroupConversation(selectedChat.id);
-        onClose();
-        window.dispatchEvent(new Event("chatList:refresh"));
-      } catch (apiErr) {
-        console.error("Failed to leave group via API", apiErr);
-      }
+      console.error("Failed to leave group via API", error);
     } finally {
       setIsLoading(false);
     }
@@ -488,25 +538,17 @@ export const RightSidebar = ({
         await socketService.dissolveGroup(selectedChat.id);
       } else {
         // Case 2: Regular member leaving (or admin after transfer)
-        await socketService.leaveGroup(selectedChat.id);
+        await groupChatService.leaveGroup(selectedChat.id);
       }
 
       onClose();
-      // Notify ChatList to refresh and remove the conversation
-      window.dispatchEvent(new Event("chatList:refresh"));
+      if (!deleteForAll) {
+        notifyCurrentUserLeftGroup(selectedChat.id);
+      } else {
+        window.dispatchEvent(new Event("chatList:refresh"));
+      }
     } catch (error) {
       console.error("Failed to delete/leave group", error);
-      // Fallback for leaving
-      if (!deleteForAll) {
-        try {
-          await conversationService.leaveGroupConversation(selectedChat.id);
-          onClose();
-          window.dispatchEvent(new Event("chatList:refresh"));
-          return;
-        } catch (apiErr) {
-          console.error("Failed to leave group via API fallback", apiErr);
-        }
-      }
       throw error; // Re-throw to let modal know about the error
     } finally {
       setIsLoading(false);
@@ -525,14 +567,13 @@ export const RightSidebar = ({
         newOwnerId,
       );
 
-      // Step 2: Leave the group via socket
-      await socketService.leaveGroup(selectedChat.id);
+      // Step 2: Leave the group via HTTP business API
+      await groupChatService.leaveGroup(selectedChat.id);
 
       setIsSelectAdminModalOpen(false);
       setIsDeleteModalOpen(false);
       onClose();
-      // Notify ChatList to refresh and remove the conversation
-      window.dispatchEvent(new Event("chatList:refresh"));
+      notifyCurrentUserLeftGroup(selectedChat.id);
     } catch (error) {
       console.error("Failed to transfer ownership and leave:", error);
       setIsLoading(false);
@@ -664,7 +705,7 @@ export const RightSidebar = ({
         onConfirm={handleDeleteConfirm}
         groupName={groupName}
         isLoading={isLoading}
-        isAdmin={currentUserRole === "admin"}
+        isAdmin={isPrivilegedRole(currentUserRole)}
       />
 
       <SelectAdminModal
@@ -675,6 +716,51 @@ export const RightSidebar = ({
         isLoading={isLoading}
         currentUserId={currentUserId}
       />
+
+      {removeMemberState.isConfirmOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-[380px] rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800">
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-gray-100">
+                Remove member
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[14px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                Are you sure you want to remove {removeMemberState.targetName} from this group?
+              </p>
+              {removeMemberState.error && (
+                <p className="mt-3 text-[13px] text-red-500">
+                  {removeMemberState.error}
+                </p>
+              )}
+            </div>
+            <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/70 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={removeMemberState.isSubmitting}
+                onClick={() =>
+                  setRemoveMemberState({
+                    isConfirmOpen: false,
+                    isSubmitting: false,
+                  })
+                }
+                className="px-4 py-2 text-[14px] font-semibold rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={removeMemberState.isSubmitting}
+                onClick={handleConfirmRemoveMember}
+                className="px-4 py-2 text-[14px] font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                {removeMemberState.isSubmitting ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

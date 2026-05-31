@@ -33,6 +33,8 @@ export const RightSidebarAddMember = ({
 }: any) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const { friends, loading: friendsLoading, fetchFriends } = useFriendManagement();
 
   useEffect(() => {
@@ -49,9 +51,18 @@ export const RightSidebarAddMember = ({
     setSelectedIds(newSelected);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedIds.size > 0 && onAddMembers) {
-      onAddMembers(Array.from(selectedIds));
+      setIsSubmitting(true);
+      setError("");
+      try {
+        await onAddMembers(Array.from(selectedIds));
+        setSelectedIds(new Set());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to add members");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -116,6 +127,11 @@ export const RightSidebarAddMember = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-transparent border-none outline-none text-[16px] placeholder-gray-400 text-gray-800 dark:text-gray-200"
           />
+          {error && (
+            <p className="mt-2 text-[13px] text-red-500">
+              {error}
+            </p>
+          )}
         </div>
 
         <div style={{ minHeight: 0 }}>
@@ -189,10 +205,15 @@ export const RightSidebarAddMember = ({
         }`}
       >
         <button
-          className="w-[56px] h-[56px] bg-[#3b82f6] hover:bg-[#2563eb] rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(59,130,246,0.3)] transition-colors active:scale-95"
+          className="w-[56px] h-[56px] bg-[#3b82f6] hover:bg-[#2563eb] rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(59,130,246,0.3)] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
           onClick={handleContinue}
+          disabled={isSubmitting}
         >
-          <FiArrowRight className="text-[26px]" />
+          {isSubmitting ? (
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <FiArrowRight className="text-[26px]" />
+          )}
         </button>
       </div>
     </div>
