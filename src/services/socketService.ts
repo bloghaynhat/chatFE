@@ -571,8 +571,6 @@ class SocketService {
       if (text) payload.text = text;
       if (media && media.length > 0) payload.media = media;
 
-      console.log("SOCKET SEND_MESSAGE PAYLOAD:", payload);
-
       this.messagesSocket.emit("sendMessage", payload, (res: any) => {
         if (res?.success || res?.status === "success") {
           resolve(res.message || res.data || res);

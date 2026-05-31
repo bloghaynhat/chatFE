@@ -41,6 +41,7 @@ interface RightSidebarInfoProps {
   conversationId?: string;
   onShowInChat?: (mediaUrl: string) => void;
   messages?: any[];
+  isSavedMessages?: boolean;
 }
 
 export const RightSidebarInfo = ({
@@ -65,6 +66,7 @@ export const RightSidebarInfo = ({
   conversationId,
   onShowInChat,
   messages,
+  isSavedMessages,
 }: RightSidebarInfoProps) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
@@ -79,7 +81,7 @@ export const RightSidebarInfo = ({
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"members" | "images" | "files" | "links" | "voice">("images");
 
-  const canDeleteContact = !isGroup && friendStatus === "ACCEPTED";
+  const canDeleteContact = !isGroup && !isSavedMessages && friendStatus === "ACCEPTED";
 
   const unwrapApiData = (payload: any) => {
     if (!payload || typeof payload !== "object") return payload;
@@ -273,14 +275,16 @@ export const RightSidebarInfo = ({
   };
 
   // Determine display name
-  const displayName = isGroup
+  const displayName = isSavedMessages
+    ? "Saved Messages"
+    : isGroup
     ? groupName || "Group"
     : targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || "User";
 
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
       <RightSidebarHeader isGroup={isGroup} onClose={onClose} onEditClick={onEditClick}>
-        {!isGroup && targetUserId && (
+        {!isGroup && !isSavedMessages && targetUserId && (
           <MoreMenu
             isOpen={isMoreMenuOpen}
             onToggle={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
@@ -296,16 +300,19 @@ export const RightSidebarInfo = ({
         <RightSidebarAvatar
           avatarUrl={isGroup ? groupAvatar : targetUserDetails?.avatarUrl}
           name={displayName}
-          canEdit={canEdit}
+          canEdit={!isSavedMessages && canEdit}
           onEditClick={onEditClick}
+          isSavedMessages={isSavedMessages}
         />
 
-        <RightSidebarSettings
-          isGroup={isGroup}
-          targetUserDetails={targetUserDetails}
-          notificationsEnabled={notificationsEnabled}
-          setNotificationsEnabled={setNotificationsEnabled}
-        />
+        {!isSavedMessages && (
+          <RightSidebarSettings
+            isGroup={isGroup}
+            targetUserDetails={targetUserDetails}
+            notificationsEnabled={notificationsEnabled}
+            setNotificationsEnabled={setNotificationsEnabled}
+          />
+        )}
 
         {/* Tab Navigation - Members + Media tabs for groups, Media only for private */}
         {(isGroup || conversationId) && (

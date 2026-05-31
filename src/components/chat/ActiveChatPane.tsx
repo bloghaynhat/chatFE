@@ -272,6 +272,12 @@ export const ActiveChatPane = ({
 
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
+      const isSavedMessages =
+        selectedChat?.type === "saved_messages" ||
+        selectedChat?.isSavedMessages ||
+        selectedChat?.isSelfChat;
+      if (isSavedMessages) return;
+
       const conversationId = selectedConversationId || selectedChat?.id;
       if (!conversationId) return;
 

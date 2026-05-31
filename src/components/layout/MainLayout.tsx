@@ -655,6 +655,38 @@ const MainLayout = ({ children }: { children?: any }) => {
     [isOpeningConversation, openingChatId],
   );
 
+  const openSavedMessages = useCallback(async () => {
+    setActiveView("chats");
+    setChatError("");
+
+    try {
+      const conversations = await conversationService.getConversations();
+      const savedMessages = (Array.isArray(conversations) ? conversations : []).find(
+        (conversation: any) =>
+          conversation?.type === "saved_messages" ||
+          conversation?.isSavedMessages ||
+          conversation?.isSelfChat ||
+          conversation?.pairKey === `self_${user?.id}`,
+      );
+
+      if (!savedMessages) {
+        setChatError("Saved Messages not found.");
+        return;
+      }
+
+      await openChatByRow({
+        ...savedMessages,
+        name: savedMessages.name || "Saved Messages",
+        type: "saved_messages",
+        isSavedMessages: true,
+        isSelfChat: true,
+      });
+    } catch (error) {
+      console.error("Failed to open Saved Messages:", error);
+      setChatError("Could not open Saved Messages.");
+    }
+  }, [openChatByRow, user?.id]);
+
   const retryOpenCurrentChat = useCallback(() => {
     if (!selectedChat) return;
     openChatByRow(selectedChat);
@@ -1326,6 +1358,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           activeChatId={selectedChat?.id || null}
           openingChatId={openingChatId}
           onSelectChat={openChatByRow}
+          onOpenSavedMessages={openSavedMessages}
         />
 
         {/* Right Panel - Chat Area */}

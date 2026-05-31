@@ -39,6 +39,10 @@ export const RightSidebar = ({
 
   const isGroup =
     selectedChat?.type === "group" || selectedChat?.type === "GROUP";
+  const isSavedMessages =
+    selectedChat?.type === "saved_messages" ||
+    selectedChat?.isSavedMessages ||
+    selectedChat?.isSelfChat;
 
   useEffect(() => {
     setActiveSubView("none"); // Reset view when chat changes
@@ -580,7 +584,7 @@ export const RightSidebar = ({
             onSendMessage={onSendMessage}
             onLeaveGroup={handleLeaveGroup}
             targetUserId={
-              !isGroup
+              !isGroup && !isSavedMessages
                 ? selectedChat?.targetUserId ||
                   selectedChat?.participantId ||
                   selectedChat?.targetUser?.id ||
@@ -599,6 +603,7 @@ export const RightSidebar = ({
                 : null
             }
             conversationId={selectedChat?.id}
+            isSavedMessages={isSavedMessages}
             onShowInChat={
               onShowInChat &&
               ((mediaUrl) => {

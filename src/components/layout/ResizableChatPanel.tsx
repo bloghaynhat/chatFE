@@ -22,7 +22,14 @@ import { FiPlus,
   FiArrowLeft, } from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
-export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, openingChatId, onSelectChat }: any) => {
+export const ResizableChatPanel = ({
+  activeView,
+  onViewChange,
+  activeChatId,
+  openingChatId,
+  onSelectChat,
+  onOpenSavedMessages,
+}: any) => {
   const [width, setWidth] = useState(320); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -82,6 +89,7 @@ export const ResizableChatPanel = ({ activeView, onViewChange, activeChatId, ope
     if (actionId === "saved") {
       setFilterMode("all");
       setIsNavigationOpen(false);
+      onOpenSavedMessages?.();
       return;
     }
 

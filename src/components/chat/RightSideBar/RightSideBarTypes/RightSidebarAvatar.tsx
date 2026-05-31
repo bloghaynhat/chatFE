@@ -1,11 +1,12 @@
 import React from "react";
-import { FiEdit2 } from "react-icons/fi";
+import { FiBookmark, FiEdit2 } from "react-icons/fi";
 
 interface RightSidebarAvatarProps {
   avatarUrl?: string;
   name: string;
   canEdit?: boolean;
   onEditClick?: () => void;
+  isSavedMessages?: boolean;
 }
 
 export const RightSidebarAvatar: React.FC<RightSidebarAvatarProps> = ({
@@ -13,11 +14,14 @@ export const RightSidebarAvatar: React.FC<RightSidebarAvatarProps> = ({
   name,
   canEdit,
   onEditClick,
+  isSavedMessages,
 }) => {
   return (
     <div className="flex flex-col items-center pt-8 pb-6 px-4 border-b border-gray-100 dark:border-slate-800">
       <div className="w-28 h-28 rounded-full bg-blue-500 flex items-center justify-center text-white text-4xl font-semibold mb-4 shadow-md overflow-hidden relative group">
-        {avatarUrl ? (
+        {isSavedMessages ? (
+          <FiBookmark className="text-5xl" />
+        ) : avatarUrl ? (
           <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
         ) : (
           <span>{name.charAt(0).toUpperCase()}</span>

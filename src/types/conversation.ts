@@ -99,7 +99,7 @@ export interface Conversation {
   lastMessage: Message;
   membersCount: number;
   pairKey: string;
-  type: "private" | "group";
+  type: "private" | "group" | "saved_messages";
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string;
@@ -116,6 +116,8 @@ export interface Conversation {
   settings?: GroupSettings;
   isPinned?: boolean;
   isArchived?: boolean;
+  isSelfChat?: boolean;
+  isSavedMessages?: boolean;
   description?: string;
   pendingMembers?: string[]; // User IDs pending approval
 }
