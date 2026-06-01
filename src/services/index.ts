@@ -29,6 +29,7 @@ export { conversationService } from "./conversationService";
 export { groupChatService } from "./groupChatService";
 export { groupUtilitiesService } from "./groupUtilitiesService";
 export { pollService } from "./pollService";
+export { messageService, sendProfileCard } from "./messageService";
 export { searchService } from "./searchService";
 export {
   blockService,

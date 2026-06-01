@@ -25,7 +25,7 @@ export interface Message {
   textPreview: string;
 
   // Message type and status
-  type: "text" | "media" | "mixed" | "call" | "poll" | "system";
+  type: "text" | "media" | "mixed" | "call" | "poll" | "system" | "profile_card";
   status?: "sent" | "delivered" | "seen";
   isSeen?: boolean;
   readAt?: string;
@@ -49,6 +49,9 @@ export interface Message {
   };
   pollId?: string;
   poll?: Poll;
+  profileCard?: User;
+  profileCardUserId?: string;
+  systemRefId?: string;
 
   // Forwarded message
   originalMessageId?: string;
