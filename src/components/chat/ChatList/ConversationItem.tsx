@@ -110,6 +110,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             <p
               className={`text-sm truncate transition-colors duration-200 ${isActive ? "text-blue-100" : chat.unreadCount ? "font-bold text-gray-900 dark:text-gray-100" : "text-gray-500"}`}
             >
+              {isMine && !isSavedMessages && <span>Bạn: </span>}
               {getChatMessagePreview(chat.lastMessage)}
             </p>
             <div className="ml-2 flex flex-shrink-0 items-center gap-1">

@@ -31,6 +31,9 @@ const getMemberDisplayName = (member: any) => {
 const isPrivilegedRole = (role?: string) =>
   role === "admin" || role === "ADMIN" || role === "owner" || role === "OWNER";
 
+const isOwnerRole = (role?: string) =>
+  role === "owner" || role === "OWNER";
+
 const notifyCurrentUserLeftGroup = (conversationId: string) => {
   window.dispatchEvent(
     new CustomEvent("group:currentUserLeft", {
@@ -334,16 +337,29 @@ export const RightSidebar = ({
 
   const currentUserMember = members.find(
     (m: any) =>
-      m.userId === currentUserId ||
-      m.user?.id === currentUserId ||
-      m.id === currentUserId,
+      String(m.userId) === String(currentUserId) ||
+      String(m.user?.id) === String(currentUserId) ||
+      String(m.user?._id) === String(currentUserId) ||
+      String(m.id) === String(currentUserId),
   );
-  const currentUserRole = currentUserMember?.role || "member";
+  const ownerId = info?.ownerId || info?.conversation?.ownerId || selectedChat?.ownerId;
+  const adminIds = info?.adminIds || selectedChat?.adminIds || [];
+  const currentUserRole =
+    String(ownerId) === String(currentUserId)
+      ? "owner"
+      : adminIds.some((id: any) => String(id?.id || id?._id || id) === String(currentUserId))
+        ? "admin"
+        : currentUserMember?.role || "member";
   const canEditGroup = isPrivilegedRole(currentUserRole);
   const groupSettings = mergeGroupSettings(
     selectedChat?.settings,
     info?.conversation?.settings || info?.settings,
   );
+  const canDissolveGroup = isOwnerRole(currentUserRole);
+  const groupSettings = {
+    ...(selectedChat?.settings || {}),
+    ...(info?.conversation?.settings || info?.settings || {}),
+  };
   const canInviteMembers = canEditGroup || groupSettings.allowMemberInvite !== false;
 
   const handleEditClick = () => {
@@ -583,12 +599,14 @@ export const RightSidebar = ({
   };
 
   const handleDeleteConfirm = async (deleteForAll: boolean) => {
-    if (currentUserRole === "admin" && !deleteForAll) {
-      // Admin wants to leave without deleting group - need to transfer admin first
+    if (canDissolveGroup && !deleteForAll) {
+      if (membersCount <= 1) {
+        await handleDeleteGroup(true);
+        return;
+      }
       setIsSelectAdminModalOpen(true);
       setIsDeleteModalOpen(false);
     } else {
-      // Either deleting for all (admin), or user is a regular member leaving
       await handleDeleteGroup(deleteForAll);
     }
   };
@@ -598,11 +616,8 @@ export const RightSidebar = ({
       setIsLoading(true);
 
       if (deleteForAll) {
-        // Case 1: Delete for all members - emit dissolveGroup socket event
-        // The server will delete the group and broadcast group:dissolved to all members
-        await socketService.dissolveGroup(selectedChat.id);
+        await conversationService.deleteGroupConversation(selectedChat.id);
       } else {
-        // Case 2: Regular member leaving (or admin after transfer)
         await groupChatService.leaveGroup(selectedChat.id);
       }
 
@@ -773,7 +788,7 @@ export const RightSidebar = ({
         onConfirm={handleDeleteConfirm}
         groupName={groupName}
         isLoading={isLoading}
-        isAdmin={isPrivilegedRole(currentUserRole)}
+        isAdmin={canDissolveGroup}
       />
 
       <SelectAdminModal

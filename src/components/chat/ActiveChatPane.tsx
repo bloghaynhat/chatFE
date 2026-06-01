@@ -21,6 +21,7 @@ import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
 import { CreatePollModal } from "./ActiveChatPane/CreatePollModal";
 import { ContactPickerModal } from "./ActiveChatPane/ContactPickerModal";
+import { WelcomeScreen } from "./WelcomeScreen";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
 import { pollService } from "../../services/pollService";
@@ -56,6 +57,7 @@ export const ActiveChatPane = ({
   onDeleteMessageForMe,
   onDeleteMessageForEveryone,
   onForwardToTarget,
+  onForwardMessages,
   forwardingMessage,
   onClearForwarding,
   isRightSidebarOpen,
@@ -1021,11 +1023,7 @@ export const ActiveChatPane = ({
   };
 
   if (!selectedChat) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
-        <p>Select a chat to start messaging</p>
-      </div>
-    );
+    return <WelcomeScreen />;
   }
 
   return (
@@ -1183,6 +1181,7 @@ export const ActiveChatPane = ({
         currentUserId={currentUserId}
         selectedChat={selectedChat}
         onForwardToTarget={onForwardToTarget}
+        onForwardMessages={onForwardMessages}
       />
 
       <CalendarModal

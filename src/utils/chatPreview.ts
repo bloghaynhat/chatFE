@@ -1,6 +1,10 @@
 export const getChatMessagePreview = (message: any) => {
   if (!message) return "No messages";
 
+  if (message.isRevoked || message.deletedAt) {
+    return "Tin nhắn đã thu hồi";
+  }
+
   const text =
     message.textPreview ||
     message.preview ||

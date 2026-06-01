@@ -673,6 +673,7 @@ export const ChatList = ({
   onArchiveStatsChange,
   onSelectChat,
   onForwardToTarget,
+  onForwardMessages,
 }: any) => {
   const { user } = useAuth();
   const { friends, fetchFriends } = useFriendManagement();
@@ -2023,6 +2024,7 @@ export const ChatList = ({
         currentUserId={user?.id}
         selectedChat={null}
         onForwardToTarget={onForwardToTarget}
+        onForwardMessages={onForwardMessages}
       />
     </div>
   );

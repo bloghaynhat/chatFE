@@ -42,21 +42,25 @@ export const SelectAdminModal: React.FC<SelectAdminModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter members who can become admin (exclude current user and existing admins)
   const availableMembers = members.filter((m) => {
     const memberId = m.userId || m.user?.id || m.id;
-    const isAdmin = m.role?.toLowerCase() === "admin";
-    return !isAdmin && memberId !== currentUserId;
+    return memberId && String(memberId) !== String(currentUserId);
   });
 
-  // If members don't have userId at root, try nested user.id
-  const displayMembers = availableMembers.map((m) => ({
-    id: m.userId || m.user?.id || m.id,
-    displayName:
-      m.user?.displayName || m.user?.name || m.user?.username || `User ${m.userId}`,
-    avatarUrl: m.user?.avatarUrl,
-    role: m.role,
-  }));
+  const displayMembers = availableMembers
+    .map((m) => ({
+      id: m.userId || m.user?.id || m.id,
+      displayName:
+        m.user?.displayName || m.user?.name || m.user?.username || `User ${m.userId || m.id}`,
+      avatarUrl: m.user?.avatarUrl,
+      role: m.role,
+    }))
+    .sort((a, b) => {
+      const aIsAdmin = String(a.role || "").toLowerCase() === "admin";
+      const bIsAdmin = String(b.role || "").toLowerCase() === "admin";
+      if (aIsAdmin === bIsAdmin) return a.displayName.localeCompare(b.displayName);
+      return aIsAdmin ? -1 : 1;
+    });
 
   const handleConfirm = async () => {
     if (!selectedMemberId) return;
@@ -86,7 +90,7 @@ export const SelectAdminModal: React.FC<SelectAdminModalProps> = ({
               <FiShield className="text-[18px] text-blue-500" />
             </div>
             <h2 className="text-[16px] font-semibold text-gray-900 dark:text-gray-100">
-              Transfer Admin
+              Transfer Ownership
             </h2>
           </div>
           <button
@@ -110,17 +114,17 @@ export const SelectAdminModal: React.FC<SelectAdminModalProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100 mb-1.5">
-                Select a new admin
+                Select a new owner
               </p>
               <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                Choose a member to transfer admin rights before you leave the group.
+                Choose a member to become owner before you leave the group. Admins are shown first.
               </p>
             </div>
           </div>
 
           {displayMembers.length === 0 ? (
             <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-              <p>No available members to transfer admin rights.</p>
+              <p>No available members to transfer ownership.</p>
               <p className="text-sm mt-1">Add more members first or keep current admin.</p>
             </div>
           ) : (
@@ -153,7 +157,7 @@ export const SelectAdminModal: React.FC<SelectAdminModalProps> = ({
                       {member.displayName}
                     </p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400">
-                      {member.role === "admin" ? "Admin" : "Member"}
+                      {String(member.role).toLowerCase() === "admin" ? "Admin" : "Member"}
                     </p>
                   </div>
                   {selectedMemberId === member.id && (

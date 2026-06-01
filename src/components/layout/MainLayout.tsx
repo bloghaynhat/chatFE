@@ -11,6 +11,7 @@ import type {
   PinMessagePayload,
   UnpinMessagePayload,
 } from "../../types/socket";
+import { toast } from "sonner";
 
 const MESSAGE_PAGE_SIZE = 30;
 
@@ -359,11 +360,19 @@ const MainLayout = ({ children }: { children?: any }) => {
           if (!editedMsg || (!editedMsg._id && !editedMsg.id)) return;
 
           setMessages((prev) =>
-            prev.map((m) =>
-              String(m._id || m.id) === String(editedMsg._id || editedMsg.id)
-                ? { ...m, ...editedMsg, isEdited: true }
-                : m,
-            ),
+            prev.map((m) => {
+              if (String(m._id || m.id) === String(editedMsg._id || editedMsg.id)) {
+                const newText = editedMsg.text || editedMsg.content || editedMsg.message || m.text;
+                return {
+                  ...m,
+                  ...editedMsg,
+                  isEdited: true,
+                  text: newText,
+                  content: newText,
+                };
+              }
+              return m;
+            }),
           );
         });
 
@@ -388,6 +397,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                 : m,
             ),
           );
+          window.dispatchEvent(new Event("chatList:refresh"));
         });
 
         socketService.onMessageStatusUpdate((payload) => {
@@ -1247,20 +1257,24 @@ const MainLayout = ({ children }: { children?: any }) => {
     selectedConversationId,
     user?.id,
   ]);
+  
+  const findSavedMessagesConversation = useCallback(async () => {
+    const conversations = await conversationService.getConversations();
+    return (Array.isArray(conversations) ? conversations : []).find(
+      (conversation: any) =>
+        conversation?.type === "saved_messages" ||
+        conversation?.isSavedMessages ||
+        conversation?.isSelfChat ||
+        conversation?.pairKey === `self_${user?.id}`,
+    );
+  }, [user?.id]);
 
   const openSavedMessages = useCallback(async () => {
     setActiveView("chats");
     setChatError("");
 
     try {
-      const conversations = await conversationService.getConversations();
-      const savedMessages = (Array.isArray(conversations) ? conversations : []).find(
-        (conversation: any) =>
-          conversation?.type === "saved_messages" ||
-          conversation?.isSavedMessages ||
-          conversation?.isSelfChat ||
-          conversation?.pairKey === `self_${user?.id}`,
-      );
+      const savedMessages = await findSavedMessagesConversation();
 
       if (!savedMessages) {
         setChatError("Saved Messages not found.");
@@ -1278,7 +1292,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       console.error("Failed to open Saved Messages:", error);
       setChatError("Could not open Saved Messages.");
     }
-  }, [openChatByRow, user?.id]);
+  }, [findSavedMessagesConversation, openChatByRow]);
 
   const retryOpenCurrentChat = useCallback(() => {
     if (!selectedChat) return;
@@ -1379,17 +1393,74 @@ const MainLayout = ({ children }: { children?: any }) => {
 
   const handleForwardToTarget = useCallback(
     (targetChat, msg) => {
+      if (targetChat?.isSavedMessages || targetChat?.type === "saved_messages") {
+        void openSavedMessages();
+        setForwardingMessage(msg);
+        return;
+      }
+
       // Navigate to user's chat
       openChatByRow(targetChat);
       // Set the forwarding message
       setForwardingMessage(msg);
     },
-    [openChatByRow],
+    [openChatByRow, openSavedMessages],
   );
 
   const clearForwardingMessage = useCallback(() => {
     setForwardingMessage(null);
   }, []);
+
+  const handleForwardMessagesDirect = useCallback(async (targetChats: any[], msg: any) => {
+    const messageId = msg?.id || msg?._id || msg?.messageId;
+    if (!messageId || targetChats.length === 0) return;
+
+    const targetConversationIds = await Promise.all(
+      targetChats.map(async (targetChat) => {
+        if (targetChat?.isSavedMessages || targetChat?.type === "saved_messages") {
+          const savedMessages = await findSavedMessagesConversation();
+          const savedConversationId = resolveConversationId(savedMessages);
+          if (!savedConversationId) {
+            throw new Error("Saved Messages not found");
+          }
+          return savedConversationId;
+        }
+
+        if (targetChat.conversationId || targetChat.id?.startsWith?.("conv_")) {
+          return targetChat.conversationId || targetChat.id;
+        }
+
+        const targetUserId =
+          targetChat.targetUserId ||
+          targetChat.friendUserId ||
+          targetChat.userId ||
+          targetChat.id ||
+          targetChat._id;
+
+        if (!targetUserId) return null;
+        const conversation: any = await conversationService.createPrivateConversation(targetUserId);
+        return conversation?.conversationId || conversation?.id || conversation?._id;
+      }),
+    );
+
+    const validConversationIds = targetConversationIds.filter(Boolean);
+    if (validConversationIds.length === 0) {
+      throw new Error("No valid target conversation");
+    }
+
+    const forwardedMessages = await conversationService.forwardMessages({
+      messageIds: [messageId],
+      targetConversationIds: validConversationIds,
+    });
+
+    if (validConversationIds.some((id) => String(id) === String(selectedConversationId))) {
+      const items = Array.isArray(forwardedMessages) ? forwardedMessages : [];
+      setMessages((prev) => mergeUniqueMessages(prev, items));
+    }
+
+    toast.success("Đã chuyển tiếp tin nhắn");
+    window.dispatchEvent(new Event("chatList:refresh"));
+  }, [findSavedMessagesConversation, selectedConversationId]);
 
   const handleSendMessage = async (payloadOrText, mediaFiles = []) => {
     let conversationId = selectedConversationId || selectedChat?.id;
@@ -1417,9 +1488,23 @@ const MainLayout = ({ children }: { children?: any }) => {
           );
 
           await socketService.editMessage(payloadOrText.id, payloadOrText.text);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to edit message", error);
-          // Ideally revert UI state here, but logging is minimum.
+          let errorMessage = error?.message || "Chỉnh sửa tin nhắn thất bại";
+          if (errorMessage.includes("limit exceeded") || errorMessage.includes("15 minutes")) {
+            errorMessage = "Không thể chỉnh sửa tin nhắn đã gửi quá 15 phút.";
+          }
+          toast.error(errorMessage);
+          // Revert UI state
+          setMessages((prev) => {
+            const originalMsg = messages.find((m) => String(m.id || m._id) === String(payloadOrText.id));
+            if (!originalMsg) return prev;
+            return prev.map((msg) =>
+              String(msg.id || msg._id) === String(payloadOrText.id)
+                ? { ...originalMsg }
+                : msg,
+            );
+          });
         }
         return;
       }
@@ -1744,6 +1829,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               : msg,
           ),
         );
+        window.dispatchEvent(new Event("chatList:refresh"));
       }
     } catch (error) {
       console.error("Failed to revoke message:", error);
@@ -1755,28 +1841,19 @@ const MainLayout = ({ children }: { children?: any }) => {
     if (!messageId) return;
 
     try {
-      const res: any = await socketService.deleteMessage(messageId);
-
-      if (
-        res &&
-        (res.success ||
-          res.status === 200 ||
-          res.statusText === "OK" ||
-          res.status === "success")
-      ) {
-        setMessages((prev) =>
-          prev.filter(
-            (msg) =>
-              String(msg.id) !== String(messageId) &&
-              String(msg._id) !== String(messageId),
-          ),
-        );
-      }
+      await conversationService.deleteMessageForMe(messageId);
+      setMessages((prev) =>
+        prev.filter(
+          (msg) =>
+            String(msg.id) !== String(messageId) &&
+            String(msg._id) !== String(messageId),
+        ),
+      );
     } catch (error) {
-      console.error("Failed to delete message for me via socket:", error);
-      // Fallback to API if socket fails or not implemented for this action
+      console.error("Failed to delete message for me via API:", error);
       try {
-        await conversationService.deleteMessageForMe(messageId);
+        const res: any = await socketService.deleteMessage(messageId);
+        if (!res?.success && res?.status !== "success") throw new Error(res?.error || "Delete failed");
         setMessages((prev) =>
           prev.filter(
             (msg) =>
@@ -1784,8 +1861,8 @@ const MainLayout = ({ children }: { children?: any }) => {
               String(msg._id) !== String(messageId),
           ),
         );
-      } catch (apiErr) {
-        console.error("Failed to delete message for me via API:", apiErr);
+      } catch (socketErr) {
+        console.error("Failed to delete message for me via socket fallback:", socketErr);
       }
     }
   };
@@ -1885,16 +1962,19 @@ const MainLayout = ({ children }: { children?: any }) => {
         throw new Error(res?.error || res?.msg || res?.message || "Pin failed");
       }
     } catch (error) {
-      // Rollback on error
-      console.error("Failed to pin message:", error);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          String(msg.id || msg._id) === String(messageId)
-            ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
-            : msg,
-        ),
-      );
-      throw error;
+      try {
+        await conversationService.pinMessage(messageId);
+      } catch (apiError) {
+        console.error("Failed to pin message:", apiError);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            String(msg.id || msg._id) === String(messageId)
+              ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
+              : msg,
+          ),
+        );
+        throw apiError;
+      }
     } finally {
       pendingPinOperations.current.delete(operationKey);
     }
@@ -1959,16 +2039,19 @@ const MainLayout = ({ children }: { children?: any }) => {
         );
       }
     } catch (error) {
-      // Rollback on error - restore original pinned state
-      console.error("Failed to unpin message:", error);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          String(msg.id || msg._id) === String(messageId)
-            ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
-            : msg,
-        ),
-      );
-      throw error;
+      try {
+        await conversationService.unpinMessage(messageId);
+      } catch (apiError) {
+        console.error("Failed to unpin message:", apiError);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            String(msg.id || msg._id) === String(messageId)
+              ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
+              : msg,
+          ),
+        );
+        throw apiError;
+      }
     } finally {
       pendingPinOperations.current.delete(operationKey);
     }
@@ -2044,6 +2127,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           openingChatId={openingChatId}
           onSelectChat={openChatByRow}
           onForwardToTarget={handleForwardToTarget}
+          onForwardMessages={handleForwardMessagesDirect}
           onOpenSavedMessages={openSavedMessages}
         />
 
@@ -2064,6 +2148,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               onDeleteMessageForMe={handleDeleteMessageForMe}
               onDeleteMessageForEveryone={handleDeleteMessageForEveryone}
               onForwardToTarget={handleForwardToTarget}
+              onForwardMessages={handleForwardMessagesDirect}
               forwardingMessage={forwardingMessage}
               onClearForwarding={clearForwardingMessage}
               isRightSidebarOpen={isRightSidebarOpen}
