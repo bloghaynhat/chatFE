@@ -1,4 +1,6 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { Message } from "../../../types/conversation";
+import { createPortal } from "react-dom";
 import { conversationService } from "../../../services/conversationService";
 import { socketService } from "../../../services/socketService";
 import {
@@ -60,6 +62,51 @@ export const MessageContextMenu = ({
   const msgId = contextMenu.message.id || contextMenu.message._id;
   const message = messages.find((m) => (m.id || m._id) === msgId);
   const isPinned = !!message?.pinnedAt;
+  const viewportPadding = 8;
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuPosition, setMenuPosition] = useState({
+    left: Math.max(contextMenu.x, viewportPadding),
+    top: Math.max(contextMenu.y, viewportPadding),
+    maxHeight: window.innerHeight - viewportPadding * 2,
+    opacity: 0,
+  });
+
+  useLayoutEffect(() => {
+    const menuElement = menuRef.current;
+    if (!menuElement) return;
+
+    const rect = menuElement.getBoundingClientRect();
+    const inputTop =
+      document
+        .querySelector<HTMLElement>("[data-chat-input-root]")
+        ?.getBoundingClientRect().top ?? window.innerHeight;
+    const usableBottom = Math.min(window.innerHeight, inputTop) - viewportPadding;
+    const availableHeight = Math.max(220, usableBottom - viewportPadding);
+
+    let left = contextMenu.x;
+    if (left + rect.width > window.innerWidth - viewportPadding) {
+      left = window.innerWidth - rect.width - viewportPadding;
+    }
+    left = Math.max(viewportPadding, left);
+
+    let top = contextMenu.y;
+    if (top + rect.height > usableBottom) {
+      top = contextMenu.y - rect.height - 8;
+    }
+    if (top < viewportPadding) {
+      top = Math.max(
+        viewportPadding,
+        Math.min(contextMenu.y, usableBottom - Math.min(rect.height, availableHeight)),
+      );
+    }
+
+    setMenuPosition({
+      left,
+      top,
+      maxHeight: availableHeight,
+      opacity: 1,
+    });
+  }, [contextMenu.x, contextMenu.y, isMyMessage, onTranslateMessage]);
 
   const handlePinToggle = async () => {
     if (!msgId) return;
@@ -105,10 +152,16 @@ export const MessageContextMenu = ({
     onClose();
   };
 
-  return (
+  const menu = (
     <div
-      className="fixed z-[9999] flex flex-col gap-2"
-      style={{ top: Math.max(contextMenu.y - 50, 10), left: contextMenu.x }}
+      ref={menuRef}
+      className="fixed z-[9999] flex w-[252px] flex-col items-start gap-2"
+      style={{
+        top: menuPosition.top,
+        left: menuPosition.left,
+        maxHeight: menuPosition.maxHeight,
+        opacity: menuPosition.opacity,
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       <style>{`
@@ -146,7 +199,7 @@ export const MessageContextMenu = ({
         })}
       </div>
 
-      <div className="w-[200px] bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
+      <div className="w-[200px] max-h-[calc(100vh-120px)] overflow-y-auto bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
         {isMyMessage && (
           <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
             <div className="flex -space-x-[4px] text-blue-500">
@@ -295,4 +348,6 @@ export const MessageContextMenu = ({
       </div>
     </div>
   );
+
+  return createPortal(menu, document.body);
 };

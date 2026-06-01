@@ -253,7 +253,7 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
+    <div data-chat-input-root className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
       {(forwardingMessage || editingMessage || replyingMessage) && (
         <div className="max-w-4xl mx-auto mb-2 flex bg-[#edf4f1] dark:bg-slate-800/95 rounded-t-[10px] overflow-hidden relative z-40 p-[8px] pl-[14px] items-center">
           <div className="flex-1 flex flex-col justify-center min-w-0 pr-6 gap-[5px]">

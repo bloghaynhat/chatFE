@@ -643,15 +643,7 @@ export const ActiveChatPane = ({
     e.preventDefault();
     e.stopPropagation();
 
-    const menuWidth = 200;
-    const menuHeight = 310;
-    let x = e.clientX;
-    let y = e.clientY;
-
-    if (x + menuWidth > window.innerWidth) x -= menuWidth;
-    if (y + menuHeight > window.innerHeight) y -= menuHeight;
-
-    setContextMenu({ x, y, message });
+    setContextMenu({ x: e.clientX, y: e.clientY, message });
   };
 
   const onDrop = useCallback((acceptedFiles, fileRejections, event) => {
