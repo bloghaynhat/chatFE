@@ -1185,7 +1185,14 @@ const MainLayout = ({ children }: { children?: any }) => {
   );
 
   useEffect(() => {
-    if (!routeConversationId || !user?.id) return;
+    if (!routeConversationId) {
+      if (selectedConversationId) {
+        setSelectedConversationId(null);
+        setSelectedChat(null);
+      }
+      return;
+    }
+    if (!user?.id) return;
     if (String(selectedConversationId) === String(routeConversationId)) return;
     if (isOpeningConversation && String(openingChatId) === String(routeConversationId)) return;
 
@@ -2119,21 +2126,23 @@ const MainLayout = ({ children }: { children?: any }) => {
 
   return (
     <div className={darkMode ? "dark" : ""}>
-      <div className="flex h-screen bg-white dark:bg-slate-900">
+      <div className="flex h-screen bg-white dark:bg-slate-900 relative overflow-hidden">
         {/* Resizable Left Panel - Chat List */}
-        <ResizableChatPanel
-          activeView={activeView}
-          onViewChange={setActiveView}
-          activeChatId={selectedChat?.id || null}
-          openingChatId={openingChatId}
-          onSelectChat={openChatByRow}
-          onForwardToTarget={handleForwardToTarget}
-          onForwardMessages={handleForwardMessagesDirect}
-          onOpenSavedMessages={openSavedMessages}
-        />
+        <div className={`h-full shrink-0 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 flex absolute inset-0 lg:relative lg:translate-x-0 ${selectedChat ? '-translate-x-[30%] pointer-events-none lg:pointer-events-auto lg:flex lg:w-auto' : 'translate-x-0 w-full lg:w-auto'}`}>
+          <ResizableChatPanel
+            activeView={activeView}
+            onViewChange={setActiveView}
+            activeChatId={selectedChat?.id || null}
+            openingChatId={openingChatId}
+            onSelectChat={openChatByRow}
+            onForwardToTarget={handleForwardToTarget}
+            onForwardMessages={handleForwardMessagesDirect}
+            onOpenSavedMessages={openSavedMessages}
+          />
+        </div>
 
         {/* Right Panel - Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-gray-100 dark:bg-slate-950">
+        <div className={`flex flex-col min-w-0 bg-gray-100 dark:bg-slate-950 h-full transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-20 absolute inset-0 lg:relative lg:flex-1 ${!selectedChat ? 'translate-x-full lg:translate-x-0 pointer-events-none lg:pointer-events-auto' : 'translate-x-0'}`}>
           {children || (
             <ActiveChatPane
               selectedChat={selectedChat}
@@ -2163,6 +2172,9 @@ const MainLayout = ({ children }: { children?: any }) => {
               isLoadingOlderMessages={isLoadingOlderMessages}
               onLoadOlderMessages={handleLoadOlderMessages}
               onOpenChat={openChatByRow}
+              onCloseChat={() => {
+                navigate("/", { replace: true });
+              }}
             />
           )}
         </div>

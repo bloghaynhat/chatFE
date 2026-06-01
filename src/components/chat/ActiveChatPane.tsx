@@ -83,6 +83,7 @@ export const ActiveChatPane = ({
   isLoadingOlderMessages = false,
   onLoadOlderMessages,
   onOpenChat,
+  onCloseChat,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -96,7 +97,7 @@ export const ActiveChatPane = ({
   );
 
   const { drafts, setDraft, loadDrafts } = useDraft();
-  
+
   const draftMessage = (selectedConversationId ? drafts[selectedConversationId] : "") || "";
   const setDraftMessage = useCallback((text: string | ((prev: string) => string)) => {
     if (!selectedConversationId) return;
@@ -221,10 +222,10 @@ export const ActiveChatPane = ({
       (item: any) =>
         String(
           item?.userId ||
-            item?.user?.id ||
-            item?.user?._id ||
-            item?.id ||
-            item?._id,
+          item?.user?.id ||
+          item?.user?._id ||
+          item?.id ||
+          item?._id,
         ) === String(currentUserId),
     );
     if (member?.role) return member.role;
@@ -281,8 +282,8 @@ export const ActiveChatPane = ({
       selectedChat?.members || selectedChat?.participants || [];
     let inviteeIds = Array.isArray(rawMembers)
       ? rawMembers
-          .map((member) => member?.userId || member?.id || member?._id)
-          .filter(Boolean)
+        .map((member) => member?.userId || member?.id || member?._id)
+        .filter(Boolean)
       : [];
 
     if (inviteeIds.length === 0 && selectedConversationId) {
@@ -364,8 +365,8 @@ export const ActiveChatPane = ({
       target?._id ||
       (selectedChat?.pairKey
         ? selectedChat.pairKey
-            .split("_")
-            .find((id: string) => id !== currentUserId)
+          .split("_")
+          .find((id: string) => id !== currentUserId)
         : null) ||
       null
     );
@@ -387,9 +388,9 @@ export const ActiveChatPane = ({
 
       const relationshipPayload =
         relationshipStatus &&
-        typeof relationshipStatus === "object" &&
-        "status" in relationshipStatus &&
-        "data" in relationshipStatus
+          typeof relationshipStatus === "object" &&
+          "status" in relationshipStatus &&
+          "data" in relationshipStatus
           ? (relationshipStatus as any).data
           : (relationshipStatus as any)?.data || relationshipStatus || {};
 
@@ -472,9 +473,9 @@ export const ActiveChatPane = ({
         callPeerInfo,
         isGroupChat
           ? callPeerInfo?.name ||
-              selectedChat?.name ||
-              selectedChat?.displayName ||
-              null
+          selectedChat?.name ||
+          selectedChat?.displayName ||
+          null
           : null,
       );
     },
@@ -872,12 +873,6 @@ export const ActiveChatPane = ({
       onClick: () => setIsCreatePollOpen(true),
       groupOnly: true,
     },
-    {
-      id: "share-contact",
-      label: "Chia sẻ liên hệ",
-      icon: FiUserPlus,
-      onClick: () => setIsContactPickerOpen(true),
-    },
   ];
 
   const visibleAttachActions = attachActions.filter((action: any) => {
@@ -1153,6 +1148,7 @@ export const ActiveChatPane = ({
         selectedChat={selectedChat}
         currentUserId={currentUserId}
         isLoading={isLoading}
+        onCloseChat={onCloseChat}
         isHeaderSearchOpen={isHeaderSearchOpen}
         setIsHeaderSearchOpen={setIsHeaderSearchOpen}
         headerSearchValue={headerSearchValue}

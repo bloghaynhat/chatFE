@@ -219,12 +219,12 @@ export const ResizableChatPanel = ({
   }, [isResizing, minWidth, maxWidth, activeView]);
 
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full relative w-full lg:w-auto">
       {/* Chat Panel */}
       <div
         ref={panelRef}
-        style={{ width: `${isCollapsed ? minWidth : width}px` }}
-        className={`flex flex-col bg-white dark:bg-slate-900 relative ${isResizing ? "" : "transition-all duration-200"}`}
+        style={{ '--panel-width': `${isCollapsed ? minWidth : width}px` } as React.CSSProperties}
+        className={`flex flex-col bg-white dark:bg-slate-900 relative w-full lg:w-[var(--panel-width)] ${isResizing ? "" : "transition-all duration-200"}`}
       >
         {activeView === "chats" && (
           filterMode === "archived" ? (

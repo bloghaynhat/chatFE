@@ -332,7 +332,7 @@ export const MessageItem = ({
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-sm flex flex-col relative overflow-hidden ${
+        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-[14px] md:text-[15px] flex flex-col relative overflow-hidden ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
@@ -518,7 +518,7 @@ export const MessageItem = ({
           >
             {message.pinnedAt && (
               <FiMapPin
-                className="text-[14px] text-blue-500 dark:text-blue-400"
+                className="text-[14px] md:text-[15px] text-blue-500 dark:text-blue-400"
                 strokeWidth={2.5}
               />
             )}
