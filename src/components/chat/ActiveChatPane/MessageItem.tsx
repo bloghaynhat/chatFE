@@ -42,6 +42,8 @@ export const MessageItem = ({
   onPollUpdated,
   onOpenChat,
   senderFallback,
+  wallpaperTheme,
+  hasUploadedWallpaper,
 }: any) => {
   const [fetchedSender, setFetchedSender] = useState(null);
   const [reactionView, setReactionView] = useState(null);
@@ -253,6 +255,7 @@ export const MessageItem = ({
         isFirst={isFirst}
         firstMessageRef={firstMessageRef}
         text={displaySystemText}
+        hasUploadedWallpaper={hasUploadedWallpaper}
       />
     );
   }
@@ -288,6 +291,7 @@ export const MessageItem = ({
         isLastInSequence={isLastInSequence}
         senderName={senderName}
         senderAvatarStr={senderAvatarStr}
+        wallpaperTheme={wallpaperTheme}
       />
     );
   }
@@ -328,8 +332,8 @@ export const MessageItem = ({
               ? "self-end bg-transparent"
               : "self-start bg-transparent"
             : mine
-              ? `shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50 ${isCallMessage ? "min-w-[242px]" : ""}`
-              : `shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50 ${isCallMessage ? "min-w-[242px]" : ""}`
+              ? `${wallpaperTheme?.mine || "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
+              : `${wallpaperTheme?.other || "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
         }`}
       >
         {isGroup &&
@@ -337,7 +341,11 @@ export const MessageItem = ({
           isFirstInSequence &&
           !isForwarded &&
           !isJumboEmoji && (
-            <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[5px] pb-0 block leading-tight">
+            <span
+              className={`text-[12.5px] font-semibold px-3 pt-[5px] pb-0 block leading-tight ${
+                wallpaperTheme?.sender || "text-blue-600 dark:text-blue-400"
+              }`}
+            >
               {senderName}
             </span>
           )}
@@ -348,6 +356,7 @@ export const MessageItem = ({
           mine={mine}
           currentUserId={currentUserId}
           onNavigateToMessage={onNavigateToMessage}
+          wallpaperTheme={wallpaperTheme}
         />
 
         {isMedia && (

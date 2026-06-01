@@ -5,6 +5,7 @@ import { getDateLabel, groupMediaMessages, getMessageTime } from "../../../utils
 import {
   DEFAULT_CHAT_WALLPAPER_CLASS,
   getWallpaperPresetByValue,
+  getWallpaperPresetTheme,
 } from "../../../constants/wallpaperPresets";
 
 const getProfileId = (profile: any) =>
@@ -89,6 +90,8 @@ export const MessageList = ({
   onOpenChat,
 }: any) => {
   const wallpaperPreset = getWallpaperPresetByValue(wallpaperUrl);
+  const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
+  const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
   const containerClassName =
     `flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
   const wallpaperStyle = wallpaperUrl
@@ -222,6 +225,8 @@ export const MessageList = ({
                     onPollUpdated={onPollUpdated}
                     onOpenChat={onOpenChat}
                     senderFallback={senderFallback}
+                    wallpaperTheme={wallpaperTheme}
+                    hasUploadedWallpaper={hasUploadedWallpaper}
                   />
                 );
               });

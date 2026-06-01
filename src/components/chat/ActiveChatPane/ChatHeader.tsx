@@ -4,8 +4,6 @@ import {
   FiMoreVertical,
   FiCalendar,
   FiX,
-  FiChevronRight,
-  FiClock,
   FiBellOff,
   FiVideo,
   FiCheckCircle,
@@ -446,10 +444,6 @@ export const ChatHeader = ({
                             ? "Đang trích xuất..."
                             : action.label}
                         </span>
-
-                        {/* {action.hasChevron && (
-                          <FiChevronRight className="text-[16px] text-gray-400 dark:text-gray-500" />
-                        )} */}
                       </button>
                     );
                   })}

@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
 import userService from "../../../../services/userService";
 
-export const QuotedMessageHeader = ({ message, messages = [], mine, currentUserId, onNavigateToMessage }: any) => {
+export const QuotedMessageHeader = ({
+  message,
+  messages = [],
+  mine,
+  currentUserId,
+  onNavigateToMessage,
+  wallpaperTheme,
+}: any) => {
   const isQuoted = Boolean(message?.quotedMessageId || message?.quotedMessage || message?.replyTo);
   
   const [fetchedSenderName, setFetchedSenderName] = useState("");
@@ -129,18 +136,32 @@ export const QuotedMessageHeader = ({ message, messages = [], mine, currentUserI
 
   return (
     <div className={`mx-2 mt-[6px] mb-1 px-3 py-[6px] rounded-[6px] relative overflow-hidden flex flex-col justify-center cursor-pointer ${
-      mine ? "bg-[#d1f1cb] dark:bg-emerald-800/40" : "bg-black/5 dark:bg-white/5"
+      mine
+        ? wallpaperTheme?.quoteMine || "bg-[#d1f1cb] dark:bg-emerald-800/40"
+        : wallpaperTheme?.quoteOther || "bg-black/5 dark:bg-white/5"
     }`} onClick={(e) => {
         if (quotedMessageId && onNavigateToMessage) {
             e.stopPropagation();
             onNavigateToMessage(quotedMessageId);
         }
     }}>
-      <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${mine ? "bg-[#107c10] dark:bg-emerald-400" : "bg-[#2ea6f3] dark:bg-blue-400"}`}></div>
-      <span className={`text-[12.5px] font-semibold leading-tight truncate ${mine ? "text-[#107c10] dark:text-emerald-400" : "text-[#2ea6f3] dark:text-blue-400"}`}>
+      <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${
+        mine
+          ? wallpaperTheme?.quoteBarMine || "bg-[#107c10] dark:bg-emerald-400"
+          : wallpaperTheme?.quoteBarOther || "bg-[#2ea6f3] dark:bg-blue-400"
+      }`}></div>
+      <span className={`text-[12.5px] font-semibold leading-tight truncate ${
+        mine
+          ? wallpaperTheme?.quoteTitleMine || "text-[#107c10] dark:text-emerald-400"
+          : wallpaperTheme?.quoteTitleOther || "text-[#2ea6f3] dark:text-blue-400"
+      }`}>
         {senderName}
       </span>
-      <span className={`text-[13px] truncate leading-snug mt-0.5 ${mine ? "text-emerald-900/80 dark:text-emerald-100/70" : "text-gray-600 dark:text-gray-300"}`}>
+      <span className={`text-[13px] truncate leading-snug mt-0.5 ${
+        mine
+          ? wallpaperTheme?.quoteTextMine || "text-emerald-900/80 dark:text-emerald-100/70"
+          : wallpaperTheme?.quoteTextOther || "text-gray-600 dark:text-gray-300"
+      }`}>
         {previewText}
       </span>
     </div>
