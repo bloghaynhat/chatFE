@@ -58,6 +58,26 @@ function App() {
           </PrivateRoute>
         }
       />
+      <Route
+        path="/c/:conversationId"
+        element={
+          <PrivateRoute>
+            <FriendProvider>
+              <HomePage />
+            </FriendProvider>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/c/:conversationId/:chatSlug"
+        element={
+          <PrivateRoute>
+            <FriendProvider>
+              <HomePage />
+            </FriendProvider>
+          </PrivateRoute>
+        }
+      />
       {/* Catch all - redirect to home */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

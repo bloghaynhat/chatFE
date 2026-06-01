@@ -101,6 +101,18 @@ export const conversationService = {
     return normalizeConversationPage(response);
   },
 
+  async getConversationById(conversationId: string): Promise<Conversation | null> {
+    const response: any = await api.get(`/conversations/${conversationId}`);
+    const detail = response?.data || response || {};
+    const conversation = detail?.conversation || detail;
+    return normalizeConversation({
+      ...conversation,
+      members: detail?.members || conversation?.members,
+      participants: detail?.members || conversation?.participants,
+      currentUserRole: detail?.currentUserRole || conversation?.currentUserRole,
+    });
+  },
+
   async createPrivateConversation(targetUserId: string): Promise<Conversation> {
     const response: any = await api.post("/conversations/private", {
       targetUserId,

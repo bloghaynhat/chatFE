@@ -38,7 +38,10 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 
   return (
     <div
-      onClick={() => onSelectChat(chat)}
+      onClick={() => {
+        if (isActive) return;
+        onSelectChat(chat);
+      }}
       onContextMenu={(event) => onContextMenu?.(event, chat)}
       className={`group flex items-center p-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 active:scale-[0.98]
         ${isActive ? "bg-blue-500 shadow-md text-white" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200"}

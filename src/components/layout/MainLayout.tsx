@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
@@ -12,6 +13,29 @@ import type {
 } from "../../types/socket";
 
 const MESSAGE_PAGE_SIZE = 30;
+
+const slugifyChatName = (value: string = "") => {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || "chat";
+};
+
+const getConversationUrl = (conversationId: string, chatName?: string) =>
+  `/c/${encodeURIComponent(conversationId)}/${slugifyChatName(chatName)}`;
+
+const hasDisplayInfo = (conversation: any) =>
+  Boolean(
+    conversation?.name ||
+      conversation?.displayName ||
+      conversation?.targetUser?.displayName ||
+      conversation?.participant?.displayName ||
+      conversation?.user?.displayName,
+  );
 
 const sortMessagesByCreatedAt = (items: any[] = []) =>
   [...items].sort((a, b) => {
@@ -98,6 +122,8 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { conversationId: routeConversationId } = useParams();
 
   // Track pending pin/unpin operations to prevent duplicate requests
   const pendingPinOperations = useRef<Set<string>>(new Set());
@@ -991,7 +1017,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
 
   const openChatByRow = useCallback(
-    async (chat) => {
+    async (chat, options: { syncUrl?: boolean; replaceUrl?: boolean } = {}) => {
       if (!chat?.id) {
         setChatError("Couldn’t open this conversation");
         return;
@@ -1051,6 +1077,17 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
 
         setSelectedConversationId(conversationId);
+
+        if (options.syncUrl !== false) {
+          const chatName =
+            processedChat.name ||
+            processedChat.displayName ||
+            processedChat.title ||
+            "chat";
+          navigate(getConversationUrl(conversationId, chatName), {
+            replace: Boolean(options.replaceUrl),
+          });
+        }
 
         // Nếu là group chat, fetch thông tin nhóm mới nhất và update selectedChat
         const isGroupChat =
@@ -1133,8 +1170,83 @@ const MainLayout = ({ children }: { children?: any }) => {
         setOpeningChatId(null);
       }
     },
-    [isOpeningConversation, openingChatId],
+    [isOpeningConversation, navigate, openingChatId, user?.id],
   );
+
+  useEffect(() => {
+    if (!routeConversationId || !user?.id) return;
+    if (String(selectedConversationId) === String(routeConversationId)) return;
+    if (isOpeningConversation && String(openingChatId) === String(routeConversationId)) return;
+
+    let cancelled = false;
+
+    const openConversationFromUrl = async () => {
+      try {
+        setActiveView("chats");
+        setChatError("");
+        let conversation = await conversationService.getConversationById(routeConversationId);
+        if (cancelled) return;
+
+        let detail: any = conversation;
+        if (!detail?.id && !detail?.conversationId) {
+          setChatError("Conversation not found.");
+          return;
+        }
+
+        const conversationId = detail.id || detail.conversationId;
+        if (!hasDisplayInfo(detail)) {
+          const conversations = await conversationService.getConversations();
+          if (cancelled) return;
+
+          const listItem = (Array.isArray(conversations) ? conversations : []).find(
+            (item: any) => String(item?.id || item?.conversationId) === String(conversationId),
+          );
+
+          if (listItem) {
+            detail = {
+              ...detail,
+              ...listItem,
+              members: detail.members || listItem.members,
+              participants: detail.participants || listItem.participants,
+              settings: {
+                ...(listItem.settings || {}),
+                ...(detail.settings || {}),
+                utilityPermissions: {
+                  ...(listItem.settings?.utilityPermissions || {}),
+                  ...(detail.settings?.utilityPermissions || {}),
+                },
+              },
+            };
+          }
+        }
+
+        await openChatByRow(
+          {
+            ...detail,
+            id: conversationId,
+            conversationId,
+          },
+          { syncUrl: false },
+        );
+      } catch (error: any) {
+        if (cancelled) return;
+        setChatError(error?.message || "Could not open this conversation.");
+      }
+    };
+
+    void openConversationFromUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpeningConversation,
+    openChatByRow,
+    openingChatId,
+    routeConversationId,
+    selectedConversationId,
+    user?.id,
+  ]);
 
   const openSavedMessages = useCallback(async () => {
     setActiveView("chats");
@@ -1186,6 +1298,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       setMessages([]);
       setChatError("");
       setIsRightSidebarOpen(false);
+      navigate("/", { replace: true });
       window.dispatchEvent(
         new CustomEvent("conversation:deletedForMe", {
           detail: { conversationId: deletedConversationId },
@@ -1197,7 +1310,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     } finally {
       setIsDeletingConversation(false);
     }
-  }, [selectedConversationId]);
+  }, [navigate, selectedConversationId]);
 
   const handleLoadOlderMessages = useCallback(async () => {
     if (

@@ -102,9 +102,10 @@ export const ChatHeader = ({
       )
     : moreActions.filter((action) => (isGroup ? action.id !== "block-user" : true));
 
-  const otherParticipant = (selectedChat?.participants || []).find(
+  const otherParticipant = (selectedChat?.participants || selectedChat?.members || []).find(
     (p: any) => p.userId !== currentUserId,
   );
+  const otherParticipantUser = otherParticipant?.user || otherParticipant;
 
   const privateTargetUserId = useMemo(() => {
     if (!selectedChat || isGroup || isSavedMessages) return null;
@@ -136,11 +137,33 @@ export const ChatHeader = ({
   const displayName =
     selectedChat?.name ||
     selectedChat?.displayName ||
-    otherParticipant?.displayName ||
-    "Unknown";
+    selectedChat?.targetUser?.displayName ||
+    selectedChat?.targetUser?.name ||
+    selectedChat?.participant?.displayName ||
+    selectedChat?.participant?.name ||
+    selectedChat?.user?.displayName ||
+    selectedChat?.user?.name ||
+    otherParticipantUser?.displayName ||
+    otherParticipantUser?.name ||
+    otherParticipantUser?.username ||
+    (isLoading ? "Opening conversation..." : "Unknown");
+
+  const hasResolvedDisplayName = displayName !== "Unknown" && displayName !== "Opening conversation...";
+  const shouldShowHeaderLoading = isLoading && !hasResolvedDisplayName;
+  const headerAvatarUrl =
+    selectedChat?.avatarUrl ||
+    selectedChat?.targetUser?.avatarUrl ||
+    selectedChat?.targetUser?.avatar ||
+    selectedChat?.participant?.avatarUrl ||
+    selectedChat?.participant?.avatar ||
+    selectedChat?.user?.avatarUrl ||
+    selectedChat?.user?.avatar ||
+    otherParticipantUser?.avatarUrl ||
+    otherParticipantUser?.avatar ||
+    "";
 
   const avatarLetter =
-    displayName && displayName !== "Unknown"
+    displayName && hasResolvedDisplayName
       ? displayName.charAt(0).toUpperCase()
       : "U";
 
@@ -314,12 +337,14 @@ export const ChatHeader = ({
                 <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shadow-sm border border-black/5 dark:border-white/10">
                   {isSavedMessages ? (
                     <FiBookmark className="text-[18px] lg:text-[20px]" />
-                  ) : selectedChat?.avatarUrl ? (
+                  ) : headerAvatarUrl ? (
                     <img
-                      src={selectedChat.avatarUrl}
+                      src={headerAvatarUrl}
                       alt={displayName}
                       className="w-full h-full object-cover"
                     />
+                  ) : shouldShowHeaderLoading ? (
+                    <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
                   ) : (
                     avatarLetter
                   )}
@@ -471,12 +496,14 @@ export const ChatHeader = ({
             >
               {isSavedMessages ? (
                 <FiBookmark className="text-[17px] lg:text-[19px]" />
-              ) : selectedChat?.avatarUrl ? (
+              ) : headerAvatarUrl ? (
                 <img
-                  src={selectedChat.avatarUrl}
+                  src={headerAvatarUrl}
                   alt={displayName}
                   className="w-full h-full object-cover"
                 />
+              ) : shouldShowHeaderLoading ? (
+                <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
               ) : (
                 avatarLetter
               )}
