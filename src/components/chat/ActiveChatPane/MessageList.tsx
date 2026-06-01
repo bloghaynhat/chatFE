@@ -93,7 +93,7 @@ export const MessageList = ({
   const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
   const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
   const containerClassName =
-    `flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
+    `chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
   const wallpaperStyle = wallpaperUrl
     ? {
         backgroundImage:

@@ -332,14 +332,18 @@ export const MessageItem = ({
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-[14px] md:text-[15px] flex flex-col relative overflow-hidden ${message.status === 'sending' ? 'opacity-70 transition-opacity duration-300' : ''} ${
+        className={`w-fit max-w-[464px] mx-[6px] text-[14px] md:text-[15px] flex flex-col relative overflow-hidden ${
+          mine
+            ? `rounded-l-[18px] ${isFirstInSequence ? "rounded-tr-[18px]" : "rounded-tr-[4px]"} ${isLastInSequence ? "rounded-br-[8px]" : "rounded-br-[4px]"}`
+            : `rounded-r-[18px] ${isFirstInSequence ? "rounded-tl-[18px]" : "rounded-tl-[4px]"} ${isLastInSequence ? "rounded-bl-[8px]" : "rounded-bl-[4px]"}`
+        } ${message.status === 'sending' ? 'opacity-70 transition-opacity duration-300' : ''} ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
               : "self-start bg-transparent"
             : mine
-              ? `${wallpaperTheme?.mine || "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
-              : `${wallpaperTheme?.other || "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
+              ? `${wallpaperTheme?.mine || "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 border border-transparent dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
+              : `${wallpaperTheme?.other || "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
         }`}
       >
         {isGroup &&

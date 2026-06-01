@@ -61,6 +61,7 @@ export const ActiveChatPane = ({
   isLoading,
   error,
   messages,
+  pinnedMessages = [],
   typingUsers = new Set(),
   currentUserId,
   onRetry,
@@ -150,7 +151,7 @@ export const ActiveChatPane = ({
   const callV2 = useCallV2();
   const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
 
-  // Computed pinned messages from messages (real-time from socket)
+  // Pinned messages are loaded separately so the bar is not tied to lazy-loaded pages.
   const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<
     Message[]
   >([]);
@@ -158,23 +159,22 @@ export const ActiveChatPane = ({
   // Enrich pinned messages with sender info whenever messages change
   useEffect(() => {
     const updatePinnedMessages = async () => {
-      if (!messages || messages.length === 0) {
+      const sourcePinnedMessages =
+        pinnedMessages.length > 0
+          ? pinnedMessages
+          : (messages || []).filter((m) => m.pinnedAt);
+
+      if (!sourcePinnedMessages || sourcePinnedMessages.length === 0) {
         setEnrichedPinnedMessages([]);
         return;
       }
 
-      const pinned = messages.filter((m) => m.pinnedAt);
-      if (pinned.length === 0) {
-        setEnrichedPinnedMessages([]);
-        return;
-      }
-
-      const enriched = await enrichMessagesWithSenderInfo(pinned);
+      const enriched = await enrichMessagesWithSenderInfo(sourcePinnedMessages);
       setEnrichedPinnedMessages(enriched);
     };
 
     updatePinnedMessages();
-  }, [messages]);
+  }, [messages, pinnedMessages]);
 
   const { friends, fetchFriends } = useFriendManagement();
 
@@ -803,8 +803,26 @@ export const ActiveChatPane = ({
     }
   };
 
-  const scrollToBottom = (behavior = "smooth") => {
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const container = document.querySelector<HTMLElement>("[data-chat-container]");
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+      return;
+    }
+
     messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const scheduleScrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const delays = [0, 40, 120, 260];
+    delays.forEach((delay) => {
+      window.setTimeout(() => {
+        requestAnimationFrame(() => scrollToBottom(behavior));
+      }, delay);
+    });
   };
 
   const visibleMessages = useMemo(() => messages, [messages]);
@@ -817,17 +835,17 @@ export const ActiveChatPane = ({
 
   useEffect(() => {
     if (!isLoadingOlderMessages) {
-      scrollToBottom();
+      scheduleScrollToBottom("smooth");
     }
   }, [lastMessageId, typingUsers]);
 
   useEffect(() => {
-    setTimeout(() => scrollToBottom("auto"), 100);
-  }, [selectedConversationId]);
+    scheduleScrollToBottom("auto");
+  }, [selectedConversationId, lastMessageId]);
 
   useEffect(() => {
     if (!isLoading) {
-      setTimeout(() => scrollToBottom("auto"), 100);
+      scheduleScrollToBottom("auto");
     }
   }, [isLoading]);
 

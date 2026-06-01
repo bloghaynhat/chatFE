@@ -17,7 +17,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { user } = useAuth();
   
   // Timer for debouncing save
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Caching fetched conversation drafts to avoid multiple API calls
   const fetchedConversations = useRef<Set<string>>(new Set());

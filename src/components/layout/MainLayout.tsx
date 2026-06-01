@@ -48,6 +48,47 @@ const sortMessagesByCreatedAt = (items: any[] = []) =>
 const getMessageId = (message: any) =>
   message?.id || message?._id || message?.messageId || null;
 
+const sortPinnedMessages = (items: any[] = []) =>
+  [...items].sort((a, b) => {
+    const dateA = new Date(a.pinnedAt || a.createdAt || 0).getTime();
+    const dateB = new Date(b.pinnedAt || b.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
+
+const upsertPinnedMessage = (items: any[], message: any) => {
+  const messageId = getMessageId(message);
+  if (!messageId) return items;
+
+  const pinnedMessage = {
+    ...message,
+    pinnedAt: message.pinnedAt || new Date().toISOString(),
+  };
+  const exists = items.some((item) => String(getMessageId(item)) === String(messageId));
+  const next = exists
+    ? items.map((item) =>
+        String(getMessageId(item)) === String(messageId)
+          ? { ...item, ...pinnedMessage }
+          : item,
+      )
+    : [pinnedMessage, ...items];
+
+  return sortPinnedMessages(next);
+};
+
+const removePinnedMessage = (items: any[], messageId: string) =>
+  items.filter((item) => String(getMessageId(item)) !== String(messageId));
+
+type ConversationMessageCacheEntry = {
+  messages: any[];
+  messagePageInfo: {
+    nextCursor: string | null;
+    hasMore: boolean;
+  };
+  memberSeenMap: Record<string, string>;
+  pinnedMessages: any[];
+  cachedAt: number;
+};
+
 const applyMemberSeenMapToMessages = (
   items: any[] = [],
   memberSeenMap: Record<string, string> = {},
@@ -121,6 +162,10 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [openingChatId, setOpeningChatId] = useState(null);
   const [chatError, setChatError] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
+  const [pinnedMessages, setPinnedMessages] = useState<any[]>([]);
+  const conversationMessageCacheRef = useRef<
+    Map<string, ConversationMessageCacheEntry>
+  >(new Map());
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -160,6 +205,43 @@ const MainLayout = ({ children }: { children?: any }) => {
       return [...prev, message];
     });
   }, []);
+
+  const refreshPinnedMessages = useCallback(
+    async (conversationId: string = selectedConversationId) => {
+      if (!conversationId) {
+        setPinnedMessages([]);
+        return;
+      }
+
+      try {
+        const pinned = await conversationService.getPinnedMessages(conversationId);
+        setPinnedMessages(sortPinnedMessages(pinned || []));
+      } catch (error) {
+        console.warn("Failed to load pinned messages", error);
+        setPinnedMessages(sortPinnedMessages(messages.filter((message: any) => message.pinnedAt)));
+      }
+    },
+    [messages, selectedConversationId],
+  );
+
+  useEffect(() => {
+    if (!selectedConversationId || isOpeningConversation) return;
+
+    conversationMessageCacheRef.current.set(String(selectedConversationId), {
+      messages,
+      messagePageInfo,
+      memberSeenMap,
+      pinnedMessages,
+      cachedAt: Date.now(),
+    });
+  }, [
+    selectedConversationId,
+    messages,
+    messagePageInfo,
+    memberSeenMap,
+    pinnedMessages,
+    isOpeningConversation,
+  ]);
 
   const updatePollInMessages = useCallback((poll: any) => {
     if (!poll?.id) return;
@@ -642,13 +724,17 @@ const MainLayout = ({ children }: { children?: any }) => {
           const { conversationId, message } = payload;
           if (!message) return;
           const msgId = message.id || message._id;
+          let msgConvId = conversationId || message.conversationId;
+          if (msgConvId && typeof msgConvId === "object") {
+            msgConvId = msgConvId._id || msgConvId.id;
+          }
+
+          if (String(msgConvId) === String(selectedConversationId)) {
+            setPinnedMessages((prev) => upsertPinnedMessage(prev, message));
+          }
 
           setMessages((prev) => {
             // Only update if it belongs to currently open conversation
-            let msgConvId = conversationId || message.conversationId;
-            if (msgConvId && typeof msgConvId === "object") {
-              msgConvId = msgConvId._id || msgConvId.id;
-            }
             if (String(msgConvId) !== String(selectedConversationId))
               return prev;
 
@@ -669,13 +755,17 @@ const MainLayout = ({ children }: { children?: any }) => {
           const { conversationId, message } = payload;
           if (!message) return;
           const msgId = message.id || message._id;
+          let msgConvId = conversationId || message.conversationId;
+          if (msgConvId && typeof msgConvId === "object") {
+            msgConvId = msgConvId._id || msgConvId.id;
+          }
+
+          if (String(msgConvId) === String(selectedConversationId)) {
+            setPinnedMessages((prev) => removePinnedMessage(prev, msgId));
+          }
 
           setMessages((prev) => {
             // Only update if it belongs to currently open conversation
-            let msgConvId = conversationId || message.conversationId;
-            if (msgConvId && typeof msgConvId === "object") {
-              msgConvId = msgConvId._id || msgConvId.id;
-            }
             if (String(msgConvId) !== String(selectedConversationId))
               return prev;
 
@@ -729,10 +819,12 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
+            conversationMessageCacheRef.current.delete(String(conversationId));
             if (String(conversationId) === String(selectedConversationId)) {
               setSelectedChat(null);
               setSelectedConversationId(null);
               setMessages([]);
+              setPinnedMessages([]);
               setChatError("Bạn đã rời khỏi nhóm này.");
             }
             window.dispatchEvent(new Event("chatList:refresh"));
@@ -767,10 +859,12 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
+            conversationMessageCacheRef.current.delete(String(conversationId));
             if (String(conversationId) === String(selectedConversationId)) {
               setSelectedChat(null);
               setSelectedConversationId(null);
               setMessages([]);
+              setPinnedMessages([]);
               setChatError(
                 reason === "left"
                   ? "Bạn đã rời khỏi nhóm này."
@@ -899,6 +993,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     if (!selectedConversationId) {
       setMessagePageInfo({ nextCursor: null, hasMore: false });
       setIsLoadingOlderMessages(false);
+      setPinnedMessages([]);
     }
 
     const isGroupChat =
@@ -923,9 +1018,11 @@ const MainLayout = ({ children }: { children?: any }) => {
       if (!conversationId) return;
 
       if (String(conversationId) === String(selectedConversationId)) {
+        conversationMessageCacheRef.current.delete(String(conversationId));
         setSelectedChat(null);
         setSelectedConversationId(null);
         setMessages([]);
+        setPinnedMessages([]);
         setChatError("Bạn đã rời khỏi nhóm này.");
       }
     };
@@ -1051,8 +1148,6 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       setSelectedChat(processedChat);
       setChatError("");
-      setIsOpeningConversation(true);
-      setOpeningChatId(processedChat.id);
 
       try {
         // Nếu chat.id có dạng temp- (click từ global search), cần tìm conversation thật trước
@@ -1099,6 +1194,42 @@ const MainLayout = ({ children }: { children?: any }) => {
           });
         }
 
+        const cachedConversation =
+          conversationMessageCacheRef.current.get(String(conversationId));
+
+        if (cachedConversation) {
+          const cachedMessages = mergeSearchTargetMessages(
+            cachedConversation.messages || [],
+            processedChat,
+            conversationId,
+          );
+          setMemberSeenMap(cachedConversation.memberSeenMap || {});
+          setMessages(
+            applyMemberSeenMapToMessages(
+              cachedMessages,
+              cachedConversation.memberSeenMap || {},
+              user?.id,
+            ),
+          );
+          setMessagePageInfo(
+            cachedConversation.messagePageInfo || {
+              nextCursor: null,
+              hasMore: false,
+            },
+          );
+          setPinnedMessages(cachedConversation.pinnedMessages || []);
+          setIsOpeningConversation(false);
+          setOpeningChatId(null);
+          return;
+        }
+
+        setMessages([]);
+        setPinnedMessages([]);
+        setMemberSeenMap({});
+        setMessagePageInfo({ nextCursor: null, hasMore: false });
+        setIsOpeningConversation(true);
+        setOpeningChatId(conversationId);
+
         // Nếu là group chat, fetch thông tin nhóm mới nhất và update selectedChat
         const isGroupChat =
           processedChat.type === "group" || processedChat.type === "GROUP";
@@ -1144,6 +1275,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           nextCursor: messageResult.nextCursor,
           hasMore: messageResult.hasMore,
         });
+        void refreshPinnedMessages(conversationId);
 
         // fire-and-forget status sync with last message ID
         const lastMessage = sortedMessages[sortedMessages.length - 1];
@@ -1164,6 +1296,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
       } catch (error) {
         setMessages([]);
+        setPinnedMessages([]);
         if (
           error?.status === 404 ||
           error?.response?.status === 404 ||
@@ -1314,6 +1447,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     try {
       const deletedConversationId = selectedConversationId;
       await conversationService.deleteConversationForMe(deletedConversationId);
+      conversationMessageCacheRef.current.delete(String(deletedConversationId));
       setIsDeleteConversationModalOpen(false);
       setSelectedChat(null);
       setSelectedConversationId(null);
@@ -1938,6 +2072,13 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
     const originalPinnedAt = currentMessage?.pinnedAt;
     const originalPinnedBy = currentMessage?.pinnedBy;
+    const optimisticPinnedMessage = currentMessage
+      ? {
+          ...currentMessage,
+          pinnedAt: new Date().toISOString(),
+          pinnedBy: user?.id,
+        }
+      : null;
 
     // Optimistic update - add pinnedAt immediately
     setMessages((prev) =>
@@ -1951,6 +2092,9 @@ const MainLayout = ({ children }: { children?: any }) => {
           : msg,
       ),
     );
+    if (optimisticPinnedMessage) {
+      setPinnedMessages((prev) => upsertPinnedMessage(prev, optimisticPinnedMessage));
+    }
 
     try {
       const res: any = await socketService.pinMessage(messageId);
@@ -1974,6 +2118,16 @@ const MainLayout = ({ children }: { children?: any }) => {
         await conversationService.pinMessage(messageId);
       } catch (apiError) {
         console.error("Failed to pin message:", apiError);
+        if (optimisticPinnedMessage) {
+          setPinnedMessages((prev) => {
+            if (!originalPinnedAt) return removePinnedMessage(prev, messageId);
+            return upsertPinnedMessage(prev, {
+              ...optimisticPinnedMessage,
+              pinnedAt: originalPinnedAt,
+              pinnedBy: originalPinnedBy,
+            });
+          });
+        }
         setMessages((prev) =>
           prev.map((msg) =>
             String(msg.id || msg._id) === String(messageId)
@@ -2017,6 +2171,10 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
     const originalPinnedAt = currentMessage?.pinnedAt;
     const originalPinnedBy = currentMessage?.pinnedBy;
+    const originalPinnedMessage =
+      pinnedMessages.find(
+        (message) => String(getMessageId(message)) === String(messageId),
+      ) || currentMessage;
 
     // Optimistic update - remove pinnedAt immediately
     setMessages((prev) =>
@@ -2026,6 +2184,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           : msg,
       ),
     );
+    setPinnedMessages((prev) => removePinnedMessage(prev, messageId));
 
     try {
       const res: any = await socketService.unpinMessage(messageId);
@@ -2051,6 +2210,15 @@ const MainLayout = ({ children }: { children?: any }) => {
         await conversationService.unpinMessage(messageId);
       } catch (apiError) {
         console.error("Failed to unpin message:", apiError);
+        if (originalPinnedMessage && originalPinnedAt) {
+          setPinnedMessages((prev) =>
+            upsertPinnedMessage(prev, {
+              ...originalPinnedMessage,
+              pinnedAt: originalPinnedAt,
+              pinnedBy: originalPinnedBy,
+            }),
+          );
+        }
         setMessages((prev) =>
           prev.map((msg) =>
             String(msg.id || msg._id) === String(messageId)
@@ -2150,6 +2318,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               isLoading={isOpeningConversation}
               error={chatError}
               messages={messages}
+              pinnedMessages={pinnedMessages}
               typingUsers={typingUsers}
               currentUserId={user?.id}
               onRetry={retryOpenCurrentChat}
@@ -2174,6 +2343,11 @@ const MainLayout = ({ children }: { children?: any }) => {
               onOpenChat={openChatByRow}
               onCloseChat={() => {
                 navigate("/", { replace: true });
+                setSelectedChat(null);
+                setSelectedConversationId(null);
+                setMessages([]);
+                setPinnedMessages([]);
+                setMessagePageInfo({ nextCursor: null, hasMore: false });
               }}
             />
           )}
