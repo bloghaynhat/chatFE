@@ -77,6 +77,7 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
 };
 
 const isConversationPinned = (chat: any) => Boolean(chat?.pinned || chat?.isPinned);
+const isConversationArchived = (chat: any) => Boolean(chat?.archived || chat?.isArchived);
 
 const sortChats = (chats: any[]) =>
   [...chats].sort((a, b) => {
@@ -123,6 +124,8 @@ const isGroupChatItem = (chat: any) =>
 
 const isSavedMessagesChat = (chat: any) =>
   chat?.type === "saved_messages" || chat?.isSavedMessages || chat?.isSelfChat;
+
+const canArchiveConversation = (chat: any) => !isSavedMessagesChat(chat);
 
 const getPrivateChatTargetUserId = (chat: any, currentUserId?: string | null) => {
   if (!chat || isGroupChatItem(chat) || isSavedMessagesChat(chat)) return null;
@@ -536,9 +539,12 @@ const SearchResultContextMenu = ({
 const ConversationContextMenu = ({
   contextMenu,
   onTogglePin,
+  onToggleArchive,
 }: any) => {
   if (!contextMenu?.chat) return null;
   const isPinned = isConversationPinned(contextMenu.chat);
+  const isArchived = isConversationArchived(contextMenu.chat);
+  const canArchive = canArchiveConversation(contextMenu.chat);
 
   const menu = (
     <div
@@ -557,6 +563,15 @@ const ConversationContextMenu = ({
         )}
         <span>{isPinned ? "Unpin from top" : "Pin to top"}</span>
       </button>
+      {canArchive && (
+        <button
+          className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+          onClick={() => onToggleArchive(contextMenu.chat)}
+        >
+          <FiArchive className="text-[17px]" />
+          <span>{isArchived ? "Unarchive" : "Archive"}</span>
+        </button>
+      )}
     </div>
   );
 
@@ -655,6 +670,7 @@ export const ChatList = ({
   isGlobalSearchEnabled = false,
   isSearchMode = false,
   isSearchClosing = false,
+  onArchiveStatsChange,
   onSelectChat,
   onForwardToTarget,
 }: any) => {
@@ -804,6 +820,7 @@ export const ChatList = ({
   const handleTogglePinConversation = useCallback(async (chat: any) => {
     const conversationId = chat?.id || chat?.conversationId;
     if (!conversationId) return;
+    if (!canArchiveConversation(chat)) return;
 
     const wasPinned = isConversationPinned(chat);
     const nextPinnedAt = new Date().toISOString();
@@ -850,12 +867,58 @@ export const ChatList = ({
     }
   }, []);
 
+  const handleToggleArchiveConversation = useCallback(async (chat: any) => {
+    const conversationId = chat?.id || chat?.conversationId;
+    if (!conversationId) return;
+
+    const wasArchived = isConversationArchived(chat);
+
+    setChats((previousChats) =>
+      sortChats(
+        previousChats.map((item) =>
+          item.id === conversationId
+            ? {
+                ...item,
+                archived: !wasArchived,
+                isArchived: !wasArchived,
+              }
+            : item,
+        ),
+      ),
+    );
+
+    try {
+      if (wasArchived) {
+        await conversationService.unarchiveConversation(conversationId);
+        toast.success("Conversation unarchived");
+      } else {
+        await conversationService.archiveConversation(conversationId);
+        toast.success("Conversation archived");
+      }
+    } catch (error: any) {
+      setChats((previousChats) =>
+        sortChats(
+          previousChats.map((item) =>
+            item.id === conversationId
+              ? {
+                  ...item,
+                  archived: wasArchived,
+                  isArchived: wasArchived,
+                }
+              : item,
+          ),
+        ),
+      );
+      toast.error(error?.message || "Could not update conversation archive");
+    }
+  }, []);
+
   const handleConversationContextMenu = useCallback((event: any, chat: any) => {
     event.preventDefault();
     event.stopPropagation();
 
     const menuWidth = 210;
-    const menuHeight = 48;
+    const menuHeight = 96;
     const topSafeArea = 64;
     const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8);
     const y = Math.min(
@@ -1109,10 +1172,33 @@ export const ChatList = ({
   }, [activeChatId]);
 
   useEffect(() => {
-    const totalUnread = chats.reduce((total, chat) => total + Number(chat.unreadCount || 0), 0);
-    document.title = totalUnread > 0 ? `(${totalUnread > 99 ? "99+" : totalUnread}) ${APP_TITLE}` : APP_TITLE;
-    setTabFavicon(totalUnread);
+    const activeUnread = chats
+      .filter((chat) => !isConversationArchived(chat))
+      .reduce((total, chat) => total + Number(chat.unreadCount || 0), 0);
+    document.title = activeUnread > 0 ? `(${activeUnread > 99 ? "99+" : activeUnread}) ${APP_TITLE}` : APP_TITLE;
+    setTabFavicon(activeUnread);
   }, [chats]);
+
+  useEffect(() => {
+    if (!onArchiveStatsChange) return;
+
+    const archivedChats = chats.filter(isConversationArchived);
+    const sortedArchivedChats = sortChats(archivedChats);
+    const archivedUnreadCount = archivedChats.reduce(
+      (total, chat) => total + Number(chat.unreadCount || 0),
+      0,
+    );
+    const archivedNames = sortedArchivedChats
+      .map((chat) => chat?.name)
+      .filter(Boolean)
+      .join(", ");
+
+    onArchiveStatsChange({
+      count: archivedChats.length,
+      unreadCount: archivedUnreadCount,
+      preview: archivedNames,
+    });
+  }, [chats, onArchiveStatsChange]);
 
   useEffect(() => {
     const unsubscribe = socketService.onNewMessage((payload) => {
@@ -1337,7 +1423,27 @@ export const ChatList = ({
         ),
       );
     };
-    const handleArchivedToggled = () => fetchChats(false);
+    const handleArchivedToggled = (payload: any) => {
+      const conversationId = payload?.conversationId;
+      if (!conversationId) {
+        fetchChats(false);
+        return;
+      }
+
+      setChats((previousChats) =>
+        sortChats(
+          previousChats.map((chat) =>
+            chat.id === conversationId
+              ? {
+                  ...chat,
+                  archived: Boolean(payload.archived),
+                  isArchived: Boolean(payload.archived),
+                }
+              : chat,
+          ),
+        ),
+      );
+    };
     const handleMuteChanged = () => fetchChats(false);
 
     const cleanupPin = socketService.on("conversation:pin_toggled", handlePinToggled);
@@ -1583,7 +1689,9 @@ export const ChatList = ({
     let baseList = chats;
 
     if (filterMode === "archived") {
-      baseList = chats.filter((chat) => chat.archived);
+      baseList = chats.filter(isConversationArchived);
+    } else {
+      baseList = chats.filter((chat) => !isConversationArchived(chat));
     }
 
     if (!normalizedQuery) {
@@ -1900,6 +2008,10 @@ export const ChatList = ({
         onTogglePin={(chat: any) => {
           setConversationContextMenu(null);
           handleTogglePinConversation(chat);
+        }}
+        onToggleArchive={(chat: any) => {
+          setConversationContextMenu(null);
+          handleToggleArchiveConversation(chat);
         }}
       />
 

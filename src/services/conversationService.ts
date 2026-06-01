@@ -180,6 +180,21 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async archiveConversation(conversationId: string): Promise<any> {
+    const response: any = await api.post(
+      `/conversations/${conversationId}/archive`,
+      {},
+    );
+    return response.data || response;
+  },
+
+  async unarchiveConversation(conversationId: string): Promise<any> {
+    const response: any = await api.delete(
+      `/conversations/${conversationId}/archive`,
+    );
+    return response.data || response;
+  },
+
   async setGroupAdmin(
     groupId: string,
     targetUserId: string,
