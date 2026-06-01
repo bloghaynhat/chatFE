@@ -10,6 +10,7 @@ export const RightSidebarMembers = ({
   onAddMemberClick,
   currentUserRole,
   currentUserId,
+  canInviteMembers,
   onRemoveMember,
   onPromoteAdmin,
   onSendMessage
@@ -29,6 +30,7 @@ export const RightSidebarMembers = ({
     currentUserRole === "ADMIN" ||
     currentUserRole === "owner" ||
     currentUserRole === "OWNER";
+  const canShowAddMember = canManageMembers || Boolean(canInviteMembers);
 
   const displayMembers = members.filter((m: any) => {
     if (type === "admins") {
@@ -122,8 +124,8 @@ export const RightSidebarMembers = ({
         })}
       </div>
 
-      {/* Add Member Button - Only for Admin/Owner */}
-      {canManageMembers && (
+      {/* Add Member Button */}
+      {canShowAddMember && (
         <button
           className="absolute bottom-6 right-6 w-14 h-14 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-30"
           onClick={onAddMemberClick}

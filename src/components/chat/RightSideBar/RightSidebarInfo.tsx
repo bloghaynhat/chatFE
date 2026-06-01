@@ -37,6 +37,7 @@ interface RightSidebarInfoProps {
   canEdit?: boolean;
   currentUserRole?: string;
   currentUserId?: string;
+  canInviteMembers?: boolean;
   onRemoveMember?: (userId: string) => void;
   onPromoteAdmin?: (userId: string) => void;
   onSendMessage?: (member: any) => void;
@@ -62,6 +63,7 @@ export const RightSidebarInfo = ({
   canEdit,
   currentUserRole,
   currentUserId,
+  canInviteMembers,
   onRemoveMember,
   onPromoteAdmin,
   onSendMessage,
@@ -328,6 +330,7 @@ export const RightSidebarInfo = ({
             notificationsEnabled={notificationsEnabled}
             setNotificationsEnabled={setNotificationsEnabled}
             onOpenInviteLink={() => setIsInviteModalOpen(true)}
+            canOpenInviteLink={canInviteMembers}
           />
         )}
 
@@ -489,6 +492,7 @@ export const RightSidebarInfo = ({
           onClose={() => setIsInviteModalOpen(false)}
           groupId={conversationId}
           isAdmin={currentUserRole === "admin" || currentUserRole === "owner"}
+          canUseInviteLink={canInviteMembers}
           groupName={groupName || "Group"}
           groupAvatar={groupAvatar}
         />

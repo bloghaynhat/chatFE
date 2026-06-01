@@ -30,6 +30,7 @@ import type { GroupRenamedPayload, GroupAvatarChangedPayload } from "../../types
 const APP_TITLE = "ChatChit";
 const TAB_LOGO_PATH = "/Logo_Tab.png";
 const MEMBER_EVENT_DEDUPE_MS = 2500;
+const CONVERSATION_PAGE_SIZE = 20;
 
 const getTimeValue = (value: any) => {
   if (!value) return 0;
@@ -69,6 +70,28 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
     }
 
     return { ...fetchedChat, unreadCount };
+  });
+};
+
+const mergeChatPages = (previousChats: any[], fetchedChats: any[]) => {
+  const mergedById = new Map<string, any>();
+
+  [...previousChats, ...fetchedChats].forEach((chat) => {
+    if (!chat?.id) return;
+    const previousChat = mergedById.get(chat.id);
+    if (!previousChat) {
+      mergedById.set(chat.id, chat);
+      return;
+    }
+
+    const [mergedChat] = mergeFetchedChats([previousChat], [chat]);
+    mergedById.set(chat.id, mergedChat || { ...previousChat, ...chat });
+  });
+
+  return Array.from(mergedById.values()).sort((a, b) => {
+    const timeB = getTimeValue(b.lastMessageAt || b.lastMessage?.createdAt || b.updatedAt);
+    const timeA = getTimeValue(a.lastMessageAt || a.lastMessage?.createdAt || a.updatedAt);
+    return timeB - timeA;
   });
 };
 
@@ -591,8 +614,13 @@ export const ChatList = ({
   const { friends, fetchFriends } = useFriendManagement();
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMoreChats, setIsLoadingMoreChats] = useState(false);
+  const [conversationCursor, setConversationCursor] = useState<string | null>(null);
+  const [hasMoreConversations, setHasMoreConversations] = useState(false);
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
   const chatsRef = useRef<any[]>([]);
+  const loadMoreConversationsRef = useRef<HTMLDivElement | null>(null);
+  const fetchChatsRequestId = useRef(0);
 
   useEffect(() => {
     chatsRef.current = chats;
@@ -724,56 +752,80 @@ export const ChatList = ({
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState<any>(null);
 
-  const fetchChats = useCallback(async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
-    try {
-      const response: any = await conversationService.getConversations();
-      const data = response?.data || response || [];
-      const fetchedChats = Array.isArray(data) ? data : [];
-      setChats((previousChats) => mergeFetchedChats(previousChats, fetchedChats));
-      refreshOnlineStatuses(fetchedChats);
+  const updateSeenStatusForOwnLastMessages = useCallback((sourceChats: any[]) => {
+    const ownLastMessageChats = sourceChats.filter((chat) =>
+      isOwnLastMessage(chat, user?.id),
+    );
 
-      const ownLastMessageChats = fetchedChats.filter((chat) =>
-        isOwnLastMessage(chat, user?.id),
+    if (ownLastMessageChats.length === 0) return;
+
+    Promise.all(
+      ownLastMessageChats.map((chat) =>
+        resolveLastMessageSeenStatus(chat, user?.id).catch(() => null),
+      ),
+    ).then((statuses) => {
+      const statusByConversationId = new Map(
+        statuses
+          .filter(Boolean)
+          .map((status: any) => [String(status.conversationId), status]),
       );
-      if (ownLastMessageChats.length > 0) {
-        Promise.all(
-          ownLastMessageChats.map((chat) =>
-            resolveLastMessageSeenStatus(chat, user?.id).catch(() => null),
-          ),
-        ).then((statuses) => {
-          const statusByConversationId = new Map(
-            statuses
-              .filter(Boolean)
-              .map((status: any) => [String(status.conversationId), status]),
-          );
 
-          if (statusByConversationId.size === 0) return;
+      if (statusByConversationId.size === 0) return;
 
-          setChats((previousChats) =>
-            previousChats.map((chat) => {
-              const status = statusByConversationId.get(String(chat.id));
-              if (!status) return chat;
+      setChats((previousChats) =>
+        previousChats.map((chat) => {
+          const status = statusByConversationId.get(String(chat.id));
+          if (!status) return chat;
 
-              return {
-                ...chat,
-                lastMessageStatus: status.isSeen ? "seen" : "sent",
-                lastMessage: {
-                  ...chat.lastMessage,
-                  status: status.isSeen ? "seen" : "sent",
-                },
-              };
-            }),
-          );
-        });
-      }
+          return {
+            ...chat,
+            lastMessageStatus: status.isSeen ? "seen" : "sent",
+            lastMessage: {
+              ...chat.lastMessage,
+              status: status.isSeen ? "seen" : "sent",
+            },
+          };
+        }),
+      );
+    });
+  }, [user?.id]);
+
+  const fetchChats = useCallback(async (showLoading = true, cursor: string | null = null) => {
+    const isLoadingMore = Boolean(cursor);
+    const requestId = ++fetchChatsRequestId.current;
+    if (showLoading && !isLoadingMore) setIsLoading(true);
+    if (isLoadingMore) setIsLoadingMoreChats(true);
+    try {
+      const response: any = await conversationService.getConversationsPage({
+        limit: CONVERSATION_PAGE_SIZE,
+        ...(cursor ? { cursor } : {}),
+      });
+      if (!isLoadingMore && requestId !== fetchChatsRequestId.current) return;
+
+      const fetchedChats = Array.isArray(response?.conversations) ? response.conversations : [];
+      setConversationCursor(response?.nextCursor || null);
+      setHasMoreConversations(Boolean(response?.hasMore && response?.nextCursor));
+      setChats((previousChats) =>
+        isLoadingMore
+          ? mergeChatPages(previousChats, fetchedChats)
+          : showLoading
+            ? mergeFetchedChats(previousChats, fetchedChats)
+            : mergeChatPages(previousChats, fetchedChats),
+      );
+      refreshOnlineStatuses(fetchedChats);
+      updateSeenStatusForOwnLastMessages(fetchedChats);
     } catch (err) {
       console.error("Fetch conversations error:", err);
-      setChats([]);
+      if (!isLoadingMore) {
+        setChats([]);
+        setConversationCursor(null);
+        setHasMoreConversations(false);
+      }
     } finally {
-      if (showLoading) setIsLoading(false);
+      if (showLoading && !isLoadingMore) setIsLoading(false);
+      if (isLoadingMore) setIsLoadingMoreChats(false);
     }
-  }, [refreshOnlineStatuses]);
+  }, [refreshOnlineStatuses, updateSeenStatusForOwnLastMessages]);
 
   useEffect(() => {
     fetchChats();
@@ -1161,7 +1213,35 @@ export const ChatList = ({
 
   // Handle group admin actions: settings, approval/rejection, admin/owner changes
   useEffect(() => {
-    const handleGroupSettingsUpdated = () => fetchChats(false);
+    const handleGroupSettingsUpdated = (data: any) => {
+      const conversationId =
+        data?.conversationId || data?.groupId || data?.id || data?.conversation?.id;
+      const rawSettings = data?.settings || data?.data?.settings || data;
+      const settings = {
+        ...(rawSettings?.whoCanSendMessages !== undefined && {
+          whoCanSendMessages: rawSettings.whoCanSendMessages,
+        }),
+        ...(rawSettings?.requireApproval !== undefined && {
+          requireApproval: rawSettings.requireApproval,
+        }),
+        ...(rawSettings?.allowMemberInvite !== undefined && {
+          allowMemberInvite: rawSettings.allowMemberInvite,
+        }),
+        ...(rawSettings?.allowSendLink !== undefined && {
+          allowSendLink: rawSettings.allowSendLink,
+        }),
+      };
+      if (!conversationId || !settings || typeof settings !== "object") return;
+      if (Object.keys(settings).length === 0) return;
+
+      setChats((prev) =>
+        prev.map((chat) =>
+          String(chat.id) === String(conversationId)
+            ? { ...chat, settings: { ...(chat.settings || {}), ...settings } }
+            : chat,
+        ),
+      );
+    };
     const handleMemberApproved = () => fetchChats(false);
     const handleMemberRejected = () => fetchChats(false);
     const handleAdminChanged = () => fetchChats(false);
@@ -1226,6 +1306,33 @@ export const ChatList = ({
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const isSearchView = isSearchMode || Boolean(normalizedQuery);
+  const loadMoreConversations = useCallback(() => {
+    if (isSearchView || isLoading || isLoadingMoreChats || !hasMoreConversations || !conversationCursor) return;
+    fetchChats(false, conversationCursor);
+  }, [
+    conversationCursor,
+    fetchChats,
+    hasMoreConversations,
+    isLoading,
+    isLoadingMoreChats,
+    isSearchView,
+  ]);
+
+  useEffect(() => {
+    const sentinel = loadMoreConversationsRef.current;
+    if (!sentinel || isSearchView || !hasMoreConversations) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) loadMoreConversations();
+      },
+      { root: null, rootMargin: "160px 0px", threshold: 0.01 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreConversations, isSearchView, loadMoreConversations]);
+
   const mediaResults = globalMedia.filter((item: any) =>
     ["image", "video"].includes(String(item?.type || "").toLowerCase()),
   );
@@ -1398,16 +1505,23 @@ export const ChatList = ({
               {isCollapsed && <FiSearch className="text-xl text-gray-400" />}
             </div>
           ) : (
-            visibleChats.map((chat) => (
-              <ConversationItem
-                key={chat.id}
-                chat={chat}
-                isCollapsed={isCollapsed}
-                activeChatId={activeChatId}
-                openingChatId={openingChatId}
-                onSelectChat={onSelectChat}
-              />
-            ))
+            <>
+              {visibleChats.map((chat) => (
+                <ConversationItem
+                  key={chat.id}
+                  chat={chat}
+                  isCollapsed={isCollapsed}
+                  activeChatId={activeChatId}
+                  openingChatId={openingChatId}
+                  onSelectChat={onSelectChat}
+                />
+              ))}
+              <div ref={loadMoreConversationsRef} className="h-8 flex items-center justify-center">
+                {isLoadingMoreChats && (
+                  <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                )}
+              </div>
+            </>
           )
         ) : (
           <div className={isSearchClosing ? "animate-search-panel-out" : "animate-search-panel"}>

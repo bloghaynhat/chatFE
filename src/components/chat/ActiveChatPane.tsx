@@ -101,6 +101,9 @@ export const ActiveChatPane = ({
   const [messageToTranslate, setMessageToTranslate] = useState<Message | null>(
     null,
   );
+  const [effectiveGroupSettings, setEffectiveGroupSettings] = useState<any>(
+    selectedChat?.settings || selectedChat?.groupSettings || {},
+  );
 
   const callV2 = useCallV2();
   const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
@@ -140,6 +143,72 @@ export const ActiveChatPane = ({
       selectedChat?.isGroup === true,
     [selectedChat],
   );
+
+  useEffect(() => {
+    setEffectiveGroupSettings(selectedChat?.settings || selectedChat?.groupSettings || {});
+  }, [selectedChat?.id, selectedChat?.settings, selectedChat?.groupSettings]);
+
+  useEffect(() => {
+    const conversationId = selectedConversationId || selectedChat?.id;
+    if (!conversationId || !isGroupChat) return;
+
+    const cleanupSettings = socketService.on("group:settings_updated", (event: any) => {
+      const eventConversationId =
+        event?.conversationId || event?.groupId || event?.id || event?.conversation?.id;
+      if (String(eventConversationId) !== String(conversationId)) return;
+
+      const incomingSettings = event?.settings || event?.data?.settings || {};
+      setEffectiveGroupSettings((current: any) => ({
+        ...(current || {}),
+        ...incomingSettings,
+      }));
+    });
+
+    return () => {
+      if (cleanupSettings) cleanupSettings();
+    };
+  }, [isGroupChat, selectedChat?.id, selectedConversationId]);
+
+  const currentUserGroupRole = useMemo(() => {
+    if (!isGroupChat || !currentUserId) return selectedChat?.role || "member";
+
+    const directRole = selectedChat?.role || selectedChat?.currentUserRole;
+    if (directRole) return directRole;
+
+    const member = (selectedChat?.members || selectedChat?.participants || []).find(
+      (item: any) =>
+        String(item?.userId || item?.user?.id || item?.user?._id || item?.id || item?._id) ===
+        String(currentUserId),
+    );
+    if (member?.role) return member.role;
+
+    const ownerId = selectedChat?.ownerId || selectedChat?.owner?.id || selectedChat?.owner?._id;
+    if (ownerId && String(ownerId) === String(currentUserId)) return "owner";
+
+    const adminIds = [
+      ...(Array.isArray(selectedChat?.admins) ? selectedChat.admins : []),
+      ...(Array.isArray(selectedChat?.adminIds) ? selectedChat.adminIds : []),
+    ].map((admin: any) => admin?.id || admin?._id || admin?.userId || admin);
+    if (adminIds.some((id: any) => String(id) === String(currentUserId))) return "admin";
+
+    return "member";
+  }, [currentUserId, isGroupChat, selectedChat]);
+
+  const isCurrentUserGroupAdmin = useMemo(() => {
+    const role = String(currentUserGroupRole || "").toLowerCase();
+    return role === "owner" || role === "admin";
+  }, [currentUserGroupRole]);
+
+  const groupMessageRestriction = useMemo(() => {
+    const whoCanSendMessages =
+      effectiveGroupSettings?.whoCanSendMessages;
+
+    if (isGroupChat && whoCanSendMessages === "admins" && !isCurrentUserGroupAdmin) {
+      return "Chỉ trưởng nhóm và phó nhóm có thể nhắn tin";
+    }
+
+    return null;
+  }, [effectiveGroupSettings, isCurrentUserGroupAdmin, isGroupChat]);
 
   const resolveInviteeIds = useCallback(async () => {
     if (!isGroupChat) {
@@ -851,8 +920,11 @@ export const ActiveChatPane = ({
     setDraftMessage("");
   }, [selectedChat?.id]);
 
+  const inputDisabledReason = chatRestriction || groupMessageRestriction;
+  const inputDisabledTone = groupMessageRestriction && !chatRestriction ? "neutral" : "danger";
+
   const handleInputChange = (event) => {
-    if (chatRestriction) return;
+    if (inputDisabledReason) return;
     setDraftMessage(event.target.value);
     const targetId = isGroupChat
       ? selectedConversationId
@@ -907,7 +979,7 @@ export const ActiveChatPane = ({
   };
 
   const handleSendMessage = () => {
-    if (chatRestriction) return;
+    if (inputDisabledReason) return;
     if (
       !draftMessage.trim() &&
       !forwardingMessage &&
@@ -920,7 +992,7 @@ export const ActiveChatPane = ({
   };
 
   const handleSendVoice = (voiceFile: any) => {
-    if (chatRestriction) return;
+    if (inputDisabledReason) return;
 
     if (onSendMessage) {
       const fileWithPreview = Object.assign(voiceFile, {
@@ -1168,7 +1240,8 @@ export const ActiveChatPane = ({
         smartReplyTriggerKey={lastMessageId}
         isTyping={typingUsers.size > 0}
         isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
-        disabledReason={chatRestriction}
+        disabledReason={inputDisabledReason}
+        disabledTone={inputDisabledTone}
       />
 
       <CreatePollModal

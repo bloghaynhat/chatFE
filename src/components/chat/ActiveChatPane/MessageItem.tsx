@@ -23,6 +23,8 @@ import { conversationService } from "../../../services/conversationService";
 import { socketService } from "../../../services/socketService";
 import { JUMBO_EMOJI_ASSETS } from "./MessageTypes/AnimatedEmojiMessage";
 
+const senderDisplayCache = new Map<string, any>();
+
 export const MessageItem = ({
   message,
   messages,
@@ -39,9 +41,28 @@ export const MessageItem = ({
   onNavigateToMessage,
   onPollUpdated,
   onOpenChat,
+  senderFallback,
 }: any) => {
   const [fetchedSender, setFetchedSender] = useState(null);
   const [reactionView, setReactionView] = useState(null);
+
+  const fallbackSenderName =
+    senderFallback?.displayName ||
+    senderFallback?.name ||
+    senderFallback?.username ||
+    senderFallback?.fullName ||
+    null;
+  const cachedSender = message?.senderId
+    ? senderDisplayCache.get(String(message.senderId))
+    : null;
+
+  useEffect(() => {
+    const cacheKey = message?.senderId ? String(message.senderId) : null;
+    const senderToCache = senderFallback || message?.sender;
+    if (cacheKey && senderToCache) {
+      senderDisplayCache.set(cacheKey, senderToCache);
+    }
+  }, [message?.sender, message?.senderId, senderFallback]);
 
   useEffect(() => {
     if (
@@ -49,13 +70,16 @@ export const MessageItem = ({
       !mine &&
       message?.senderId &&
       !message?.senderName &&
-      !message?.sender?.displayName
+      !message?.sender?.displayName &&
+      !fallbackSenderName
     ) {
       userService
         .getUserById(message.senderId)
         .then((res) => {
           if (res) {
-            setFetchedSender(res.data || res);
+            const sender = res.data || res;
+            senderDisplayCache.set(String(message.senderId), sender);
+            setFetchedSender(sender);
           }
         })
         .catch((err) => console.error("Failed to fetch sender", err));
@@ -66,6 +90,7 @@ export const MessageItem = ({
     message?.senderId,
     message?.senderName,
     message?.sender?.displayName,
+    fallbackSenderName,
   ]);
 
   const rawText = getMessageText(message);
@@ -195,13 +220,18 @@ export const MessageItem = ({
     isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
 
   const senderName =
+    fallbackSenderName ||
+    cachedSender?.displayName ||
+    cachedSender?.username ||
+    cachedSender?.name ||
     fetchedSender?.displayName ||
     fetchedSender?.username ||
+    fetchedSender?.name ||
     message?.senderName ||
     message?.sender?.displayName ||
     message?.sender?.username ||
     message?.sender?.name ||
-    "Unknown";
+    "Thành viên";
 
   if (isSystem) {
     let displaySystemText = text;
@@ -230,6 +260,12 @@ export const MessageItem = ({
   const senderAvatar =
     fetchedSender?.avatarUrl ||
     fetchedSender?.avatar ||
+    cachedSender?.avatarUrl ||
+    cachedSender?.avatar ||
+    cachedSender?.profilePicture ||
+    senderFallback?.avatarUrl ||
+    senderFallback?.avatar ||
+    senderFallback?.profilePicture ||
     message?.senderAvatar ||
     message?.sender?.avatar ||
     message?.sender?.avatarUrl ||
@@ -237,7 +273,7 @@ export const MessageItem = ({
     null;
 
   const senderAvatarStr =
-    senderName !== "Unknown" ? senderName.charAt(0).toUpperCase() : "?";
+    senderName ? senderName.charAt(0).toUpperCase() : "?";
 
   if (message.isRevoked || message.deletedAt) {
     return (

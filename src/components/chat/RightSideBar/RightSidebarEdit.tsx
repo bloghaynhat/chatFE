@@ -2,15 +2,10 @@ import React from "react";
 import {
   FiArrowLeft,
   FiCamera,
-  FiLock,
-  FiLink,
-  FiHeart,
+  FiSettings,
   FiShield,
-  FiList,
   FiUsers,
   FiCheck,
-  FiUserX,
-  FiMessageSquare,
   FiTrash2,
 } from "react-icons/fi";
 
@@ -29,6 +24,7 @@ export const RightSidebarEdit = ({
   onSave,
   onMembersClick,
   onAdminsClick,
+  onGroupSettingsClick,
   onDeleteGroupClick,
   isLoading,
 }: any) => {
@@ -105,57 +101,23 @@ export const RightSidebarEdit = ({
             </div>
           </div>
         </div>
-        {/* {!(currentUserRole === "member") && (
-          <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
-            <FiLock className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
+        <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
+          <button
+            type="button"
+            className="w-full flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group text-left"
+            onClick={onGroupSettingsClick}
+          >
+            <FiSettings className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Group Type
+                Group Settings
               </div>
-              <div className="text-[13px] text-blue-500">Private</div>
-            </div>
-          </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
-            <FiLink className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Invite Links
-              </div>
-              <div className="text-[13px] text-gray-500">1</div>
-            </div>
-          </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
-            <FiHeart className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Reactions
-              </div>
-              <div className="text-[13px] text-gray-500">All</div>
-            </div>
-          </div>
-          <div className="flex items-center px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group border-b border-gray-100 dark:border-slate-800">
-            <FiShield className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Permissions
-              </div>
-              <div className="text-[13px] text-gray-500">13/13</div>
-            </div>
-          </div>
-          <div className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
-            <div className="flex items-center shrink-0">
-              <FiList className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4" />
-              <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Topics
+              <div className="text-[13px] text-gray-500">
+                Info, invite links, permissions
               </div>
             </div>
-            <div className="w-10 h-5 flex items-center bg-gray-300 dark:bg-slate-600 rounded-full p-1 cursor-pointer transition-colors duration-300">
-              <div className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300"></div>
-            </div>
-          </div>
+          </button>
         </div>
-        )} */}
 
         <div className="px-5 py-1 text-[13px] text-gray-500 mb-3">
           Add a group chat for comments

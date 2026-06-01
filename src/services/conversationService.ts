@@ -36,10 +36,10 @@ const normalizeMessagePage = (payload: any) => {
       null,
     hasMore: Boolean(
       page?.hasMore ??
-        data?.hasMore ??
-        payload?.hasMore ??
-        payload?.meta?.hasMore ??
-        false,
+      data?.hasMore ??
+      payload?.hasMore ??
+      payload?.meta?.hasMore ??
+      false,
     ),
     memberSeenMap:
       page?.memberSeenMap ??
@@ -49,15 +49,43 @@ const normalizeMessagePage = (payload: any) => {
   };
 };
 
+const normalizeConversationPage = (payload: any) => {
+  const data = payload?.data || payload || {};
+  const conversations = Array.isArray(payload)
+    ? payload
+    : Array.isArray(data)
+      ? data
+      : Array.isArray(data.items)
+        ? data.items
+        : Array.isArray(data.conversations)
+          ? data.conversations
+          : Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.conversations)
+              ? payload.conversations
+              : [];
+
+  return {
+    conversations,
+    nextCursor:
+      data?.nextCursor ??
+      payload?.nextCursor ??
+      data?.meta?.nextCursor ??
+      payload?.meta?.nextCursor ??
+      null,
+    hasMore: Boolean(
+      data?.hasMore ??
+      payload?.hasMore ??
+      data?.meta?.hasMore ??
+      payload?.meta?.hasMore ??
+      false,
+    ),
+  };
+};
+
 export const conversationService = {
   async getConversations(params: Record<string, any> = {}): Promise<any> {
     const response: any = await api.get("/conversations", { params });
-    // api.get now returns the payload (response.data). Normalize to an array
-    // Possible shapes:
-    // - [] (array)
-    // - { items: [...] }
-    // - { data: { items: [...] } }
-    // - { conversations: [...] }
     const payload = response || {};
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload.items)) return payload.items;
@@ -66,6 +94,11 @@ export const conversationService = {
     if (Array.isArray(payload.conversations)) return payload.conversations;
     // Last resort: return empty array
     return [];
+  },
+
+  async getConversationsPage(params: Record<string, any> = {}) {
+    const response: any = await api.get("/conversations", { params });
+    return normalizeConversationPage(response);
   },
 
   async createPrivateConversation(targetUserId: string): Promise<Conversation> {

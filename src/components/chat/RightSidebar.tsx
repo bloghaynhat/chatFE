@@ -10,8 +10,10 @@ import { RightSidebarInfo } from "./RightSideBar/RightSidebarInfo";
 import { RightSidebarEdit } from "./RightSideBar/RightSidebarEdit";
 import { RightSidebarMembers } from "./RightSideBar/RightSidebarMembers";
 import { RightSidebarAddMember } from "./RightSideBar/RightSidebarAddMember";
+import { GroupSettingsModal } from "./RightSideBar/GroupSettingsModal";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
+import { groupSettingsService, GroupSettingsPayload } from "../../services/groupSettingsService";
 
 const getMemberUserId = (member: any) =>
   member?.userId || member?.user?.id || member?.user?._id || member?.id;
@@ -62,6 +64,7 @@ export const RightSidebar = ({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSelectAdminModalOpen, setIsSelectAdminModalOpen] = useState(false);
+  const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
   const [removeMemberState, setRemoveMemberState] = useState<{
     targetUserId?: string;
     targetName?: string;
@@ -321,6 +324,11 @@ export const RightSidebar = ({
   );
   const currentUserRole = currentUserMember?.role || "member";
   const canEditGroup = isPrivilegedRole(currentUserRole);
+  const groupSettings = {
+    ...(selectedChat?.settings || {}),
+    ...(info?.conversation?.settings || info?.settings || {}),
+  };
+  const canInviteMembers = canEditGroup || groupSettings.allowMemberInvite !== false;
 
   const handleEditClick = () => {
     setEditName(groupName);
@@ -334,7 +342,37 @@ export const RightSidebar = ({
     setEditAvatarUrl(URL.createObjectURL(file));
   };
 
-  const handleSaveGroupInfo = async () => {
+  const refreshMembers = async () => {
+    if (!selectedChat?.id) return;
+    const membersData = await conversationService.getGroupMembers(
+      selectedChat.id,
+    );
+    const rawMembersList = Array.isArray(membersData)
+      ? membersData
+      : membersData?.members || membersData?.data || [];
+
+    const enrichedMembers = await Promise.all(
+      rawMembersList.map(async (m: any) => {
+        const participant = m.user || m;
+        if (
+          participant.displayName ||
+          participant.name ||
+          participant.username
+        )
+          return m;
+        if (!m.userId) return m;
+        try {
+          const userRes = await userService.getUserById(m.userId);
+          return { ...m, user: userRes.data || userRes };
+        } catch (err) {
+          return m;
+        }
+      }),
+    );
+    setMembers(enrichedMembers);
+  };
+
+  const handleSaveGroupInfo = async (settingsPayload?: GroupSettingsPayload) => {
     if (!selectedChat?.id) return;
     try {
       setIsLoading(true);
@@ -354,6 +392,9 @@ export const RightSidebar = ({
         updatePayload.avatarUrl = finalAvatarUrl || "";
       }
       await conversationService.updateGroupInfo(selectedChat.id, updatePayload);
+      if (settingsPayload && Object.keys(settingsPayload).length > 0) {
+        await groupSettingsService.updateSettings(selectedChat.id, settingsPayload);
+      }
       setIsEditing(false);
       setAvatarFile(null);
 
@@ -365,6 +406,11 @@ export const RightSidebar = ({
         onGroupUpdated({
           name: actualInfo.conversation?.name || actualInfo.name,
           avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl,
+          settings: {
+            ...(selectedChat?.settings || {}),
+            ...(info?.conversation?.settings || info?.settings || {}),
+            ...settingsPayload,
+          },
         });
       }
 
@@ -621,6 +667,7 @@ export const RightSidebar = ({
             canEdit={canEditGroup}
             currentUserRole={currentUserRole}
             currentUserId={currentUserId}
+            canInviteMembers={canInviteMembers}
             onRemoveMember={handleRemoveMember}
             onPromoteAdmin={handlePromoteAdmin}
             onSendMessage={onSendMessage}
@@ -671,6 +718,7 @@ export const RightSidebar = ({
             onSave={handleSaveGroupInfo}
             onMembersClick={() => setActiveSubView("members")}
             onAdminsClick={() => setActiveSubView("admins")}
+            onGroupSettingsClick={() => setIsGroupSettingsOpen(true)}
             onDeleteGroupClick={() => setIsDeleteModalOpen(true)}
           />
 
@@ -686,6 +734,7 @@ export const RightSidebar = ({
             onAddMemberClick={() => setActiveSubView("addMember")}
             currentUserRole={currentUserRole}
             currentUserId={currentUserId}
+            canInviteMembers={canInviteMembers}
             onRemoveMember={handleRemoveMember}
             onPromoteAdmin={handlePromoteAdmin}
             onSendMessage={onSendMessage}
@@ -716,6 +765,49 @@ export const RightSidebar = ({
         members={members}
         isLoading={isLoading}
         currentUserId={currentUserId}
+      />
+
+      <GroupSettingsModal
+        isOpen={isGroupSettingsOpen}
+        onClose={() => setIsGroupSettingsOpen(false)}
+        groupId={selectedChat?.id}
+        groupName={groupName}
+        groupAvatar={groupAvatar}
+        groupDescription={
+          info?.conversation?.description ||
+          info?.description ||
+          selectedChat?.description
+        }
+        groupType={
+          info?.conversation?.groupType ||
+          info?.groupType ||
+          selectedChat?.groupType ||
+          "private"
+        }
+        settings={groupSettings}
+        isAdmin={canEditGroup}
+        editName={editName}
+        setEditName={setEditName}
+        editAvatarUrl={editAvatarUrl}
+        isUploadingAvatar={isUploadingAvatar}
+        onAvatarChange={handleAvatarChange}
+        onSaveGeneral={handleSaveGroupInfo}
+        onSettingsUpdated={(settings) => {
+          const nextSettings = {
+            ...(selectedChat?.settings || {}),
+            ...(info?.conversation?.settings || info?.settings || {}),
+            ...settings,
+          };
+          setInfo((prev: any) => ({
+            ...prev,
+            settings: nextSettings,
+            conversation: prev?.conversation
+              ? { ...prev.conversation, settings: nextSettings }
+              : prev?.conversation,
+          }));
+          onGroupUpdated?.({ settings: nextSettings });
+        }}
+        onMembersChanged={refreshMembers}
       />
 
       {removeMemberState.isConfirmOpen && (

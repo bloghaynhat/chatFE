@@ -20,6 +20,7 @@ import {
   FiSearch,
   FiType,
   FiTrash2,
+  FiLock,
 } from "react-icons/fi";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { AiSmartReply } from "../AiSmartReply";
@@ -54,6 +55,7 @@ export const ChatInput = ({
   smartReplyTriggerKey,
   isTyping,
   isLastMessageFromCurrentUser,
+  disabledTone = "danger",
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
 
@@ -305,11 +307,6 @@ export const ChatInput = ({
       <div
         className={`relative flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40" : ""}`}
       >
-        {disabledReason && (
-          <div className="absolute inset-0 z-[80] flex items-center justify-center rounded-full border border-red-200 dark:border-red-800 bg-red-50/95 dark:bg-red-950/90 px-4 text-center text-sm font-semibold text-red-600 dark:text-red-200 shadow-lg backdrop-blur-sm">
-            <span className="line-clamp-2">{disabledReason}</span>
-          </div>
-        )}
         {isRecordingAudio ? (
           <div className="relative flex-1 h-11 lg:h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-between px-4 border border-red-500/20 shadow-lg">
             <div className="flex items-center gap-3 text-red-500">
@@ -336,8 +333,29 @@ export const ChatInput = ({
         ) : (
         <div
           ref={attachMenuRef}
-          className={`relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${isListeningText ? "border-blue-300 dark:border-blue-500/50 shadow-blue-500/10" : "border-white/90 dark:border-slate-700/90"}`}
+          className={`relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${
+            disabledReason
+              ? disabledTone === "neutral"
+                ? "border-blue-100 dark:border-slate-700"
+                : "border-red-200 dark:border-red-800"
+              : isListeningText
+                ? "border-blue-300 dark:border-blue-500/50 shadow-blue-500/10"
+                : "border-white/90 dark:border-slate-700/90"
+          }`}
         >
+          {disabledReason && (
+            <div
+              className={`absolute inset-0 z-[80] flex items-center justify-center rounded-full px-5 text-center text-sm font-semibold backdrop-blur-sm ${
+                disabledTone === "neutral"
+                  ? "bg-white/95 text-gray-500 dark:bg-slate-800/95 dark:text-slate-300"
+                  : "bg-red-50/95 text-red-600 dark:bg-red-950/90 dark:text-red-200"
+              }`}
+            >
+              <FiLock className="mr-2 shrink-0 text-[16px]" />
+              <span className="truncate">{disabledReason}</span>
+            </div>
+          )}
+
           <div
             className={`absolute right-0 bottom-14 w-[260px] max-w-[78vw] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-xl p-2 border border-white/70 dark:border-slate-700 z-50 origin-bottom-right will-change-transform transition-all duration-200 ease-out ${isAttachMenuOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
             aria-hidden={!isAttachMenuOpen}
