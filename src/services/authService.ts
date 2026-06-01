@@ -199,4 +199,17 @@ export const authService = {
   async updateAvatar(avatarUrl) {
     return api.patch("/auth/avatar", { avatarUrl });
   },
+
+  async getSessions() {
+    const response = await api.get("/auth/sessions");
+    return Array.isArray(response) ? response : response?.data || [];
+  },
+
+  async revokeSession(deviceId: string) {
+    return api.delete(`/auth/sessions/${encodeURIComponent(deviceId)}`);
+  },
+
+  async revokeOtherSessions() {
+    return api.delete("/auth/sessions");
+  },
 };

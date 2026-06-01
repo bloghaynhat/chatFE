@@ -1,9 +1,32 @@
 import { FiArrowLeft, FiEdit2, FiMoreVertical, FiPhone, FiAtSign, FiGift, FiBell, FiDatabase, FiLock, FiSettings, FiFolder, FiSmile, FiMonitor, FiStar } from "react-icons/fi";
 import { MdTranslate } from "react-icons/md";
 import { useAuth } from "../../hooks";
+import { useCallback, useEffect, useState } from "react";
+import { authService } from "../../services/authService";
 
 export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
   const { user } = useAuth();
+  const [deviceCount, setDeviceCount] = useState<number | null>(null);
+
+  const refreshDeviceCount = useCallback(async () => {
+    try {
+      const sessions = await authService.getSessions();
+      setDeviceCount(Array.isArray(sessions) ? sessions.length : 0);
+    } catch {
+      setDeviceCount(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshDeviceCount();
+
+    const handleSessionsChanged = () => {
+      refreshDeviceCount();
+    };
+
+    window.addEventListener("auth:sessions-changed", handleSessionsChanged);
+    return () => window.removeEventListener("auth:sessions-changed", handleSessionsChanged);
+  }, [refreshDeviceCount]);
   
   const displayPhone = user?.phone || "+84 971484472";
   const displayUsername = user?.username || "bevisVo";
@@ -92,7 +115,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
            <SettingsMenuItem icon={<FiSettings />} label="General Settings" />
            <SettingsMenuItem icon={<FiFolder />} label="Chat Folders" />
            <SettingsMenuItem icon={<FiSmile />} label="Stickers and Emoji" />
-           <SettingsMenuItem icon={<FiMonitor />} label="Devices" rightText="3" onClick={() => onNavigate("devices")} />
+           <SettingsMenuItem icon={<FiMonitor />} label="Devices" rightText={deviceCount ?? ""} onClick={() => onNavigate("devices")} />
            <SettingsMenuItem icon={<MdTranslate />} label="Language" rightText="English" />
         </div>
 
