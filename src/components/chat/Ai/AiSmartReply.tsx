@@ -5,6 +5,7 @@ import { useAiSmartReplies } from "../../../hooks/useAiSmartReplies";
 interface AiSmartReplyProps {
   conversationId: string;
   onSelectReply: (reply: string) => void;
+  onClose?: () => void;
   shouldFetch?: boolean;
   triggerKey?: string;
   userId?: string;
@@ -80,6 +81,7 @@ const SmartReplyList: React.FC<SmartReplyListProps> = ({
 export const AiSmartReply: React.FC<AiSmartReplyProps> = ({
   conversationId,
   onSelectReply,
+  onClose,
   shouldFetch = false,
   triggerKey,
   userId,
@@ -96,12 +98,17 @@ export const AiSmartReply: React.FC<AiSmartReplyProps> = ({
   if (isLoading) return <SmartReplySkeleton />;
   if (replies.length === 0) return null;
 
+  const handleClose = () => {
+    hide();
+    onClose?.();
+  };
+
   return (
     <SmartReplyList
       error={error}
       replies={replies}
       onSelectReply={onSelectReply}
-      onClose={hide}
+      onClose={handleClose}
     />
   );
 };

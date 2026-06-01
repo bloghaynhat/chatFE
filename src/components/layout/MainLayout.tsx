@@ -48,6 +48,46 @@ const sortMessagesByCreatedAt = (items: any[] = []) =>
 const getMessageId = (message: any) =>
   message?.id || message?._id || message?.messageId || null;
 
+const getMessageTimeValue = (message: any) => {
+  const value =
+    message?.createdAt ||
+    message?.updatedAt ||
+    message?.timestamp ||
+    message?.sentAt ||
+    null;
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+};
+
+const getChatActivityTimeValue = (chat: any) => {
+  const value =
+    chat?.lastMessageAt ||
+    chat?.lastMessage?.createdAt ||
+    chat?.lastMessage?.updatedAt ||
+    chat?.updatedAt ||
+    null;
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+};
+
+const getMessageConversationId = (message: any, payload?: any) => {
+  let conversationId =
+    message?.conversationId ||
+    message?.conversation?.id ||
+    message?.conversation?._id ||
+    message?.id_conversation ||
+    payload?.conversationId ||
+    payload?.conversation?.id ||
+    payload?.conversation?._id ||
+    null;
+
+  if (conversationId && typeof conversationId === "object") {
+    conversationId = conversationId.id || conversationId._id;
+  }
+
+  return conversationId ? String(conversationId) : "";
+};
+
 const sortPinnedMessages = (items: any[] = []) =>
   [...items].sort((a, b) => {
     const dateA = new Date(a.pinnedAt || a.createdAt || 0).getTime();
@@ -144,10 +184,14 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const selectedChatRef = useRef(null);
+  const selectedConversationIdRef = useRef<string | null>(null);
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
   const [isDeleteConversationModalOpen, setIsDeleteConversationModalOpen] = useState(false);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -375,6 +419,14 @@ const MainLayout = ({ children }: { children?: any }) => {
         socketService.onNewMessage((payload) => {
           // Payload từ receiveMessage: { message: {...}, conversationId: "..." }
           const message = payload?.message || payload;
+          const incomingConversationId = getMessageConversationId(message, payload);
+          const activeConversationId = selectedConversationIdRef.current;
+          if (
+            incomingConversationId &&
+            String(incomingConversationId) !== String(activeConversationId)
+          ) {
+            conversationMessageCacheRef.current.delete(incomingConversationId);
+          }
 
           setTypingUsers((prev) => {
             const sender =
@@ -397,18 +449,15 @@ const MainLayout = ({ children }: { children?: any }) => {
             if (prev.some((m) => String(m.id) === String(msgId))) return prev;
 
             // Only add if it belongs to currently open conversation
-            let msgConvId = message.conversationId || payload?.conversationId;
-            if (msgConvId && typeof msgConvId === "object") {
-              msgConvId = msgConvId.id;
-            }
-            if (String(msgConvId) === String(selectedConversationId)) {
+            const msgConvId = incomingConversationId;
+            if (String(msgConvId) === String(selectedConversationIdRef.current)) {
               // Auto mark as seen when message is received in current conversation
               const senderId =
                 message?.senderId || message?.sender?.id || message?.id_sender;
               if (senderId && senderId !== user?.id) {
                 // Only mark seen if message is from someone else, not from current user
                 socketService
-                  .markSeen(selectedConversationId, msgId)
+                  .markSeen(selectedConversationIdRef.current, msgId)
                   .then(() => {
                     window.dispatchEvent(new Event("chatList:refresh"));
                   })
@@ -1233,25 +1282,43 @@ const MainLayout = ({ children }: { children?: any }) => {
             processedChat,
             conversationId,
           );
-          setMemberSeenMap(cachedConversation.memberSeenMap || {});
-          setMessages(
-            applyMemberSeenMapToMessages(
-              cachedMessages,
-              cachedConversation.memberSeenMap || {},
-              user?.id,
-            ),
-          );
-          setMessagePageInfo(
-            cachedConversation.messagePageInfo || {
-              nextCursor: null,
-              hasMore: false,
-            },
-          );
-          setPinnedMessages(cachedConversation.pinnedMessages || []);
-          markConversationRead(conversationId, cachedMessages);
-          setIsOpeningConversation(false);
-          setOpeningChatId(null);
-          return;
+          const cachedLastMessage = cachedMessages[cachedMessages.length - 1];
+          const cachedLastMessageId = getMessageId(cachedLastMessage);
+          const incomingLastMessage = processedChat.lastMessage;
+          const incomingLastMessageId = getMessageId(incomingLastMessage);
+          const cachedLastMessageTime = getMessageTimeValue(cachedLastMessage);
+          const incomingLastMessageTime = getChatActivityTimeValue(processedChat);
+          const cacheIsStale =
+            (Boolean(incomingLastMessageId) &&
+              (!cachedLastMessageId ||
+                String(incomingLastMessageId) !== String(cachedLastMessageId))) ||
+            (Boolean(incomingLastMessageTime && cachedLastMessageTime) &&
+              incomingLastMessageTime > cachedLastMessageTime + 1000) ||
+            Boolean(incomingLastMessageTime && !cachedLastMessageTime);
+
+          if (cacheIsStale) {
+            conversationMessageCacheRef.current.delete(String(conversationId));
+          } else {
+            setMemberSeenMap(cachedConversation.memberSeenMap || {});
+            setMessages(
+              applyMemberSeenMapToMessages(
+                cachedMessages,
+                cachedConversation.memberSeenMap || {},
+                user?.id,
+              ),
+            );
+            setMessagePageInfo(
+              cachedConversation.messagePageInfo || {
+                nextCursor: null,
+                hasMore: false,
+              },
+            );
+            setPinnedMessages(cachedConversation.pinnedMessages || []);
+            markConversationRead(conversationId, cachedMessages);
+            setIsOpeningConversation(false);
+            setOpeningChatId(null);
+            return;
+          }
         }
 
         setMessages([]);
