@@ -16,6 +16,7 @@ import { MessageText } from "./MessageTypes/MessageText";
 import { PollMessage } from "./MessageTypes/PollMessage";
 import { ReminderMessage, extractReminderFromMessage } from "./MessageTypes/ReminderMessage";
 import { CallMessageBubble, parseCallMessage } from "./MessageTypes/CallMessageBubble";
+import { ProfileCardMessage } from "./MessageTypes/ProfileCardMessage";
 import { ForwardedMessageHeader } from "./MessageTypes/ForwardedMessageHeader";
 import { QuotedMessageHeader } from "./MessageTypes/QuotedMessageHeader";
 import { conversationService } from "../../../services/conversationService";
@@ -37,6 +38,7 @@ export const MessageItem = ({
   currentUserId,
   onNavigateToMessage,
   onPollUpdated,
+  onOpenChat,
 }: any) => {
   const [fetchedSender, setFetchedSender] = useState(null);
   const [reactionView, setReactionView] = useState(null);
@@ -164,6 +166,11 @@ export const MessageItem = ({
 
   const isSystem = message?.type === "system" || message?.type === "SYSTEM";
   const isPoll = message?.type === "poll" || message?.type === "POLL" || Boolean(message?.poll);
+  const isProfileCard =
+    message?.type === "profile_card" ||
+    message?.type === "PROFILE_CARD" ||
+    message?.type === "profile-card" ||
+    Boolean(message?.profileCard || message?.profileCardUserId);
   const isReminder = Boolean(extractReminderFromMessage(message, text));
   const callMessage = parseCallMessage(message, text);
   const isCallMessage = Boolean(callMessage);
@@ -181,7 +188,8 @@ export const MessageItem = ({
     !isSystem &&
     !isCallMessage &&
     !isReminder &&
-    !isPoll;
+    !isPoll &&
+    !isProfileCard;
 
   const onlyImagesOrVideos =
     isMedia && !hasText && !isDocument && !isAudio && !isForwarded && !isSystem;
@@ -337,6 +345,13 @@ export const MessageItem = ({
             mine={mine}
             currentUserId={currentUserId}
             onPollUpdated={onPollUpdated}
+          />
+        ) : isProfileCard ? (
+          <ProfileCardMessage
+            message={message}
+            text={text}
+            mine={mine}
+            onOpenChat={onOpenChat}
           />
         ) : isCallMessage ? (
           <CallMessageBubble message={message} text={text} mine={mine} />
