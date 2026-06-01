@@ -53,9 +53,7 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
     const previousChat = previousById.get(fetchedChat.id);
     if (!previousChat?.lastMessage) return fetchedChat;
 
-    const previousUnread = Number(previousChat.unreadCount || 0);
-    const fetchedUnread = Number(fetchedChat.unreadCount || 0);
-    const unreadCount = Math.max(previousUnread, fetchedUnread);
+    const unreadCount = Number(fetchedChat.unreadCount || 0);
     const fetchedPreviewIsMissing = !hasRealPreview(fetchedChat.lastMessage);
     const previousPreviewIsValid = hasRealPreview(previousChat.lastMessage);
     const fetchedTime = getTimeValue(fetchedChat.lastMessageAt || fetchedChat.lastMessage?.createdAt);

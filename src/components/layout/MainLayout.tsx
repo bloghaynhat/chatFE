@@ -224,6 +224,33 @@ const MainLayout = ({ children }: { children?: any }) => {
     [messages, selectedConversationId],
   );
 
+  const markConversationRead = useCallback(
+    (conversationId: string, conversationMessages: any[] = []) => {
+      const lastMessage = conversationMessages[conversationMessages.length - 1];
+      const lastMessageId = getMessageId(lastMessage);
+      if (!conversationId || !lastMessageId || !lastMessage) return;
+
+      const isLastMessageFromCurrentUser =
+        String(
+          lastMessage.senderId ||
+          lastMessage.sender?.id ||
+          lastMessage.sender?._id ||
+          lastMessage.id_sender ||
+          "",
+        ) === String(user?.id || "");
+
+      if (isLastMessageFromCurrentUser) return;
+
+      Promise.allSettled([
+        conversationService.markDelivered(conversationId, lastMessageId),
+        conversationService.markSeen(conversationId, lastMessageId),
+      ]).then(() => {
+        window.dispatchEvent(new Event("chatList:refresh"));
+      });
+    },
+    [user?.id],
+  );
+
   useEffect(() => {
     if (!selectedConversationId || isOpeningConversation) return;
 
@@ -382,6 +409,9 @@ const MainLayout = ({ children }: { children?: any }) => {
                 // Only mark seen if message is from someone else, not from current user
                 socketService
                   .markSeen(selectedConversationId, msgId)
+                  .then(() => {
+                    window.dispatchEvent(new Event("chatList:refresh"));
+                  })
                   .catch(() => {});
               }
               return [...prev, message];
@@ -1218,6 +1248,7 @@ const MainLayout = ({ children }: { children?: any }) => {
             },
           );
           setPinnedMessages(cachedConversation.pinnedMessages || []);
+          markConversationRead(conversationId, cachedMessages);
           setIsOpeningConversation(false);
           setOpeningChatId(null);
           return;
@@ -1276,24 +1307,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           hasMore: messageResult.hasMore,
         });
         void refreshPinnedMessages(conversationId);
-
-        // fire-and-forget status sync with last message ID
-        const lastMessage = sortedMessages[sortedMessages.length - 1];
-        if (lastMessage) {
-          const lastMessageId = lastMessage.id;
-          const isLastMessageFromCurrentUser =
-            String(lastMessage.senderId || lastMessage.sender?.id || "") ===
-            String(user?.id || "");
-
-          if (!isLastMessageFromCurrentUser) {
-            conversationService
-              .markDelivered(conversationId, lastMessageId)
-              .catch(() => {});
-            conversationService
-              .markSeen(conversationId, lastMessageId)
-              .catch(() => {});
-          }
-        }
+        markConversationRead(conversationId, sortedMessages);
       } catch (error) {
         setMessages([]);
         setPinnedMessages([]);
@@ -1314,7 +1328,14 @@ const MainLayout = ({ children }: { children?: any }) => {
         setOpeningChatId(null);
       }
     },
-    [isOpeningConversation, navigate, openingChatId, user?.id],
+    [
+      isOpeningConversation,
+      markConversationRead,
+      navigate,
+      openingChatId,
+      refreshPinnedMessages,
+      user?.id,
+    ],
   );
 
   useEffect(() => {
