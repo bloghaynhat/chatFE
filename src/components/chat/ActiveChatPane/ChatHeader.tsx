@@ -18,9 +18,10 @@ import {
   FiBookmark,
   FiZap,
 } from "react-icons/fi";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AiSummaryModal } from "../AiSummaryModal";
 import { aiService } from "../../../services/aiService";
+import { socketService } from "../../../services/socketService";
 
 const moreActions = [
   { id: "ai-summarize", label: "Tóm tắt cuộc trò chuyện (AI)", icon: FiZap },
@@ -66,6 +67,7 @@ export const ChatHeader = ({
   onStartAudioCall,
   onStartVideoCall,
   onBlockUser,
+  onDeleteConversation,
   onOpenContactPicker,
   activeCallV2,
   callV2Status,
@@ -74,6 +76,7 @@ export const ChatHeader = ({
   const [isAiSummaryModalOpen, setIsAiSummaryModalOpen] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
+  const [presence, setPresence] = useState<any>(null);
 
   const isSavedMessages =
     selectedChat?.type === "saved_messages" ||
@@ -102,6 +105,33 @@ export const ChatHeader = ({
     (p: any) => p.userId !== currentUserId,
   );
 
+  const privateTargetUserId = useMemo(() => {
+    if (!selectedChat || isGroup || isSavedMessages) return null;
+
+    const target =
+      selectedChat.targetUser ||
+      selectedChat.participant ||
+      selectedChat.user ||
+      selectedChat.receiver ||
+      selectedChat.friend ||
+      null;
+
+    return (
+      selectedChat.targetUserId ||
+      selectedChat.participantId ||
+      target?.id ||
+      target?._id ||
+      otherParticipant?.userId ||
+      otherParticipant?.id ||
+      (selectedChat.pairKey && currentUserId
+        ? String(selectedChat.pairKey)
+            .split("_")
+            .find((id: string) => id && id !== currentUserId && id !== "self")
+        : null) ||
+      null
+    );
+  }, [currentUserId, isGroup, isSavedMessages, otherParticipant, selectedChat]);
+
   const displayName =
     selectedChat?.name ||
     selectedChat?.displayName ||
@@ -112,6 +142,82 @@ export const ChatHeader = ({
     displayName && displayName !== "Unknown"
       ? displayName.charAt(0).toUpperCase()
       : "U";
+
+  useEffect(() => {
+    setPresence(
+      privateTargetUserId
+        ? {
+            isOnline: Boolean(selectedChat?.isOnline),
+            lastSeen: selectedChat?.lastSeen ?? null,
+            visibility: selectedChat?.presenceVisibility,
+          }
+        : null,
+    );
+
+    if (!privateTargetUserId) return;
+
+    let active = true;
+    socketService
+      .getOnlineStatus(privateTargetUserId)
+      .then((status) => {
+        if (!active) return;
+        setPresence({
+          isOnline: Boolean(status?.isOnline ?? status?.online),
+          lastSeen: status?.lastSeen ?? null,
+          visibility: status?.visibility,
+        });
+      })
+      .catch(() => {});
+
+    const cleanup = socketService.on("presence:changed", (payload: any) => {
+      if (String(payload?.userId) !== String(privateTargetUserId)) return;
+      setPresence((previous: any) => ({
+        ...previous,
+        isOnline: Boolean(payload.isOnline ?? payload.online),
+        lastSeen: payload.lastSeen ?? previous?.lastSeen ?? null,
+        visibility: payload.visibility ?? previous?.visibility,
+      }));
+    });
+
+    return () => {
+      active = false;
+      cleanup();
+    };
+  }, [
+    privateTargetUserId,
+    selectedChat?.isOnline,
+    selectedChat?.lastSeen,
+    selectedChat?.presenceVisibility,
+  ]);
+
+  const formatLastSeen = (value: any) => {
+    if (!value) return "Offline";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Offline";
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60) return `last seen ${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `last seen ${diffHours}h ago`;
+
+    return `last seen ${date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+    })}`;
+  };
+
+  const presenceLabel = isSavedMessages
+    ? "Saved messages"
+    : isLoading
+      ? "Opening conversation..."
+      : isGroup
+        ? `${selectedChat?.membersCount || selectedChat?.memberCount || ""} members`.trim()
+        : presence?.isOnline
+          ? "Online"
+          : formatLastSeen(presence?.lastSeen);
 
   const handleToggleInfo = () => {
     setIsRightSidebarOpen(!isRightSidebarOpen);
@@ -179,6 +285,10 @@ export const ChatHeader = ({
       return;
     }
 
+    if (action.id === "delete-chat") {
+      onDeleteConversation?.();
+    }
+    
     if (action.id === "share-contact") {
       onOpenContactPicker?.();
     }
@@ -199,17 +309,22 @@ export const ChatHeader = ({
               className="flex items-center gap-3 min-w-0 p-1.5 -ml-1.5 rounded-xl transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer"
               onClick={handleToggleInfo}
             >
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-black/5 dark:border-white/10">
-                {isSavedMessages ? (
-                  <FiBookmark className="text-[18px] lg:text-[20px]" />
-                ) : selectedChat?.avatarUrl ? (
-                  <img
-                    src={selectedChat.avatarUrl}
-                    alt={displayName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  avatarLetter
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shadow-sm border border-black/5 dark:border-white/10">
+                  {isSavedMessages ? (
+                    <FiBookmark className="text-[18px] lg:text-[20px]" />
+                  ) : selectedChat?.avatarUrl ? (
+                    <img
+                      src={selectedChat.avatarUrl}
+                      alt={displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    avatarLetter
+                  )}
+                </div>
+                {!isSavedMessages && !isGroup && presence?.isOnline && (
+                  <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
                 )}
               </div>
 
@@ -218,11 +333,7 @@ export const ChatHeader = ({
                   {displayName}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  {isSavedMessages
-                    ? "Saved messages"
-                    : isLoading
-                      ? "Opening conversation..."
-                      : "last seen 1 hour ago"}
+                  {presenceLabel}
                 </p>
               </div>
             </div>

@@ -51,6 +51,7 @@ export const ActiveChatPane = ({
   onUnpinMessage,
   onPollCreated,
   onPollUpdated,
+  onDeleteConversation,
   hasMoreMessages = false,
   isLoadingOlderMessages = false,
   onLoadOlderMessages,
@@ -1015,6 +1016,7 @@ export const ActiveChatPane = ({
         onStartAudioCall={() => void handleStartCall("audio")}
         onStartVideoCall={() => void handleStartCall("video")}
         onBlockUser={() => void handleBlockUser()}
+        onDeleteConversation={onDeleteConversation}
         onOpenContactPicker={() => setIsContactPickerOpen(true)}
         activeCallV2={activeCallV2}
         callV2Status={callV2.state.status}

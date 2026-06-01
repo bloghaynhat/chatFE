@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiBarChart2, FiCheck, FiLock } from "react-icons/fi";
+import { FiBarChart2, FiCheck, FiLock, FiPlus } from "react-icons/fi";
 import { pollService } from "../../../../services/pollService";
 import userService from "../../../../services/userService";
 
@@ -11,6 +11,14 @@ const getVoterId = (voter: any) => {
 
 const getOptionVoters = (option: any) => option.votedUserIds || option.voters || option.userIds || option.votes || [];
 
+const unwrapPoll = (response: any) => response?.poll || response?.data?.poll || response?.data || response;
+
+const haveSameSelection = (left: string[] = [], right: string[] = []) => {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right.map(String));
+  return left.every((item) => rightSet.has(String(item)));
+};
+
 export const PollMessage = ({
   message,
   mine,
@@ -21,10 +29,13 @@ export const PollMessage = ({
   const [poll, setPoll] = useState(initialPoll);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voterProfiles, setVoterProfiles] = useState<Record<string, any>>({});
-  const [pendingOptionIds, setPendingOptionIds] = useState<string[]>([]);
+  const [pendingOptionIds, setPendingOptionIds] = useState<string[] | null>(null);
+  const [newOptionText, setNewOptionText] = useState("");
+  const [isAddingOption, setIsAddingOption] = useState(false);
 
   useEffect(() => {
     setPoll(initialPoll);
+    setPendingOptionIds(null);
   }, [initialPoll]);
 
   const selectedOptionIds = useMemo(() => {
@@ -87,21 +98,36 @@ export const PollMessage = ({
   }
 
   const totalVotes = Math.max(Number(poll.totalVotes || 0), 0);
-  const isClosed = poll.status === "closed" || poll.closedAt;
+  const isExpired = Boolean(poll.expiresAt && new Date(poll.expiresAt).getTime() <= Date.now());
+  const isClosed = poll.status === "closed" || poll.closedAt || isExpired;
   const hasVoted = selectedOptionIds.length > 0;
-  const canVote = !isClosed && !isSubmitting && !hasVoted;
+  const canChangeVote = Boolean(poll.allowChangeVote);
+  const canVote = !isClosed && !isSubmitting && (!hasVoted || canChangeVote);
   const isMultipleChoice = Boolean(poll.isMultipleChoice);
+  const isCreator = String(poll.createdBy) === String(currentUserId);
+  const showResults =
+    poll.showResultsBeforeClose !== false || isClosed || isCreator;
+  const showVoters = showResults && (!poll.hideVoters || isCreator);
+  const canAddOption = Boolean(poll.allowAddOption) && !isClosed && !isSubmitting;
+  const effectiveOptionIds = isMultipleChoice ? (pendingOptionIds ?? selectedOptionIds) : selectedOptionIds;
+  const hasPendingSelection = pendingOptionIds !== null;
+  const hasSelectionChanges = hasPendingSelection && !haveSameSelection(pendingOptionIds || [], selectedOptionIds);
+  const canSubmitMultipleVote =
+    isMultipleChoice &&
+    canVote &&
+    hasPendingSelection &&
+    (hasVoted ? hasSelectionChanges : (pendingOptionIds?.length || 0) > 0);
 
   const submitVote = async (optionId: string) => {
     if (!canVote || !poll.conversationId || !poll.id) return;
-    const optionIds = isMultipleChoice ? pendingOptionIds : [optionId];
-    if (optionIds.length === 0) return;
+    const optionIds = isMultipleChoice ? (pendingOptionIds ?? selectedOptionIds) : [optionId];
+    if (!hasVoted && optionIds.length === 0) return;
 
     setIsSubmitting(true);
     try {
-      const updatedPoll = await pollService.votePoll(poll.conversationId, poll.id, optionIds);
+      const updatedPoll = unwrapPoll(await pollService.votePoll(poll.conversationId, poll.id, optionIds));
       setPoll(updatedPoll);
-      setPendingOptionIds([]);
+      setPendingOptionIds(null);
       onPollUpdated?.(updatedPoll);
     } catch (error: any) {
       alert(error?.message || "Could not vote this poll.");
@@ -112,20 +138,38 @@ export const PollMessage = ({
 
   const togglePendingOption = (optionId: string) => {
     if (!canVote) return;
-    setPendingOptionIds((prev) =>
-      prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId],
-    );
+    setPendingOptionIds((prev) => {
+      const base = prev ?? selectedOptionIds;
+      return base.includes(optionId) ? base.filter((id) => id !== optionId) : [...base, optionId];
+    });
   };
 
   const closePoll = async () => {
     if (!poll.conversationId || !poll.id || isClosed) return;
     setIsSubmitting(true);
     try {
-      const updatedPoll = await pollService.closePoll(poll.conversationId, poll.id);
+      const updatedPoll = unwrapPoll(await pollService.closePoll(poll.conversationId, poll.id));
       setPoll(updatedPoll);
       onPollUpdated?.(updatedPoll);
     } catch (error: any) {
       alert(error?.message || "Could not close this poll.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const addOption = async () => {
+    const text = newOptionText.trim();
+    if (!text || !poll.conversationId || !poll.id || !canAddOption) return;
+    setIsSubmitting(true);
+    try {
+      const updatedPoll = unwrapPoll(await pollService.addOption(poll.conversationId, poll.id, text));
+      setPoll(updatedPoll);
+      setNewOptionText("");
+      setIsAddingOption(false);
+      onPollUpdated?.(updatedPoll);
+    } catch (error: any) {
+      alert(error?.message || "Could not add this option.");
     } finally {
       setIsSubmitting(false);
     }
@@ -152,9 +196,11 @@ export const PollMessage = ({
       <div className="mt-3 space-y-2">
         {poll.options?.map((option: any) => {
           const voteCount = Number(option.voteCount || 0);
-          const percent = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+          const percent = showResults && totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
           const isSelected = selectedOptionIds.includes(option.id);
-          const isPending = pendingOptionIds.includes(option.id);
+          const isEffectivelySelected = isMultipleChoice ? effectiveOptionIds.includes(option.id) : isSelected;
+          const isPendingAdded = hasPendingSelection && !isSelected && isEffectivelySelected;
+          const isPendingRemoved = hasPendingSelection && isSelected && !isEffectivelySelected;
           const optionVoters = getOptionVoters(option);
 
           return (
@@ -168,18 +214,33 @@ export const PollMessage = ({
                 }
               }}
               disabled={!canVote}
-              className="relative w-full overflow-hidden rounded-xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-slate-700/60 text-left transition-all duration-200 hover:-translate-y-[1px] hover:shadow-sm active:scale-[0.99] disabled:cursor-default disabled:hover:translate-y-0 disabled:hover:shadow-none"
+              className={`relative w-full overflow-hidden rounded-xl border text-left transition-all duration-200 hover:-translate-y-[1px] hover:shadow-sm active:scale-[0.99] disabled:cursor-default disabled:hover:translate-y-0 disabled:hover:shadow-none ${
+                isPendingRemoved
+                  ? "border-red-200 bg-red-50/80 dark:border-red-900/60 dark:bg-red-950/25"
+                  : isEffectivelySelected
+                    ? "border-blue-300 bg-blue-50/90 dark:border-blue-700/70 dark:bg-blue-950/35"
+                    : "border-black/5 bg-white/70 dark:border-white/10 dark:bg-slate-700/60"
+              }`}
             >
               <div
                 className={`${mine ? "bg-emerald-200/70 dark:bg-emerald-700/40" : "bg-blue-100 dark:bg-blue-900/40"} absolute inset-y-0 left-0 transition-[width] duration-500 ease-out`}
                 style={{ width: `${percent}%` }}
               />
               <div className="relative flex items-center gap-2 px-3 py-2">
-                <span className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${isSelected || isPending ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 dark:border-slate-500"}`}>
-                  {(isSelected || isPending) && <FiCheck className="text-xs" />}
+                <span className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${isEffectivelySelected ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 dark:border-slate-500"}`}>
+                  {isEffectivelySelected && <FiCheck className="text-xs" />}
                 </span>
                 <span className="flex-1 min-w-0 text-sm font-medium truncate">{option.text}</span>
-                {optionVoters.length > 0 && (
+                {!showResults && (isPendingAdded || isPendingRemoved || isSelected) && (
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    isPendingRemoved
+                      ? "bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-300"
+                      : "bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300"
+                  }`}>
+                    {isPendingRemoved ? "Remove" : isPendingAdded ? "Add" : "Selected"}
+                  </span>
+                )}
+                {showVoters && optionVoters.length > 0 && (
                   <span className="flex -space-x-1 shrink-0">
                     {optionVoters.slice(0, 4).map((voter: any, index: number) => {
                       const voterId = getVoterId(voter);
@@ -203,7 +264,7 @@ export const PollMessage = ({
                     })}
                   </span>
                 )}
-                <span className="text-xs font-semibold opacity-70">{percent}%</span>
+                {showResults && <span className="text-xs font-semibold opacity-70">{percent}%</span>}
               </div>
             </button>
           );
@@ -211,21 +272,66 @@ export const PollMessage = ({
       </div>
 
       <div className="mt-2 flex items-center justify-between text-xs opacity-70">
-        <span>{totalVotes} vote{totalVotes === 1 ? "" : "s"}</span>
-        <span>{isClosed ? "Closed" : hasVoted ? "Voted" : isMultipleChoice ? "Multiple choice" : "Single choice"}</span>
+        <span>{showResults ? `${totalVotes} vote${totalVotes === 1 ? "" : "s"}` : "Results hidden"}</span>
+        <span>{isClosed ? "Closed" : hasVoted ? (canChangeVote ? "Change allowed" : "Voted") : isMultipleChoice ? "Multiple choice" : "Single choice"}</span>
       </div>
 
       {isMultipleChoice && canVote && (
         <button
-          onClick={() => submitVote(pendingOptionIds[0])}
-          disabled={isSubmitting || pendingOptionIds.length === 0}
+          onClick={() => submitVote(effectiveOptionIds[0])}
+          disabled={isSubmitting || !canSubmitMultipleVote}
           className="mt-2 w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Vote {pendingOptionIds.length > 0 ? `(${pendingOptionIds.length})` : ""}
+          {hasVoted ? "Update vote" : "Vote"} {effectiveOptionIds.length > 0 ? `(${effectiveOptionIds.length})` : ""}
         </button>
       )}
 
-      {!isClosed && poll.createdBy === currentUserId && (
+      {canAddOption && !isAddingOption && (
+        <button
+          type="button"
+          onClick={() => setIsAddingOption(true)}
+          className="mt-2 flex w-full items-center gap-2 rounded-xl border border-dashed border-blue-300/80 bg-white/50 px-3 py-2 text-left text-sm font-semibold text-blue-600 transition hover:bg-blue-50 dark:border-blue-700/70 dark:bg-slate-700/40 dark:text-blue-300 dark:hover:bg-slate-700"
+        >
+          <FiPlus className="shrink-0" />
+          Add option
+        </button>
+      )}
+
+      {canAddOption && isAddingOption && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            value={newOptionText}
+            onChange={(event) => setNewOptionText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") addOption();
+            }}
+            placeholder="Add option"
+            autoFocus
+            className="min-w-0 flex-1 rounded-xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-slate-700/60 px-3 py-2 text-sm outline-none focus:border-blue-400"
+          />
+          <button
+            type="button"
+            onClick={addOption}
+            disabled={isSubmitting || !newOptionText.trim()}
+            className="h-9 w-9 rounded-xl inline-flex items-center justify-center bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Add option"
+          >
+            <FiPlus />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNewOptionText("");
+              setIsAddingOption(false);
+            }}
+            className="h-9 px-2 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {!isClosed && isCreator && (
         <button
           onClick={closePoll}
           disabled={isSubmitting}
