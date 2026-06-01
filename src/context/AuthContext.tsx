@@ -9,6 +9,8 @@ import {
 import { authService } from "../services/authService";
 import { authStorage } from "../runtime/storage";
 import { User } from "../types/user";
+import { socketService } from "../services/socketService";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: User | null;
@@ -75,6 +77,7 @@ const resolveUserProfile = async (
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -302,6 +305,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userProfile);
         // eslint-disable-next-line no-console
         console.debug("[AuthProvider] login setUser (state)");
+        socketService.connect().catch((socketError) => {
+          console.error("Failed to initialize sockets after login:", socketError);
+        });
 
         return userProfile;
       } catch (err) {
@@ -321,11 +327,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await authService.logout();
     } finally {
+      socketService.disconnect();
+      queryClient.clear();
       setUser(null);
       setToken(null);
       setError(null);
     }
-  }, []);
+  }, [queryClient]);
 
   const updateUserProfile = useCallback(
     async (partialProfile: Partial<User>): Promise<void> => {

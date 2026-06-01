@@ -294,7 +294,8 @@ export const MessageItem = ({
 
   return (
     <div
-      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-2.5" : "mb-[2px]"} group`}
+      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-2.5" : "mb-[2px]"} group relative`}
+      onContextMenu={(e) => handleContextMenu(e, message)}
     >
       {isGroup && !mine && (
         <div
@@ -321,7 +322,6 @@ export const MessageItem = ({
         id={`message-${message.id || message._id}`}
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
-        onContextMenu={(e) => handleContextMenu(e, message)}
         className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm flex flex-col relative pb-2 ${
           isJumboEmoji
             ? mine

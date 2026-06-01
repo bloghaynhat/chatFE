@@ -46,6 +46,16 @@ const saveSession = async (payload) => {
   return { accessToken, refreshToken, userProfile };
 };
 
+const clearClientSession = async () => {
+  await authStorage.removeItem("token");
+  await authStorage.removeItem("refreshToken");
+  await authStorage.removeItem("user");
+
+  if (typeof window !== "undefined" && window.localStorage) {
+    window.localStorage.clear();
+  }
+};
+
 export const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register", userData, {
@@ -158,9 +168,7 @@ export const authService = {
         await api.post("/auth/logout", { refreshToken });
       }
     } finally {
-      await authStorage.removeItem("token");
-      await authStorage.removeItem("refreshToken");
-      await authStorage.removeItem("user");
+      await clearClientSession();
     }
   },
 

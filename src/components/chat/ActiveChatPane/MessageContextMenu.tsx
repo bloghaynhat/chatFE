@@ -142,7 +142,7 @@ export const MessageContextMenu = ({
             <span>
               {getDateLabel(
                 contextMenu.message?.createdAt ||
-                  contextMenu.message?.updatedAt,
+                contextMenu.message?.updatedAt,
               )}{" "}
               at {getMessageTime(contextMenu.message)}
             </span>
@@ -250,7 +250,7 @@ export const MessageContextMenu = ({
             <span className="font-medium">Recall</span>
           </button>
         )}
-
+        {/* 
         {isMyMessage && (
           <button
             className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"
@@ -264,7 +264,7 @@ export const MessageContextMenu = ({
             <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
             <span className="font-medium">Delete for everyone</span>
           </button>
-        )}
+        )} */}
 
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[#ff4b4b] flex items-center gap-3.5 transition-colors"

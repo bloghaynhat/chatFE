@@ -22,7 +22,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <AuthProvider>
         <CallV2SocketProvider>
-        <Toaster richColors />
+        <Toaster 
+          richColors 
+          position="top-center" 
+          toastOptions={{
+            className: 'text-[15px] font-medium p-4',
+          }}
+        />
         <App />
         <IncomingCallModal />
         <OutgoingCallModal />
