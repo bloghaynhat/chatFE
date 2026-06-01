@@ -2126,7 +2126,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
   return (
     <div className={darkMode ? "dark" : ""}>
-      <div className="flex h-screen bg-white dark:bg-slate-900 relative overflow-hidden">
+      <div className="flex h-screen bg-white dark:bg-black lg:dark:bg-slate-900 relative overflow-hidden">
         {/* Resizable Left Panel - Chat List */}
         <div className={`h-full shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 flex absolute inset-0 lg:relative lg:translate-x-0 will-change-transform ${selectedChat ? 'translate-x-[30%] w-full pointer-events-none lg:pointer-events-auto lg:flex lg:w-auto' : 'translate-x-0 w-full lg:w-auto'}`}>
           <ResizableChatPanel
@@ -2142,7 +2142,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         </div>
 
         {/* Right Panel - Chat Area */}
-        <div className={`flex flex-col min-w-0 bg-gray-100 dark:bg-slate-950 h-full transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-20 absolute inset-0 lg:relative lg:flex-1 will-change-transform ${!selectedChat ? '-translate-x-full lg:translate-x-0 pointer-events-none lg:pointer-events-auto' : 'translate-x-0'}`}>
+        <div className={`flex flex-col min-w-0 bg-gray-100 dark:bg-black lg:dark:bg-slate-950 h-full transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-20 absolute inset-0 lg:relative lg:flex-1 will-change-transform ${!selectedChat ? '-translate-x-full lg:translate-x-0 pointer-events-none lg:pointer-events-auto' : 'translate-x-0'}`}>
           {children || (
             <ActiveChatPane
               selectedChat={selectedChat}

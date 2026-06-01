@@ -332,7 +332,7 @@ export const MessageItem = ({
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-[14px] md:text-[15px] flex flex-col relative overflow-hidden ${
+        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-[14px] md:text-[15px] flex flex-col relative overflow-hidden ${message.status === 'sending' ? 'opacity-70 transition-opacity duration-300' : ''} ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
