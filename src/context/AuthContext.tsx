@@ -11,6 +11,7 @@ import { authStorage } from "../runtime/storage";
 import { User } from "../types/user";
 import { socketService } from "../services/socketService";
 import { useQueryClient } from "@tanstack/react-query";
+import { getClientDeviceInfo } from "../utils/deviceInfo";
 
 interface AuthContextType {
   user: User | null;
@@ -275,11 +276,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const authPayload = await authService.login({
           phone,
           password,
-          deviceInfo: {
-            deviceId: deviceId,
-            userAgent: navigator.userAgent,
-            platform: "web",
-          },
+          deviceInfo: getClientDeviceInfo(deviceId),
         });
         // eslint-disable-next-line no-console
         console.debug("[AuthProvider] login got authPayload", {

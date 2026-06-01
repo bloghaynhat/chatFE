@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from "axios";
 import { authStorage } from "../runtime/storage";
 import { v4 as uuidv4 } from "uuid";
+import { getClientDeviceHeaders } from "../utils/deviceInfo";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 
@@ -104,13 +105,8 @@ axiosInstance.interceptors.request.use(
   async (config) => {
     const requestConfig = config;
 
-    // Thêm device info
-    requestConfig.headers["X-Device-Id"] = getDeviceId();
-    requestConfig.headers["X-Device-Platform"] = "web";
-    requestConfig.headers["X-Display-Label"] =
-      typeof window !== "undefined"
-        ? navigator.userAgent.slice(0, 100)
-        : "Browser";
+    // Thêm device info cho login/register/session tracking.
+    Object.assign(requestConfig.headers, getClientDeviceHeaders(getDeviceId()));
 
     if (requestConfig.skipAuth) {
       return requestConfig;
