@@ -165,6 +165,21 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async pinConversation(conversationId: string): Promise<any> {
+    const response: any = await api.post(
+      `/conversations/${conversationId}/pin-conversation`,
+      {},
+    );
+    return response.data || response;
+  },
+
+  async unpinConversation(conversationId: string): Promise<any> {
+    const response: any = await api.delete(
+      `/conversations/${conversationId}/pin-conversation`,
+    );
+    return response.data || response;
+  },
+
   async setGroupAdmin(
     groupId: string,
     targetUserId: string,

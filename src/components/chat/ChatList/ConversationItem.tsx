@@ -1,5 +1,6 @@
 import React from "react";
 import { FiBookmark, FiCheck, FiEye } from "react-icons/fi";
+import { BsPinAngleFill } from "react-icons/bs";
 import { Conversation } from "../../../types/conversation";
 import { useAuth } from "../../../hooks";
 import { getChatMessagePreview } from "../../../utils/chatPreview";
@@ -10,6 +11,7 @@ interface ConversationItemProps {
   activeChatId?: string;
   openingChatId?: string;
   onSelectChat: (chat: Conversation) => void;
+  onContextMenu?: (event: React.MouseEvent, chat: Conversation) => void;
 }
 
 export const ConversationItem: React.FC<ConversationItemProps> = ({
@@ -18,6 +20,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   activeChatId,
   openingChatId,
   onSelectChat,
+  onContextMenu,
 }) => {
   const { user } = useAuth();
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
@@ -26,6 +29,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   const chatType = (chat as any).type;
   const isGroup = chatType === "group" || chatType === "GROUP" || (chat as any).isGroup === true;
   const showOnlineDot = !isSavedMessages && !isGroup && Boolean((chat as any).isOnline);
+  const isPinned = Boolean((chat as any).pinned || (chat as any).isPinned);
   const isLastMessageSeen =
     chat.lastMessageStatus === "seen" ||
     (chat as any).lastMessageStatus === "read" ||
@@ -35,6 +39,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   return (
     <div
       onClick={() => onSelectChat(chat)}
+      onContextMenu={(event) => onContextMenu?.(event, chat)}
       className={`group flex items-center p-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 active:scale-[0.98]
         ${isActive ? "bg-blue-500 shadow-md text-white" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200"}
       `}
@@ -104,13 +109,21 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             >
               {getChatMessagePreview(chat.lastMessage)}
             </p>
-            {chat.unreadCount && chat.unreadCount > 0 ? (
-              <span
-                className={`flex h-[18px] w-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-bold shadow-sm px-1 ml-2 flex-shrink-0 leading-none ${isActive ? "bg-white text-blue-500" : "bg-red-500 text-white"}`}
-              >
-                {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
-              </span>
-            ) : null}
+            <div className="ml-2 flex flex-shrink-0 items-center gap-1">
+              {isPinned && (
+                <BsPinAngleFill
+                  className={`text-[12px] ${isActive ? "text-blue-100" : "text-gray-400 dark:text-gray-500"}`}
+                  title="Pinned"
+                />
+              )}
+              {chat.unreadCount && chat.unreadCount > 0 ? (
+                <span
+                  className={`flex h-[18px] w-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-bold shadow-sm px-1 flex-shrink-0 leading-none ${isActive ? "bg-white text-blue-500" : "bg-red-500 text-white"}`}
+                >
+                  {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
       )}

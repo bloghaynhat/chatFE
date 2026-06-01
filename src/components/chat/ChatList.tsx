@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { conversationService, searchService, userService } from "../../services";
 import {
   FiArchive,
@@ -16,7 +17,9 @@ import {
   FiUser,
   FiVideo,
 } from "react-icons/fi";
+import { BsPinAngle, BsPinAngleFill } from "react-icons/bs";
 import { PhotoProvider, PhotoView } from "react-photo-view";
+import { toast } from "sonner";
 import { socketService } from "../../services/socketService";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
@@ -73,6 +76,25 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
   });
 };
 
+const isConversationPinned = (chat: any) => Boolean(chat?.pinned || chat?.isPinned);
+
+const sortChats = (chats: any[]) =>
+  [...chats].sort((a, b) => {
+    const pinnedA = isConversationPinned(a);
+    const pinnedB = isConversationPinned(b);
+    if (pinnedA !== pinnedB) return pinnedA ? -1 : 1;
+
+    if (pinnedA && pinnedB) {
+      const pinnedAtB = getTimeValue(b.pinnedAt);
+      const pinnedAtA = getTimeValue(a.pinnedAt);
+      if (pinnedAtB !== pinnedAtA) return pinnedAtB - pinnedAtA;
+    }
+
+    const timeB = getTimeValue(b.lastMessageAt || b.lastMessage?.createdAt || b.updatedAt);
+    const timeA = getTimeValue(a.lastMessageAt || a.lastMessage?.createdAt || a.updatedAt);
+    return timeB - timeA;
+  });
+
 const mergeChatPages = (previousChats: any[], fetchedChats: any[]) => {
   const mergedById = new Map<string, any>();
 
@@ -88,11 +110,7 @@ const mergeChatPages = (previousChats: any[], fetchedChats: any[]) => {
     mergedById.set(chat.id, mergedChat || { ...previousChat, ...chat });
   });
 
-  return Array.from(mergedById.values()).sort((a, b) => {
-    const timeB = getTimeValue(b.lastMessageAt || b.lastMessage?.createdAt || b.updatedAt);
-    const timeA = getTimeValue(a.lastMessageAt || a.lastMessage?.createdAt || a.updatedAt);
-    return timeB - timeA;
-  });
+  return sortChats(Array.from(mergedById.values()));
 };
 
 const getMessageId = (message: any) => message?.id || message?._id || message?.messageId;
@@ -515,6 +533,36 @@ const SearchResultContextMenu = ({
   );
 };
 
+const ConversationContextMenu = ({
+  contextMenu,
+  onTogglePin,
+}: any) => {
+  if (!contextMenu?.chat) return null;
+  const isPinned = isConversationPinned(contextMenu.chat);
+
+  const menu = (
+    <div
+      className="fixed z-[9999] w-[210px] rounded-xl bg-white dark:bg-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.18)] border border-gray-100 dark:border-slate-700 py-1.5 text-sm text-gray-800 dark:text-gray-100 overflow-hidden"
+      style={{ top: contextMenu.y, left: contextMenu.x }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
+        onClick={() => onTogglePin(contextMenu.chat)}
+      >
+        {isPinned ? (
+          <BsPinAngleFill className="text-[16px]" />
+        ) : (
+          <BsPinAngle className="text-[16px]" />
+        )}
+        <span>{isPinned ? "Unpin from top" : "Pin to top"}</span>
+      </button>
+    </div>
+  );
+
+  return createPortal(menu, document.body);
+};
+
 const extractSocketMessage = (payload: any) => {
   const candidates = [
     payload?.payload?.message,
@@ -749,8 +797,79 @@ export const ChatList = ({
   );
   const [activeSearchTab, setActiveSearchTab] = useState("chats");
   const [searchContextMenu, setSearchContextMenu] = useState<any>(null);
+  const [conversationContextMenu, setConversationContextMenu] = useState<any>(null);
   const [forwardModalVisible, setForwardModalVisible] = useState(false);
   const [messageToForward, setMessageToForward] = useState<any>(null);
+
+  const handleTogglePinConversation = useCallback(async (chat: any) => {
+    const conversationId = chat?.id || chat?.conversationId;
+    if (!conversationId) return;
+
+    const wasPinned = isConversationPinned(chat);
+    const nextPinnedAt = new Date().toISOString();
+
+    setChats((previousChats) =>
+      sortChats(
+        previousChats.map((item) =>
+          item.id === conversationId
+            ? {
+                ...item,
+                pinned: !wasPinned,
+                isPinned: !wasPinned,
+                pinnedAt: wasPinned ? undefined : nextPinnedAt,
+              }
+            : item,
+        ),
+      ),
+    );
+
+    try {
+      if (wasPinned) {
+        await conversationService.unpinConversation(conversationId);
+        toast.success("Conversation unpinned");
+      } else {
+        await conversationService.pinConversation(conversationId);
+        toast.success("Conversation pinned");
+      }
+    } catch (error: any) {
+      setChats((previousChats) =>
+        sortChats(
+          previousChats.map((item) =>
+            item.id === conversationId
+              ? {
+                  ...item,
+                  pinned: wasPinned,
+                  isPinned: wasPinned,
+                  pinnedAt: chat.pinnedAt,
+                }
+              : item,
+          ),
+        ),
+      );
+      toast.error(error?.message || "Could not update conversation pin");
+    }
+  }, []);
+
+  const handleConversationContextMenu = useCallback((event: any, chat: any) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menuWidth = 210;
+    const menuHeight = 48;
+    const topSafeArea = 64;
+    const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8);
+    const y = Math.min(
+      Math.max(event.clientY, topSafeArea),
+      window.innerHeight - menuHeight - 8,
+    );
+
+    setSearchContextMenu(null);
+    setConversationContextMenu({
+      x: Math.max(8, x),
+      y,
+      chat,
+    });
+  }, []);
 
   const updateSeenStatusForOwnLastMessages = useCallback((sourceChats: any[]) => {
     const ownLastMessageChats = sourceChats.filter((chat) =>
@@ -809,7 +928,7 @@ export const ChatList = ({
         isLoadingMore
           ? mergeChatPages(previousChats, fetchedChats)
           : showLoading
-            ? mergeFetchedChats(previousChats, fetchedChats)
+            ? sortChats(mergeFetchedChats(previousChats, fetchedChats))
             : mergeChatPages(previousChats, fetchedChats),
       );
       refreshOnlineStatuses(fetchedChats);
@@ -1033,9 +1152,8 @@ export const ChatList = ({
             lastMessageAt: newLastMessage.createdAt,
           };
 
-          // Filter out the old chat and put the updated one at the top
           const filteredChats = prevChats.filter((c) => c.id !== msgConvId);
-          return [updatedChat, ...filteredChats];
+          return sortChats([updatedChat, ...filteredChats]);
         } else {
           // If the chat doesn't exist in the list, fetch the updated list from the server silently
           fetchChats(false);
@@ -1133,11 +1251,10 @@ export const ChatList = ({
       const conversation = payload?.conversation || payload;
       if (!conversation?.id) return;
 
-      // Add new conversation to the top if not already present
       setChats((prev) => {
         const exists = prev.some((c) => c.id === conversation.id);
         if (exists) return prev;
-        return [conversation, ...prev];
+        return sortChats([conversation, ...prev]);
       });
     };
 
@@ -1196,7 +1313,30 @@ export const ChatList = ({
 
   // Handle conversation admin actions: pin, archive, mute
   useEffect(() => {
-    const handlePinToggled = () => fetchChats(false);
+    const handlePinToggled = (payload: any) => {
+      const conversationId = payload?.conversationId;
+      if (!conversationId) {
+        fetchChats(false);
+        return;
+      }
+
+      setChats((previousChats) =>
+        sortChats(
+          previousChats.map((chat) =>
+            chat.id === conversationId
+              ? {
+                  ...chat,
+                  pinned: Boolean(payload.pinned),
+                  isPinned: Boolean(payload.pinned),
+                  pinnedAt: payload.pinned
+                    ? payload.pinnedAt || chat.pinnedAt || new Date().toISOString()
+                    : undefined,
+                }
+              : chat,
+          ),
+        ),
+      );
+    };
     const handleArchivedToggled = () => fetchChats(false);
     const handleMuteChanged = () => fetchChats(false);
 
@@ -1350,6 +1490,17 @@ export const ChatList = ({
   }, [searchContextMenu]);
 
   useEffect(() => {
+    if (!conversationContextMenu) return;
+    const handleClose = () => setConversationContextMenu(null);
+    document.addEventListener("click", handleClose);
+    document.addEventListener("contextmenu", handleClose);
+    return () => {
+      document.removeEventListener("click", handleClose);
+      document.removeEventListener("contextmenu", handleClose);
+    };
+  }, [conversationContextMenu]);
+
+  useEffect(() => {
     if (!forwardModalVisible) return;
     fetchFriends();
   }, [forwardModalVisible, fetchFriends]);
@@ -1436,13 +1587,15 @@ export const ChatList = ({
     }
 
     if (!normalizedQuery) {
-      return baseList;
+      return sortChats(baseList);
     }
 
-    return baseList.filter(
-      (chat) =>
-        chat.name?.toLowerCase().includes(normalizedQuery) ||
-        chat.lastMessage?.textPreview?.toLowerCase().includes(normalizedQuery),
+    return sortChats(
+      baseList.filter(
+        (chat) =>
+          chat.name?.toLowerCase().includes(normalizedQuery) ||
+          chat.lastMessage?.textPreview?.toLowerCase().includes(normalizedQuery),
+      ),
     );
   }, [chats, filterMode, normalizedQuery]);
 
@@ -1514,6 +1667,7 @@ export const ChatList = ({
                   activeChatId={activeChatId}
                   openingChatId={openingChatId}
                   onSelectChat={onSelectChat}
+                  onContextMenu={handleConversationContextMenu}
                 />
               ))}
               <div ref={loadMoreConversationsRef} className="h-8 flex items-center justify-center">
@@ -1576,6 +1730,7 @@ export const ChatList = ({
                             activeChatId={activeChatId}
                             openingChatId={openingChatId}
                             onSelectChat={onSelectChat}
+                            onContextMenu={handleConversationContextMenu}
                           />
                         </div>
                       ))}
@@ -1611,6 +1766,7 @@ export const ChatList = ({
                           activeChatId={activeChatId}
                           openingChatId={openingChatId}
                           onSelectChat={onSelectChat}
+                          onContextMenu={handleConversationContextMenu}
                         />
                       </div>
                     ))
@@ -1736,6 +1892,14 @@ export const ChatList = ({
             await navigator.clipboard.writeText(searchContextMenu.item.url).catch(() => {});
           }
           setSearchContextMenu(null);
+        }}
+      />
+
+      <ConversationContextMenu
+        contextMenu={conversationContextMenu}
+        onTogglePin={(chat: any) => {
+          setConversationContextMenu(null);
+          handleTogglePinConversation(chat);
         }}
       />
 
