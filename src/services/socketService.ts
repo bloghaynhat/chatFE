@@ -387,12 +387,20 @@ class SocketService {
       this.emit("poll:closed", data);
     });
 
+    this.messagesSocket.on("poll:option_added", (data) => {
+      this.emit("poll:option_added", data);
+    });
+
     this.messagesSocket.on("poll:pinned", (data) => {
       this.emit("poll:pinned", data);
     });
 
     this.messagesSocket.on("poll:unpinned", (data) => {
       this.emit("poll:unpinned", data);
+    });
+
+    this.messagesSocket.on("poll:deleted", (data) => {
+      this.emit("poll:deleted", data);
     });
 
     const forwardUtilityEvent = (
@@ -812,6 +820,22 @@ class SocketService {
 
   onPollClosed(callback) {
     return this.on("poll:closed", callback);
+  }
+
+  onPollOptionAdded(callback) {
+    return this.on("poll:option_added", callback);
+  }
+
+  onPollPinned(callback) {
+    return this.on("poll:pinned", callback);
+  }
+
+  onPollUnpinned(callback) {
+    return this.on("poll:unpinned", callback);
+  }
+
+  onPollDeleted(callback) {
+    return this.on("poll:deleted", callback);
   }
 
   onGroupNoteCreated(callback) {
@@ -1257,7 +1281,7 @@ class SocketService {
     return new Promise((resolve, reject) => {
       this.messagesSocket.emit(
         "updateGroupSettings",
-        { conversationId, settings },
+        { groupId: conversationId, ...settings },
         (res) => {
           if (res?.success) resolve(res);
           else reject(new Error(res?.error || "Update group settings failed"));

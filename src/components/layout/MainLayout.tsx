@@ -155,6 +155,16 @@ const MainLayout = ({ children }: { children?: any }) => {
     );
   }, []);
 
+  const removePollFromMessages = useCallback((pollId: string) => {
+    if (!pollId) return;
+    setMessages((prev) =>
+      prev.filter((message: any) => {
+        const messagePollId = message.pollId || message.poll?.id;
+        return String(messagePollId) !== String(pollId);
+      }),
+    );
+  }, []);
+
   const getPayloadConversationId = useCallback((payload: any) => {
     const rawId =
       payload?.conversationId ||
@@ -546,6 +556,24 @@ const MainLayout = ({ children }: { children?: any }) => {
           updatePollInMessages(payload?.poll || payload?.data || payload);
         });
 
+        socketService.onPollOptionAdded((payload: any) => {
+          updatePollInMessages(payload?.poll || payload?.data || payload);
+        });
+
+        socketService.onPollPinned((payload: any) => {
+          updatePollInMessages(payload?.poll || payload?.data || payload);
+          upsertMessageFromPayload(payload);
+        });
+
+        socketService.onPollUnpinned((payload: any) => {
+          updatePollInMessages(payload?.poll || payload?.data || payload);
+          upsertMessageFromPayload(payload);
+        });
+
+        socketService.onPollDeleted((payload: any) => {
+          removePollFromMessages(payload?.pollId || payload?.data?.pollId || payload?.poll?.id);
+        });
+
         socketService.onPollNew((payload: any) => {
           const message = payload?.message || payload?.poll?.timelineMessage;
           if (message) appendLocalMessage(message);
@@ -795,6 +823,10 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.off("poll:new");
       socketService.off("poll:vote");
       socketService.off("poll:closed");
+      socketService.off("poll:option_added");
+      socketService.off("poll:pinned");
+      socketService.off("poll:unpinned");
+      socketService.off("poll:deleted");
       socketService.off("group:note:created");
       socketService.off("group:note:updated");
       socketService.off("group:note:deleted");
@@ -816,6 +848,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   }, [
     selectedConversationId,
     appendLocalMessage,
+    removePollFromMessages,
     updatePollInMessages,
     getPayloadConversationId,
     upsertMessageFromPayload,
