@@ -97,6 +97,7 @@ export const ChatHeader = ({
             "send-gift",
             "block-user",
             "disable-sharing",
+            "delete-chat",
           ].includes(action.id),
       )
     : moreActions.filter((action) => (isGroup ? action.id !== "block-user" : true));

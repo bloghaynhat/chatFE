@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
+import { DeleteConversationModal } from "../chat/ActiveChatPane/DeleteConversationModal";
 import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
@@ -81,6 +82,8 @@ const MainLayout = ({ children }: { children?: any }) => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [isDeleteConversationModalOpen, setIsDeleteConversationModalOpen] = useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [messages, setMessages] = useState([]);
   const [messagePageInfo, setMessagePageInfo] = useState<{
     nextCursor: string | null;
@@ -1173,19 +1176,11 @@ const MainLayout = ({ children }: { children?: any }) => {
   const handleDeleteConversation = useCallback(async () => {
     if (!selectedConversationId) return;
 
-    const chatName =
-      selectedChat?.name ||
-      selectedChat?.displayName ||
-      selectedChat?.title ||
-      "this chat";
-    const confirmed = window.confirm(
-      `Delete ${chatName} from your chat list? This only deletes the conversation for you.`,
-    );
-    if (!confirmed) return;
-
+    setIsDeletingConversation(true);
     try {
       const deletedConversationId = selectedConversationId;
       await conversationService.deleteConversationForMe(deletedConversationId);
+      setIsDeleteConversationModalOpen(false);
       setSelectedChat(null);
       setSelectedConversationId(null);
       setMessages([]);
@@ -1199,8 +1194,10 @@ const MainLayout = ({ children }: { children?: any }) => {
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error: any) {
       alert(error?.message || "Could not delete this conversation.");
+    } finally {
+      setIsDeletingConversation(false);
     }
-  }, [selectedChat, selectedConversationId]);
+  }, [selectedConversationId]);
 
   const handleLoadOlderMessages = useCallback(async () => {
     if (
@@ -1962,7 +1959,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               onUnpinMessage={handleUnpinMessage}
               onPollCreated={appendLocalMessage}
               onPollUpdated={updatePollInMessages}
-              onDeleteConversation={handleDeleteConversation}
+              onDeleteConversation={() => setIsDeleteConversationModalOpen(true)}
               hasMoreMessages={messagePageInfo.hasMore}
               isLoadingOlderMessages={isLoadingOlderMessages}
               onLoadOlderMessages={handleLoadOlderMessages}
@@ -2006,6 +2003,23 @@ const MainLayout = ({ children }: { children?: any }) => {
               });
             }
           }}
+        />
+
+        <DeleteConversationModal
+          isOpen={isDeleteConversationModalOpen}
+          isLoading={isDeletingConversation}
+          chatName={
+            selectedChat?.name ||
+            selectedChat?.displayName ||
+            selectedChat?.title ||
+            "this chat"
+          }
+          onClose={() => {
+            if (!isDeletingConversation) {
+              setIsDeleteConversationModalOpen(false);
+            }
+          }}
+          onConfirm={handleDeleteConversation}
         />
       </div>
     </div>
