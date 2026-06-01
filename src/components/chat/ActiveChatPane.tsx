@@ -43,6 +43,7 @@ export const ActiveChatPane = ({
   onDeleteMessageForMe,
   onDeleteMessageForEveryone,
   onForwardToTarget,
+  onForwardMessages,
   forwardingMessage,
   onClearForwarding,
   isRightSidebarOpen,
@@ -1166,6 +1167,7 @@ export const ActiveChatPane = ({
         currentUserId={currentUserId}
         selectedChat={selectedChat}
         onForwardToTarget={onForwardToTarget}
+        onForwardMessages={onForwardMessages}
       />
 
       <CalendarModal

@@ -1,4 +1,6 @@
-import { FiX, FiBookmark } from "react-icons/fi";
+import { useMemo, useState } from "react";
+import { FiX, FiBookmark, FiSearch, FiCheck, FiSend } from "react-icons/fi";
+import { toast } from "sonner";
 
 export const ForwardModal = ({
   forwardModalVisible,
@@ -8,7 +10,76 @@ export const ForwardModal = ({
   currentUserId,
   selectedChat,
   onForwardToTarget,
+  onForwardMessages = null,
 }) => {
+  const [searchValue, setSearchValue] = useState("");
+  const [selectedTargets, setSelectedTargets] = useState([]);
+  const [isSending, setIsSending] = useState(false);
+
+  const filteredFriends = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return friends || [];
+    return (friends || []).filter((friend) => {
+      const label = [
+        friend.displayName,
+        friend.name,
+        friend.phone,
+        friend.email,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return label.includes(query);
+    });
+  }, [friends, searchValue]);
+
+  const getTargetUserId = (friend) =>
+    friend.friendUserId || friend.userId || friend.id || friend._id;
+
+  const buildTargetChat = (friend) => {
+    const targetUserId = getTargetUserId(friend);
+    return {
+      id: friend.conversationId || `temp-${targetUserId}`,
+      conversationId: friend.conversationId,
+      targetUserId,
+      friendUserId: friend.friendUserId,
+      userId: friend.userId,
+      isGroup: false,
+      participants: [friend],
+      type: "private",
+      name: friend.displayName || friend.name || friend.phone || "Unknown",
+      avatarUrl: friend.avatarUrl,
+    };
+  };
+
+  const toggleTarget = (friend) => {
+    const targetUserId = getTargetUserId(friend);
+    setSelectedTargets((prev) =>
+      prev.some((item) => getTargetUserId(item) === targetUserId)
+        ? prev.filter((item) => getTargetUserId(item) !== targetUserId)
+        : [...prev, friend],
+    );
+  };
+
+  const handleSend = async () => {
+    if (!messageToForward || selectedTargets.length === 0) return;
+    setIsSending(true);
+    try {
+      if (onForwardMessages) {
+        await onForwardMessages(selectedTargets.map(buildTargetChat), messageToForward);
+      } else if (onForwardToTarget) {
+        onForwardToTarget(buildTargetChat(selectedTargets[0]), messageToForward);
+      }
+      setForwardModalVisible(false);
+      setSelectedTargets([]);
+      setSearchValue("");
+    } catch (error) {
+      toast.error(error?.message || "Không thể chuyển tiếp tin nhắn");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   if (!forwardModalVisible) return null;
 
   return (
@@ -26,6 +97,18 @@ export const ForwardModal = ({
           </span>
         </div>
 
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700/50">
+          <div className="flex items-center gap-2 rounded-lg bg-gray-100 dark:bg-slate-700/60 px-3 py-2">
+            <FiSearch className="text-gray-400" />
+            <input
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="Search"
+              className="w-full bg-transparent text-[14px] text-gray-900 dark:text-gray-100 outline-none placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
           <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors">
             <div className="w-11 h-11 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
@@ -41,18 +124,19 @@ export const ForwardModal = ({
             </div>
           </div>
 
-          {friends?.map((friend) => (
+          {filteredFriends?.map((friend) => {
+            const targetUserId = getTargetUserId(friend);
+            const isSelected = selectedTargets.some(
+              (item) => getTargetUserId(item) === targetUserId,
+            );
+
+            return (
             <div
               key={friend.id || friend._id}
               className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
               onClick={() => {
-                if (messageToForward) {
-                  const targetUserId =
-                    friend.friendUserId ||
-                    friend.userId ||
-                    friend.id ||
-                    friend._id;
-
+                toggleTarget(friend);
+                if (messageToForward && !onForwardMessages) {
                   const augmentedMsg = { ...messageToForward };
                   if (!augmentedMsg.sender) augmentedMsg.sender = {};
 
@@ -88,25 +172,11 @@ export const ForwardModal = ({
                   }
 
                   // Create a target chat object compatible with openChatByRow
-                  const targetChat = {
-                    id: `temp-${targetUserId}`,
-                    targetUserId: targetUserId,
-                    isGroup: false,
-                    participants: [friend],
-                    type: "private",
-                    name:
-                      friend.displayName ||
-                      friend.name ||
-                      friend.phone ||
-                      "Unknown",
-                    avatarUrl: friend.avatarUrl,
-                  };
-
                   if (onForwardToTarget) {
-                    onForwardToTarget(targetChat, augmentedMsg);
+                    onForwardToTarget(buildTargetChat(friend), augmentedMsg);
                   }
+                  setForwardModalVisible(false);
                 }
-                setForwardModalVisible(false);
               }}
             >
               <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shrink-0">
@@ -130,8 +200,36 @@ export const ForwardModal = ({
                   online
                 </span>
               </div>
+              <div
+                className={`ml-auto h-5 w-5 rounded-full border flex items-center justify-center ${
+                  isSelected
+                    ? "border-blue-500 bg-blue-500 text-white"
+                    : "border-gray-300 dark:border-slate-600"
+                }`}
+              >
+                {isSelected && <FiCheck className="text-[13px]" />}
+              </div>
             </div>
-          ))}
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-700/50 px-4 py-3">
+          <span className="text-[13px] text-gray-500 dark:text-gray-400">
+            {selectedTargets.length} selected
+          </span>
+          <button
+            onClick={handleSend}
+            disabled={isSending || selectedTargets.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-[14px] font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSending ? (
+              <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            ) : (
+              <FiSend />
+            )}
+            Send
+          </button>
         </div>
       </div>
     </div>
