@@ -10,6 +10,7 @@ import {
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
+import { useDraft } from "../../context/DraftContext";
 
 import { ChatHeader } from "./ActiveChatPane/ChatHeader";
 import { MessageList } from "./ActiveChatPane/MessageList";
@@ -94,7 +95,21 @@ export const ActiveChatPane = ({
     () => new Date(),
   );
 
-  const [draftMessage, setDraftMessage] = useState("");
+  const { drafts, setDraft, loadDrafts } = useDraft();
+  
+  const draftMessage = (selectedConversationId ? drafts[selectedConversationId] : "") || "";
+  const setDraftMessage = useCallback((text: string | ((prev: string) => string)) => {
+    if (!selectedConversationId) return;
+    const newText = typeof text === "function" ? text(draftMessage) : text;
+    setDraft(selectedConversationId, newText);
+  }, [selectedConversationId, draftMessage, setDraft]);
+
+  useEffect(() => {
+    if (selectedConversationId) {
+      loadDrafts(selectedConversationId);
+    }
+  }, [selectedConversationId, loadDrafts]);
+
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
@@ -988,7 +1003,7 @@ export const ActiveChatPane = ({
   }, [isHeaderSearchOpen]);
 
   useEffect(() => {
-    setDraftMessage("");
+    // We no longer clear draft message on chat switch because DraftContext handles it per conversationId
   }, [selectedChat?.id]);
 
   const inputDisabledReason = chatRestriction || groupMessageRestriction;

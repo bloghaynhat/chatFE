@@ -396,4 +396,22 @@ export const conversationService = {
     );
     return response.data || response;
   },
+
+  async getDrafts(conversationId: string): Promise<any> {
+    const response: any = await api.get(`/conversations/${conversationId}/drafts`);
+    return response.data?.drafts || response?.drafts || [];
+  },
+
+  async saveDraft(conversationId: string, text: string, media: any[] = []): Promise<any> {
+    const response: any = await api.post(`/conversations/${conversationId}/drafts`, {
+      text,
+      media,
+    });
+    return response.data || response;
+  },
+
+  async deleteDraft(conversationId: string): Promise<any> {
+    const response: any = await api.delete(`/conversations/${conversationId}/drafts`);
+    return response.data || response;
+  },
 };

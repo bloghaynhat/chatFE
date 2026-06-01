@@ -4,6 +4,8 @@ import { BsPinAngleFill } from "react-icons/bs";
 import { Conversation } from "../../../types/conversation";
 import { useAuth } from "../../../hooks";
 import { getChatMessagePreview } from "../../../utils/chatPreview";
+import { useDraft } from "../../../context/DraftContext";
+import { FiEdit2 } from "react-icons/fi";
 
 interface ConversationItemProps {
   chat: Conversation;
@@ -23,6 +25,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   onContextMenu,
 }) => {
   const { user } = useAuth();
+  const { drafts } = useDraft();
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
   const isMine = chat.lastMessage?.senderId === user?.id || chat.lastMessage?.senderId === "me";
   const isSavedMessages = chat.type === "saved_messages" || chat.isSavedMessages || chat.isSelfChat;
@@ -110,8 +113,19 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             <p
               className={`text-sm truncate transition-colors duration-200 ${isActive ? "text-blue-100" : chat.unreadCount ? "font-bold text-gray-900 dark:text-gray-100" : "text-gray-500"}`}
             >
-              {isMine && !isSavedMessages && <span>Bạn: </span>}
-              {getChatMessagePreview(chat.lastMessage)}
+              {drafts[chat.id] && !isActive ? (
+                <span className="flex items-center gap-1">
+                  <span className="text-red-500 font-medium flex items-center gap-1">
+                    <FiEdit2 className="text-[12px]" /> [Nháp]:
+                  </span>
+                  <span className="truncate">{drafts[chat.id]}</span>
+                </span>
+              ) : (
+                <>
+                  {isMine && !isSavedMessages && <span>Bạn: </span>}
+                  {getChatMessagePreview(chat.lastMessage)}
+                </>
+              )}
             </p>
             <div className="ml-2 flex flex-shrink-0 items-center gap-1">
               {isPinned && (
