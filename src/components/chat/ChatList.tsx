@@ -77,6 +77,37 @@ const getMessageId = (message: any) => message?.id || message?._id || message?.m
 const getMessageText = (message: any) =>
   message?.text || message?.content || message?.textPreview || "Matched message";
 
+const isGroupChatItem = (chat: any) =>
+  chat?.type === "group" || chat?.type === "GROUP" || chat?.isGroup === true;
+
+const isSavedMessagesChat = (chat: any) =>
+  chat?.type === "saved_messages" || chat?.isSavedMessages || chat?.isSelfChat;
+
+const getPrivateChatTargetUserId = (chat: any, currentUserId?: string | null) => {
+  if (!chat || isGroupChatItem(chat) || isSavedMessagesChat(chat)) return null;
+
+  const target =
+    chat.targetUser ||
+    chat.participant ||
+    chat.user ||
+    chat.receiver ||
+    chat.friend ||
+    null;
+
+  return (
+    chat.targetUserId ||
+    chat.participantId ||
+    target?.id ||
+    target?._id ||
+    (chat.pairKey && currentUserId
+      ? String(chat.pairKey)
+          .split("_")
+          .find((id: string) => id && id !== currentUserId && id !== "self")
+      : null) ||
+    null
+  );
+};
+
 const formatSearchMessageTime = (value: any) => {
   if (!value) return "";
   const date = new Date(value);
@@ -505,6 +536,57 @@ export const ChatList = ({
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
+  const chatsRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  const applyOnlineStatuses = useCallback(
+    (statuses: any[]) => {
+      const statusByUserId = new Map(
+        statuses.map((status: any) => [String(status.userId), status]),
+      );
+
+      setChats((previousChats) =>
+        previousChats.map((chat) => {
+          const targetUserId = getPrivateChatTargetUserId(chat, user?.id);
+          const status = targetUserId
+            ? statusByUserId.get(String(targetUserId))
+            : null;
+          if (!status) return chat;
+
+          return {
+            ...chat,
+            targetUserId,
+            isOnline: Boolean(status.isOnline ?? status.online),
+            lastSeen: status.lastSeen ?? chat.lastSeen,
+            presenceVisibility: status.visibility,
+          };
+        }),
+      );
+    },
+    [user?.id],
+  );
+
+  const refreshOnlineStatuses = useCallback(
+    (sourceChats?: any[]) => {
+      const chatsToRefresh = sourceChats || chatsRef.current;
+      const targetUserIds = chatsToRefresh
+        .map((chat) => getPrivateChatTargetUserId(chat, user?.id))
+        .filter(Boolean);
+
+      if (targetUserIds.length === 0) return;
+
+      socketService
+        .getBatchOnlineStatus(targetUserIds)
+        .then(applyOnlineStatuses)
+        .catch((err) => {
+          console.warn("Failed to fetch online statuses", err);
+        });
+    },
+    [applyOnlineStatuses, user?.id],
+  );
 
   const touchConversationActivity = useCallback(
     (
@@ -593,17 +675,60 @@ export const ChatList = ({
       const data = response?.data || response || [];
       const fetchedChats = Array.isArray(data) ? data : [];
       setChats((previousChats) => mergeFetchedChats(previousChats, fetchedChats));
+      refreshOnlineStatuses(fetchedChats);
     } catch (err) {
       console.error("Fetch conversations error:", err);
       setChats([]);
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, []);
+  }, [refreshOnlineStatuses]);
 
   useEffect(() => {
     fetchChats();
   }, [fetchChats]);
+
+  useEffect(() => {
+    const handlePresenceChanged = (payload: any) => {
+      const presenceUserId = payload?.userId;
+      if (!presenceUserId) return;
+
+      setChats((previousChats) =>
+        previousChats.map((chat) => {
+          const targetUserId = getPrivateChatTargetUserId(chat, user?.id);
+          if (String(targetUserId) !== String(presenceUserId)) return chat;
+
+          return {
+            ...chat,
+            targetUserId,
+            isOnline: Boolean(payload.isOnline ?? payload.online),
+            lastSeen: payload.lastSeen ?? chat.lastSeen,
+            presenceVisibility: payload.visibility ?? chat.presenceVisibility,
+          };
+        }),
+      );
+    };
+
+    const cleanupPresence = socketService.on("presence:changed", handlePresenceChanged);
+    const cleanupReady = socketService.on("presence:ready", () => {
+      refreshOnlineStatuses();
+    });
+
+    return () => {
+      cleanupPresence();
+      cleanupReady();
+    };
+  }, [refreshOnlineStatuses, user?.id]);
+
+  useEffect(() => {
+    if (chats.length === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      refreshOnlineStatuses();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [chats.length, refreshOnlineStatuses]);
 
   // Listen for local trigger to refresh the chat list (e.g. when accepting friend request)
   useEffect(() => {
@@ -996,8 +1121,7 @@ export const ChatList = ({
     ["file", "audio", "music"].includes(String(item?.type || "").toLowerCase()),
   );
   const voiceResults = globalMedia.filter((item: any) => String(item?.type || "").toLowerCase() === "voice");
-  const isGroupChat = (chat: any) =>
-    chat?.type === "group" || chat?.type === "GROUP" || chat?.isGroup === true;
+  const isGroupChat = isGroupChatItem;
 
   useEffect(() => {
     if (!searchContextMenu) return;

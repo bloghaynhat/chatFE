@@ -23,6 +23,9 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
   const isMine = chat.lastMessage?.senderId === user?.id || chat.lastMessage?.senderId === "me";
   const isSavedMessages = chat.type === "saved_messages" || chat.isSavedMessages || chat.isSelfChat;
+  const chatType = (chat as any).type;
+  const isGroup = chatType === "group" || chatType === "GROUP" || (chat as any).isGroup === true;
+  const showOnlineDot = !isSavedMessages && !isGroup && Boolean((chat as any).isOnline);
 
   return (
     <div
@@ -56,6 +59,15 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
           </span>
         ) : null}
+
+        {showOnlineDot && (
+          <span
+            className={`absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ${
+              isActive ? "ring-blue-500" : "ring-white dark:ring-slate-900"
+            }`}
+            title="Online"
+          />
+        )}
       </div>
 
       {!isCollapsed && (

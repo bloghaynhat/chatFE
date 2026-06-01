@@ -2,19 +2,66 @@ import { io, Socket } from "socket.io-client";
 import { authStorage } from "../runtime/storage";
 
 class SocketService {
+  rootSocket: Socket | null = null;
   messagesSocket: Socket | null = null;
   friendsSocket: Socket | null = null;
   blocksSocket: Socket | null = null;
   listeners: Map<string, Function[]> = new Map();
+  heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
+    this.rootSocket = null;
     this.messagesSocket = null;
     this.friendsSocket = null;
     this.blocksSocket = null;
     this.listeners = new Map();
+    this.heartbeatTimer = null;
   }
 
   // ================= INIT =================
+  async initRootSocket() {
+    if (this.rootSocket?.connected) {
+      return this.rootSocket;
+    }
+
+    const token = await authStorage.getItem("token");
+    if (!token) return null;
+
+    const serverUrl =
+      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
+      "http://localhost:3000";
+
+    this.rootSocket = io(serverUrl, {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    this.rootSocket.on("connect", () => {
+      console.log("[Root] connected:", this.rootSocket?.id);
+      this.startHeartbeat();
+      this.emit("presence:ready", {
+        namespace: "root",
+        socketId: this.rootSocket?.id,
+        timestamp: Date.now(),
+      });
+    });
+
+    this.rootSocket.on("disconnect", (reason) => {
+      console.log("[Root] disconnected:", reason);
+    });
+
+    this.rootSocket.on("connect_error", (err) => {
+      console.error("[Root] error:", err.message);
+    });
+
+    this.setupRootListeners();
+
+    return this.rootSocket;
+  }
+
   async initMessagesSocket() {
     if (this.messagesSocket?.connected) {
       return this.messagesSocket;
@@ -37,6 +84,12 @@ class SocketService {
 
     this.messagesSocket.on("connect", () => {
       console.log("[Messages] connected:", this.messagesSocket.id);
+      this.startHeartbeat();
+      this.emit("presence:ready", {
+        namespace: "messages",
+        socketId: this.messagesSocket?.id,
+        timestamp: Date.now(),
+      });
     });
 
     this.messagesSocket.on("disconnect", (reason) => {
@@ -123,12 +176,80 @@ class SocketService {
   }
 
   // ================= LISTENERS =================
+  setupRootListeners() {
+    if (!this.rootSocket) return;
+
+    this.rootSocket.on("user:online", (data) => {
+      this.emit("user:online", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? true,
+      });
+      this.emit("presence:changed", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? true,
+      });
+    });
+
+    this.rootSocket.on("user:offline", (data) => {
+      this.emit("user:offline", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? false,
+      });
+      this.emit("presence:changed", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? false,
+      });
+    });
+
+    this.rootSocket.on("online_status", (data) => {
+      this.emit("online_status", data);
+      this.emit("presence:changed", data);
+    });
+
+    this.rootSocket.on("user_presence", (data) => {
+      this.emit("user_presence", data);
+      this.emit("presence:changed", data);
+    });
+  }
+
   setupMessageListeners() {
     if (!this.messagesSocket) return;
 
     // Existing events
     this.messagesSocket.on("receiveMessage", (data) => {
       this.emit("receiveMessage", data);
+    });
+
+    this.messagesSocket.on("user:online", (data) => {
+      this.emit("user:online", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? true,
+      });
+      this.emit("presence:changed", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? true,
+      });
+    });
+
+    this.messagesSocket.on("user:offline", (data) => {
+      this.emit("user:offline", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? false,
+      });
+      this.emit("presence:changed", {
+        ...data,
+        isOnline: data?.isOnline ?? data?.online ?? false,
+      });
+    });
+
+    this.messagesSocket.on("online_status", (data) => {
+      this.emit("online_status", data);
+      this.emit("presence:changed", data);
+    });
+
+    this.messagesSocket.on("user_presence", (data) => {
+      this.emit("user_presence", data);
+      this.emit("presence:changed", data);
     });
 
     this.messagesSocket.on("message:edited", (data) => {
@@ -423,10 +544,51 @@ class SocketService {
 
   // ================= CONVENIENCE METHODS =================
   async connect() {
+    await this.initRootSocket();
     await this.initMessagesSocket();
     await this.initFriendsSocket();
     await this.initBlocksSocket();
     return this.messagesSocket;
+  }
+
+  startHeartbeat() {
+    if (this.heartbeatTimer) return;
+
+    this.heartbeatTimer = setInterval(() => {
+      this.rootSocket?.connected && this.rootSocket.emit("heartbeat");
+      this.messagesSocket?.connected && this.messagesSocket.emit("heartbeat");
+    }, 30000);
+  }
+
+  getOnlineStatus(userId: string): Promise<any> {
+    return new Promise(async (resolve, reject) => {
+      const socket = await this.initRootSocket();
+      if (!socket) {
+        reject(new Error("Socket not connected"));
+        return;
+      }
+
+      socket.emit("getOnlineStatus", { userId }, (res: any) => {
+        resolve(res);
+      });
+    });
+  }
+
+  getBatchOnlineStatus(userIds: string[]): Promise<any[]> {
+    const uniqueUserIds = Array.from(new Set((userIds || []).filter(Boolean)));
+    if (uniqueUserIds.length === 0) return Promise.resolve([]);
+
+    return new Promise(async (resolve, reject) => {
+      const socket = await this.initRootSocket();
+      if (!socket) {
+        reject(new Error("Socket not connected"));
+        return;
+      }
+
+      socket.emit("getBatchOnlineStatus", { userIds: uniqueUserIds }, (res: any) => {
+        resolve(Array.isArray(res?.statuses) ? res.statuses : []);
+      });
+    });
   }
 
   onNewMessage(callback) {
@@ -1106,6 +1268,16 @@ class SocketService {
 
   // ================= CLEANUP =================
   disconnect() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+
+    if (this.rootSocket) {
+      this.rootSocket.disconnect();
+      this.rootSocket = null;
+    }
+
     if (this.messagesSocket) {
       this.messagesSocket.disconnect();
       this.messagesSocket = null;
@@ -1129,6 +1301,7 @@ class SocketService {
 export const socketService = new SocketService();
 
 export const initSocket = async () => {
+  await socketService.initRootSocket();
   await socketService.initMessagesSocket();
   await socketService.initFriendsSocket();
   await socketService.initBlocksSocket();
