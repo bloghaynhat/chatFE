@@ -1114,6 +1114,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                 name: groupData.name ?? prev.name,
                 avatarUrl: groupData.avatarUrl ?? prev.avatarUrl,
                 membersCount: groupData.membersCount ?? prev.membersCount,
+                wallpaperUrl: groupData.wallpaperUrl ?? prev.wallpaperUrl,
               }));
             }
           } catch (e) {

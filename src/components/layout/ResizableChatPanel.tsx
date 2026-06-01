@@ -12,14 +12,16 @@ import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
 import { useAuth, useFriendManagement } from "../../hooks";
 import { useFriendRequestsContext } from "../../context/FriendContext";
-import { FiPlus,
+import {
+  FiPlus,
   FiBookmark,
   FiArchive,
   FiMoon,
   FiUsers,
   FiSettings,
   FiLogOut,
-  FiArrowLeft, } from "react-icons/fi";
+  FiArrowLeft,
+} from "react-icons/fi";
 import { MdOutlineGroups } from "react-icons/md";
 
 export const ResizableChatPanel = ({
@@ -89,7 +91,9 @@ export const ResizableChatPanel = ({
 
   // Ensure width bounds are respected when switching views
   useEffect(() => {
-    setWidth((currentWidth) => Math.max(minWidth, Math.min(currentWidth, maxWidth)));
+    setWidth((currentWidth) =>
+      Math.max(minWidth, Math.min(currentWidth, maxWidth)),
+    );
   }, [minWidth, maxWidth]);
 
   const handleMenuAction = (actionId) => {
@@ -308,14 +312,6 @@ export const ResizableChatPanel = ({
                   </p>
                 </div>
               </button>
-
-              <button
-                onClick={() => setIsNavigationOpen(false)}
-                className="mt-1 w-full flex items-center gap-2 rounded-lg p-2 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
-              >
-                <span className="text-xl leading-none">＋</span>
-                <span className="text-sm font-medium">Add Account</span>
-              </button>
             </div>
 
             <div className="py-1 bg-gray-100 dark:bg-slate-800">
@@ -342,14 +338,6 @@ export const ResizableChatPanel = ({
                     {archiveStats.unreadCount > 99 ? "99+" : archiveStats.unreadCount}
                   </span>
                 )}
-              </button>
-
-              <button
-                onClick={() => setIsNavigationOpen(false)}
-                className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center gap-3"
-              >
-                <FiMoon className="text-lg opacity-70" />
-                <span>My Stories</span>
               </button>
 
               <button
@@ -457,7 +445,10 @@ export const ResizableChatPanel = ({
               </div>
 
               {!isCollapsed && (
-                <QuickActionFab onClick={() => setIsQuickActionOpen(!isQuickActionOpen)} isOpen={isQuickActionOpen} />
+                <QuickActionFab
+                  onClick={() => setIsQuickActionOpen(!isQuickActionOpen)}
+                  isOpen={isQuickActionOpen}
+                />
               )}
 
               <QuickActionSheet
@@ -466,7 +457,10 @@ export const ResizableChatPanel = ({
                 onSelectAction={(actionId) => {
                   setIsQuickActionOpen(false);
 
-                  if (actionId === "new-message" || actionId === "add-contact") {
+                  if (
+                    actionId === "new-message" ||
+                    actionId === "add-contact"
+                  ) {
                     onViewChange("contacts");
                     return;
                   }
@@ -560,9 +554,9 @@ export const ResizableChatPanel = ({
           // Optional: Handle success callback
         }}
       />
-      
+
       {/* Create Group Modal */}
-      <CreateGroupModal 
+      <CreateGroupModal
         isOpen={showCreateGroupModal}
         onClose={() => setShowCreateGroupModal(false)}
       />

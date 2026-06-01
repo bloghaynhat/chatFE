@@ -4,8 +4,6 @@ import {
   FiMoreVertical,
   FiCalendar,
   FiX,
-  FiChevronRight,
-  FiClock,
   FiBellOff,
   FiVideo,
   FiCheckCircle,
@@ -31,15 +29,11 @@ const moreActions = [
     label: "Trích xuất công việc (AI)",
     icon: FiCheckCircle,
   },
-  { id: "auto-delete", label: "Auto-delete", icon: FiClock, hasChevron: true },
   { id: "mute", label: "Mute", icon: FiBellOff },
   { id: "call", label: "Call", icon: FiPhone },
   { id: "video-call", label: "Video Call", icon: FiVideo },
-  { id: "select-messages", label: "Select Messages", icon: FiCheckCircle },
   { id: "share-contact", label: "Share contact", icon: FiShare2 },
-  { id: "send-gift", label: "Send a Gift", icon: FiGift },
   { id: "block-user", label: "Block user", icon: FiLock },
-  { id: "disable-sharing", label: "Disable Sharing", icon: FiEyeOff },
   { id: "delete-chat", label: "Delete Chat", icon: FiTrash2, danger: true },
 ];
 
@@ -100,7 +94,9 @@ export const ChatHeader = ({
             "delete-chat",
           ].includes(action.id),
       )
-    : moreActions.filter((action) => (isGroup ? action.id !== "block-user" : true));
+    : moreActions.filter((action) =>
+        isGroup ? action.id !== "block-user" : true,
+      );
 
   const otherParticipant = (selectedChat?.participants || selectedChat?.members || []).find(
     (p: any) => p.userId !== currentUserId,
@@ -312,7 +308,7 @@ export const ChatHeader = ({
     if (action.id === "delete-chat") {
       onDeleteConversation?.();
     }
-    
+
     if (action.id === "share-contact") {
       onOpenContactPicker?.();
     }
@@ -464,23 +460,16 @@ export const ChatHeader = ({
                         ) : (
                           <ActionIcon
                             className={`text-[18px] shrink-0 ${
-                              action.id.startsWith("ai-")
-                                ? "text-blue-500"
-                                : ""
+                              action.id.startsWith("ai-") ? "text-blue-500" : ""
                             }`}
                           />
                         )}
 
                         <span className="font-semibold tracking-tight flex-1">
-                          {isExtractingTasks &&
-                          action.id === "ai-extract-tasks"
+                          {isExtractingTasks && action.id === "ai-extract-tasks"
                             ? "Đang trích xuất..."
                             : action.label}
                         </span>
-
-                        {action.hasChevron && (
-                          <FiChevronRight className="text-[16px] text-gray-400 dark:text-gray-500" />
-                        )}
                       </button>
                     );
                   })}
@@ -548,9 +537,7 @@ export const ChatHeader = ({
                         );
                       } else {
                         alert(
-                          `AI Found: ${
-                            result?.data?.summary || "No results"
-                          }`,
+                          `AI Found: ${result?.data?.summary || "No results"}`,
                         );
                       }
                     } catch (err) {

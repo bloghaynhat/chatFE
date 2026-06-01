@@ -11,6 +11,7 @@ export const RevokedMessage = ({
   isLastInSequence,
   senderName,
   senderAvatarStr,
+  wallpaperTheme,
 }) => {
   return (
     <div className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 mb-1`}>
@@ -22,16 +23,31 @@ export const RevokedMessage = ({
       <div
         ref={isFirst ? firstMessageRef : null}
         key={getMessageId(message, index)}
-        className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-[14px] shadow-sm flex flex-col relative px-3 py-2 border border-gray-100 dark:border-slate-700/50 bg-black/[0.02] dark:bg-white/[0.02] ${
+        className={`w-fit max-w-[74%] lg:max-w-[68%] rounded-2xl text-[14px] shadow-sm flex flex-col relative px-3 py-2 border ${
+          wallpaperTheme?.revoked ||
+          "border-gray-100 dark:border-slate-700/50 bg-black/[0.02] dark:bg-white/[0.02]"
+        } ${
           mine ? "self-end rounded-br-md" : "self-start rounded-bl-md"
         }`}
       >
         {isGroup && !mine && isFirstInSequence && (
-          <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5">
+          <span
+            className={`text-[12.5px] font-semibold mb-0.5 ${
+              wallpaperTheme?.sender || "text-blue-600 dark:text-blue-400"
+            }`}
+          >
             {senderName}
           </span>
         )}
-        <span className="text-gray-500 dark:text-gray-400 italic font-medium">Message recalled</span>
+        <span
+          className={`italic font-medium ${
+            wallpaperTheme?.revoked
+              ? ""
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          Message recalled
+        </span>
       </div>
     </div>
   );

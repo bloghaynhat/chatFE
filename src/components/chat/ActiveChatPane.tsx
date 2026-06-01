@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { userService } from "../../services/userService";
 import { conversationService } from "../../services/conversationService";
-import { blockUser, checkBlockStatus, checkFriendRequestStatus } from "../../services";
+import {
+  blockUser,
+  checkBlockStatus,
+  checkFriendRequestStatus,
+} from "../../services";
 import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
@@ -28,7 +32,14 @@ import { pollService } from "../../services/pollService";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
-import { FiImage, FiFile, FiGift, FiCheckCircle, FiBarChart2, FiUserPlus } from "react-icons/fi";
+import {
+  FiImage,
+  FiFile,
+  FiGift,
+  FiCheckCircle,
+  FiBarChart2,
+  FiUserPlus,
+} from "react-icons/fi";
 
 const mergeGroupSettings = (...sources: any[]) =>
   sources.reduce((merged, source) => {
@@ -117,7 +128,7 @@ export const ActiveChatPane = ({
     null,
   );
   const [effectiveGroupSettings, setEffectiveGroupSettings] = useState<any>(
-    selectedChat?.settings || selectedChat?.groupSettings || {},
+    mergeGroupSettings(selectedChat?.settings, selectedChat?.groupSettings),
   );
 
   const callV2 = useCallV2();
@@ -187,21 +198,34 @@ export const ActiveChatPane = ({
     const directRole = selectedChat?.role || selectedChat?.currentUserRole;
     if (directRole) return directRole;
 
-    const member = (selectedChat?.members || selectedChat?.participants || []).find(
+    const member = (
+      selectedChat?.members ||
+      selectedChat?.participants ||
+      []
+    ).find(
       (item: any) =>
-        String(item?.userId || item?.user?.id || item?.user?._id || item?.id || item?._id) ===
-        String(currentUserId),
+        String(
+          item?.userId ||
+            item?.user?.id ||
+            item?.user?._id ||
+            item?.id ||
+            item?._id,
+        ) === String(currentUserId),
     );
     if (member?.role) return member.role;
 
-    const ownerId = selectedChat?.ownerId || selectedChat?.owner?.id || selectedChat?.owner?._id;
+    const ownerId =
+      selectedChat?.ownerId ||
+      selectedChat?.owner?.id ||
+      selectedChat?.owner?._id;
     if (ownerId && String(ownerId) === String(currentUserId)) return "owner";
 
     const adminIds = [
       ...(Array.isArray(selectedChat?.admins) ? selectedChat.admins : []),
       ...(Array.isArray(selectedChat?.adminIds) ? selectedChat.adminIds : []),
     ].map((admin: any) => admin?.id || admin?._id || admin?.userId || admin);
-    if (adminIds.some((id: any) => String(id) === String(currentUserId))) return "admin";
+    if (adminIds.some((id: any) => String(id) === String(currentUserId)))
+      return "admin";
 
     return "member";
   }, [currentUserId, isGroupChat, selectedChat]);
@@ -212,10 +236,13 @@ export const ActiveChatPane = ({
   }, [currentUserGroupRole]);
 
   const groupMessageRestriction = useMemo(() => {
-    const whoCanSendMessages =
-      effectiveGroupSettings?.whoCanSendMessages;
+    const whoCanSendMessages = effectiveGroupSettings?.whoCanSendMessages;
 
-    if (isGroupChat && whoCanSendMessages === "admins" && !isCurrentUserGroupAdmin) {
+    if (
+      isGroupChat &&
+      whoCanSendMessages === "admins" &&
+      !isCurrentUserGroupAdmin
+    ) {
       return "Chỉ trưởng nhóm và phó nhóm có thể nhắn tin";
     }
 
@@ -321,7 +348,9 @@ export const ActiveChatPane = ({
       target?.id ||
       target?._id ||
       (selectedChat?.pairKey
-        ? selectedChat.pairKey.split("_").find((id: string) => id !== currentUserId)
+        ? selectedChat.pairKey
+            .split("_")
+            .find((id: string) => id !== currentUserId)
         : null) ||
       null
     );
@@ -335,7 +364,9 @@ export const ActiveChatPane = ({
 
     try {
       const [blockStatus, relationshipStatus] = await Promise.all([
-        checkBlockStatus(privateTargetUserId).catch(() => ({ isBlocked: false })),
+        checkBlockStatus(privateTargetUserId).catch(() => ({
+          isBlocked: false,
+        })),
         checkFriendRequestStatus(privateTargetUserId).catch(() => null),
       ]);
 
@@ -347,12 +378,18 @@ export const ActiveChatPane = ({
           ? (relationshipStatus as any).data
           : (relationshipStatus as any)?.data || relationshipStatus || {};
 
-      if (blockStatus?.isBlocked || relationshipPayload?.direction === "BLOCKING") {
+      if (
+        blockStatus?.isBlocked ||
+        relationshipPayload?.direction === "BLOCKING"
+      ) {
         setChatRestriction("You blocked this user");
         return;
       }
 
-      if (relationshipPayload?.status === "BLOCKED" && relationshipPayload?.direction === "BLOCKED_BY") {
+      if (
+        relationshipPayload?.status === "BLOCKED" &&
+        relationshipPayload?.direction === "BLOCKED_BY"
+      ) {
         setChatRestriction("You can't message this user");
         return;
       }
@@ -372,7 +409,10 @@ export const ActiveChatPane = ({
     void socketService.initBlocksSocket();
 
     const handleBlockStatusChanged = (event: any) => {
-      if (!event?.detail?.userId || event.detail.userId === privateTargetUserId) {
+      if (
+        !event?.detail?.userId ||
+        event.detail.userId === privateTargetUserId
+      ) {
         refreshChatRestriction();
       }
     };
@@ -383,11 +423,17 @@ export const ActiveChatPane = ({
       }
     };
 
-    const unsubscribeSocket = socketService.on("blockStatus:changed", handleSocketBlockStatusChanged);
+    const unsubscribeSocket = socketService.on(
+      "blockStatus:changed",
+      handleSocketBlockStatusChanged,
+    );
     window.addEventListener("blockStatus:changed", handleBlockStatusChanged);
     return () => {
       unsubscribeSocket();
-      window.removeEventListener("blockStatus:changed", handleBlockStatusChanged);
+      window.removeEventListener(
+        "blockStatus:changed",
+        handleBlockStatusChanged,
+      );
     };
   }, [privateTargetUserId, refreshChatRestriction]);
 
@@ -409,7 +455,12 @@ export const ActiveChatPane = ({
         inviteeIds.length > 0 ? inviteeIds : undefined,
         isGroupChat,
         callPeerInfo,
-        isGroupChat ? callPeerInfo?.name || selectedChat?.name || selectedChat?.displayName || null : null,
+        isGroupChat
+          ? callPeerInfo?.name ||
+              selectedChat?.name ||
+              selectedChat?.displayName ||
+              null
+          : null,
       );
     },
     [
@@ -425,7 +476,9 @@ export const ActiveChatPane = ({
   const handleBlockUser = useCallback(async () => {
     if (!privateTargetUserId) return;
 
-    const confirmed = window.confirm("Block this user? They will not be able to message or call you.");
+    const confirmed = window.confirm(
+      "Block this user? They will not be able to message or call you.",
+    );
     if (!confirmed) return;
 
     try {
@@ -540,7 +593,13 @@ export const ActiveChatPane = ({
 
   useEffect(() => {
     const targetMessageId = selectedChat?.searchTargetMessageId;
-    if (!targetMessageId || !selectedConversationId || messages.length === 0 || isLoading) return;
+    if (
+      !targetMessageId ||
+      !selectedConversationId ||
+      messages.length === 0 ||
+      isLoading
+    )
+      return;
 
     const targetKey = `${selectedConversationId}:${targetMessageId}`;
     if (lastSearchTargetRef.current === targetKey) return;
@@ -804,16 +863,6 @@ export const ActiveChatPane = ({
       icon: FiUserPlus,
       onClick: () => setIsContactPickerOpen(true),
     },
-    {
-      id: "gift-premium",
-      label: "Gift Premium",
-      icon: FiGift,
-    },
-    {
-      id: "checklist",
-      label: "Checklist",
-      icon: FiCheckCircle,
-    },
   ];
 
   const visibleAttachActions = attachActions.filter((action: any) => {
@@ -826,7 +875,10 @@ export const ActiveChatPane = ({
     if (!selectedConversationId) return;
     setIsCreatingPoll(true);
     try {
-      const result = await pollService.createPoll(selectedConversationId, payload);
+      const result = await pollService.createPoll(
+        selectedConversationId,
+        payload,
+      );
       const poll = result?.poll || result;
       const message = result?.message || poll?.timelineMessage;
       if (message) onPollCreated?.(message);
@@ -940,7 +992,9 @@ export const ActiveChatPane = ({
   }, [selectedChat?.id]);
 
   const inputDisabledReason = chatRestriction || groupMessageRestriction;
-  const inputDisabledTone = groupMessageRestriction && !chatRestriction ? "neutral" : "danger";
+  const inputDisabledTone =
+    groupMessageRestriction && !chatRestriction ? "neutral" : "danger";
+  const wallpaperUrl = selectedChat?.wallpaperUrl || null;
 
   const handleInputChange = (event) => {
     if (inputDisabledReason) return;
@@ -1132,6 +1186,7 @@ export const ActiveChatPane = ({
         currentUserId={currentUserId}
         typingUsers={typingUsers}
         selectedChat={selectedChat}
+        wallpaperUrl={wallpaperUrl}
         firstMessageRef={firstMessageRef}
         messagesEndRef={messagesEndRef}
         handleContextMenu={handleContextMenu}

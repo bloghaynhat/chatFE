@@ -2,9 +2,12 @@ import React from "react";
 import {
   FiAtSign,
   FiBell,
+  FiImage,
   FiInfo as FiInfoIcon,
   FiPhone,
+  FiTrash2,
 } from "react-icons/fi";
+import { WALLPAPER_PRESETS } from "../../../../constants/wallpaperPresets";
 
 interface RightSidebarSettingsProps {
   isGroup: boolean;
@@ -13,6 +16,11 @@ interface RightSidebarSettingsProps {
   setNotificationsEnabled: (enabled: boolean) => void;
   onOpenInviteLink?: () => void;
   canOpenInviteLink?: boolean;
+  wallpaperUrl?: string | null;
+  isWallpaperUpdating?: boolean;
+  onChangeWallpaper?: () => void;
+  onRemoveWallpaper?: () => void;
+  onSelectWallpaperPreset?: (value: string | null) => void;
 }
 
 const formatProfileValue = (value: any) => {
@@ -29,6 +37,11 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
   setNotificationsEnabled,
   onOpenInviteLink,
   canOpenInviteLink = true,
+  wallpaperUrl,
+  isWallpaperUpdating = false,
+  onChangeWallpaper,
+  onRemoveWallpaper,
+  onSelectWallpaperPreset,
 }) => {
   const profileRows = targetUserDetails
     ? [
@@ -85,6 +98,72 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
                 ? "Tap to manage group invite link"
                 : "Only admins or permitted members can invite"}
             </div>
+          </div>
+        </button>
+      )}
+
+      <button
+        type="button"
+        disabled={isWallpaperUpdating}
+        onClick={onChangeWallpaper}
+        className="w-full flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group text-left disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+      >
+        <FiImage className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+            {isWallpaperUpdating ? "Đang cập nhật hình nền..." : "Đổi hình nền"}
+          </div>
+          <div className="text-[13px] text-gray-500 truncate">
+            JPG, PNG hoặc WebP, tối đa 5MB
+          </div>
+        </div>
+      </button>
+
+      <div className="px-4 py-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+            Màu nền
+          </span>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {WALLPAPER_PRESETS.map((preset) => {
+            const isSelected = preset.value === (wallpaperUrl || null);
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                disabled={isWallpaperUpdating}
+                onClick={() => onSelectWallpaperPreset?.(preset.value)}
+                className={`group flex flex-col items-center gap-1.5 rounded-lg p-1.5 text-center transition hover:bg-gray-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  isSelected
+                    ? "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                    : ""
+                }`}
+                title={preset.label}
+              >
+                <span
+                  className="block h-10 w-full rounded-md border border-gray-200 dark:border-slate-700 shadow-sm"
+                  style={{ backgroundImage: preset.preview }}
+                />
+                <span className="max-w-full truncate text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                  {preset.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {wallpaperUrl && (
+        <button
+          type="button"
+          disabled={isWallpaperUpdating}
+          onClick={onRemoveWallpaper}
+          className="w-full flex items-center px-4 py-3 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer transition-colors group text-left disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+        >
+          <FiTrash2 className="text-red-500 text-xl mr-4" />
+          <div className="text-[15px] font-medium text-red-600 dark:text-red-400">
+            Xóa hình nền
           </div>
         </button>
       )}

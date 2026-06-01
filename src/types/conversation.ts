@@ -164,6 +164,7 @@ export interface Conversation {
   isSavedMessages?: boolean;
   description?: string;
   pendingMembers?: string[]; // User IDs pending approval
+  wallpaperUrl?: string | null;
 }
 
 export interface ConversationResponse {
