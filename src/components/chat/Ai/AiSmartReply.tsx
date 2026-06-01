@@ -11,13 +11,16 @@ interface AiSmartReplyProps {
 }
 
 const SmartReplySkeleton = () => (
-  <div className="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar mask-edges animate-in slide-in-from-bottom-2 duration-300">
-    {[1, 2, 3].map((i) => (
-      <div
-        key={i}
-        className="h-8 w-24 bg-gray-200/60 rounded-full animate-pulse flex-shrink-0"
-      />
-    ))}
+  <div className="mx-auto mb-2 flex w-full max-w-4xl gap-2 animate-in slide-in-from-bottom-2 duration-300">
+    <div className="flex min-h-[42px] flex-1 gap-2 overflow-x-auto rounded-[22px] border border-white/55 bg-white/55 p-1.5 shadow-sm backdrop-blur-sm no-scrollbar mask-edges dark:border-slate-700/60 dark:bg-slate-900/35">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="h-8 w-28 flex-shrink-0 animate-pulse rounded-full bg-white/70 dark:bg-slate-700/70"
+        />
+      ))}
+    </div>
+    <div className="h-11 w-11 shrink-0 lg:h-12 lg:w-12" />
   </div>
 );
 
@@ -34,38 +37,43 @@ const SmartReplyList: React.FC<SmartReplyListProps> = ({
   onSelectReply,
   onClose,
 }) => (
-  <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto no-scrollbar mask-edges whitespace-nowrap bg-white/50 backdrop-blur-sm border-t border-gray-100 animate-in slide-in-from-bottom-2 duration-300">
-    <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 shadow-sm border border-blue-100">
-      <Sparkles className="w-3.5 h-3.5" /> AI
-    </div>
-    {error && (
-      <span className="text-xs text-gray-500 flex-shrink-0">Gợi ý nhanh</span>
-    )}
+  <div className="mx-auto mb-2 flex w-full max-w-4xl gap-2 animate-in slide-in-from-bottom-2 duration-300">
+    <div className="flex min-h-[42px] flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap rounded-[22px] border border-white/55 bg-white/55 p-1.5 shadow-sm backdrop-blur-sm no-scrollbar mask-edges dark:border-slate-700/60 dark:bg-slate-900/35">
+      <div className="flex h-8 flex-shrink-0 items-center gap-1.5 rounded-full border border-blue-100 bg-white/95 px-3 text-xs font-semibold text-blue-600 shadow-sm dark:border-blue-500/20 dark:bg-slate-800/95 dark:text-blue-300">
+        <Sparkles className="h-3.5 w-3.5" /> AI
+      </div>
+      {error && (
+        <span className="flex-shrink-0 text-xs text-gray-500 dark:text-slate-400">
+          Gợi ý nhanh
+        </span>
+      )}
 
-    {replies.map((reply, index) => (
+      {replies.map((reply, index) => (
+        <button
+          key={`${reply}-${index}`}
+          type="button"
+          onClick={() => {
+            onSelectReply(reply);
+            onClose();
+          }}
+          className="flex h-8 max-w-[280px] flex-shrink-0 items-center gap-1.5 rounded-full border border-white/90 bg-white/95 px-4 text-[14px] text-gray-700 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 active:scale-95 dark:border-slate-700/90 dark:bg-slate-800/95 dark:text-slate-100 dark:hover:border-blue-500/40 dark:hover:bg-slate-700"
+        >
+          <span className="truncate">{reply}</span>
+          <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+        </button>
+      ))}
+
+      <div className="flex-1" />
       <button
-        key={`${reply}-${index}`}
         type="button"
-        onClick={() => {
-          onSelectReply(reply);
-          onClose();
-        }}
-        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white border border-blue-100 text-[14px] text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-all shadow-sm flex-shrink-0 active:scale-95"
+        onClick={onClose}
+        className="ml-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/90 text-gray-400 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-700 dark:bg-slate-800/95 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+        title="Ẩn gợi ý AI"
       >
-        {reply}
-        <ArrowRight className="w-3.5 h-3.5 opacity-50" />
+        <X className="h-4 w-4" />
       </button>
-    ))}
-
-    <div className="flex-1" />
-    <button
-      type="button"
-      onClick={onClose}
-      className="p-1.5 bg-gray-50 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0 ml-2"
-      title="Ẩn gợi ý AI"
-    >
-      <X className="w-4 h-4" />
-    </button>
+    </div>
+    <div className="h-11 w-11 shrink-0 lg:h-12 lg:w-12" />
   </div>
 );
 

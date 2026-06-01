@@ -25,12 +25,12 @@ const ToneOptionsGrid: React.FC<ToneOptionsGridProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => onSelectTone(tone.id)}
-        className="flex flex-col items-center justify-center p-3 border border-gray-100 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all text-sm group disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:border-gray-100"
+        className="group flex flex-col items-center justify-center rounded-2xl border border-white/80 bg-white/90 p-3 text-sm shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/80 disabled:hover:bg-white/90 dark:border-slate-700 dark:bg-slate-800/95 dark:hover:border-blue-500/40 dark:hover:bg-slate-700"
       >
         <span className={`text-xl mb-1 group-hover:scale-110 transition-transform ${tone.iconClassName}`}>
           {tone.icon}
         </span>
-        <span className="font-medium text-gray-700 group-hover:text-blue-700">
+        <span className="font-medium text-gray-700 group-hover:text-blue-700 dark:text-slate-100 dark:group-hover:text-blue-300">
           {tone.label}
         </span>
       </button>
@@ -39,16 +39,16 @@ const ToneOptionsGrid: React.FC<ToneOptionsGridProps> = ({
 );
 
 const EmptyToneState = () => (
-  <div className="text-center p-4 text-gray-500 text-sm flex flex-col items-center">
-    <MessageSquare className="w-6 h-6 mb-2 text-gray-300" />
+  <div className="flex flex-col items-center p-4 text-center text-sm text-gray-500 dark:text-slate-400">
+    <MessageSquare className="mb-2 h-6 w-6 text-gray-300 dark:text-slate-500" />
     Vui lòng nhập nội dung cần viết lại...
   </div>
 );
 
 const ToneLoadingState = () => (
-  <div className="p-6 flex flex-col items-center justify-center gap-3">
-    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    <span className="text-sm text-gray-500">AI đang phân tích...</span>
+  <div className="flex flex-col items-center justify-center gap-3 p-6">
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+    <span className="text-sm text-gray-500 dark:text-slate-400">AI đang phân tích...</span>
   </div>
 );
 
@@ -64,21 +64,21 @@ const TonePreview: React.FC<TonePreviewProps> = ({
   onCancel,
 }) => (
   <div className="space-y-3">
-    <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-800 relative">
+    <div className="relative rounded-2xl bg-white/90 p-3 text-sm text-gray-800 shadow-sm dark:bg-slate-800/95 dark:text-slate-100">
       {adjustedText}
     </div>
     <div className="flex gap-2">
       <button
         type="button"
         onClick={onApply}
-        className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+        className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#2ea6f3] py-2 text-sm font-medium text-white transition-colors hover:bg-[#1f97e5]"
       >
         <Check className="w-4 h-4" /> Dùng
       </button>
       <button
         type="button"
         onClick={onCancel}
-        className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+        className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/90 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
       >
         <RefreshCw className="w-4 h-4" /> Hủy
       </button>
@@ -109,21 +109,21 @@ const TonePanel: React.FC<TonePanelProps> = ({
   onCancelPreview,
   onClose,
 }) => (
-  <div className="absolute bottom-12 right-0 mb-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-    <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50">
-      <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm">
-        <Sparkles className="w-4 h-4 text-blue-600" /> AI Viết lại
+  <div className="absolute bottom-12 right-0 z-50 mb-2 w-72 overflow-hidden rounded-[22px] border border-white/80 bg-white/80 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 dark:border-slate-700/80 dark:bg-slate-900/85">
+    <div className="flex items-center justify-between px-3 py-2.5">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-slate-100">
+        <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-300" /> AI Viết lại
       </h3>
       <button
         type="button"
         onClick={onClose}
-        className="text-gray-400 hover:text-gray-600 p-1"
+        className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/80 hover:text-gray-700 dark:hover:bg-slate-800 dark:hover:text-white"
       >
-        <X className="w-4 h-4" />
+        <X className="h-4 w-4" />
       </button>
     </div>
 
-    <div className="p-2">
+    <div className="p-2 pt-0">
       {!hasText ? (
         <EmptyToneState />
       ) : adjustedText ? (
@@ -137,7 +137,7 @@ const TonePanel: React.FC<TonePanelProps> = ({
       ) : (
         <div className="space-y-2">
           {error && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
               {error}
             </div>
           )}
@@ -182,10 +182,10 @@ export const AiToneAdjustMenu: React.FC<AiToneAdjustMenuProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors focus:outline-none"
+        className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-blue-600 focus:outline-none dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-blue-300"
         title="AI Viết lại"
       >
-        <Sparkles className="w-5 h-5" />
+        <Sparkles className="h-5 w-5" />
       </button>
 
       {isOpen && (
