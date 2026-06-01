@@ -1,4 +1,4 @@
-import { FiCheck, FiDownload, FiEye } from "react-icons/fi";
+import { FiDownload } from "react-icons/fi";
 import { PhotoView } from "react-photo-view";
 import { getMessageTime } from "../../../../utils/chatUtils";
 
@@ -13,19 +13,19 @@ export const MessageMedia = ({
   setPreviewVideoUrl,
 }) => {
   return (
-    <div className={`p-2 cursor-pointer overflow-hidden rounded-lg relative`}>
+    <div className="p-1.5 cursor-pointer overflow-hidden rounded-xl relative">
       {mediaItems.length === 1 ? (
         images.includes(mediaItems[0]) ? (
           <PhotoView src={mediaItems[0].url || mediaItems[0].preview || mediaItems[0]}>
             <img
               src={mediaItems[0].url || mediaItems[0].preview || mediaItems[0]}
               alt="Message image"
-              className="w-full max-w-[340px] max-h-[400px] rounded-lg object-contain"
+              className="w-full max-w-[340px] max-h-[400px] rounded-[14px] object-contain"
             />
           </PhotoView>
         ) : (
           <div
-            className="relative w-full rounded-lg bg-black overflow-hidden group flex justify-center items-center cursor-pointer"
+            className="relative w-full rounded-[14px] bg-black overflow-hidden group flex justify-center items-center cursor-pointer"
             onClick={() =>
               setPreviewVideoUrl(
                 mediaItems[0].url || mediaItems[0].preview || (typeof mediaItems[0] === "string" ? mediaItems[0] : ""),
@@ -70,7 +70,7 @@ export const MessageMedia = ({
         )
       ) : (
         <div
-          className={`grid gap-0.5 rounded-lg overflow-hidden max-w-[340px] ${
+          className={`grid gap-0.5 rounded-[14px] overflow-hidden max-w-[340px] ${
             mediaItems.length === 2 || mediaItems.length === 4
               ? "grid-cols-2"
               : mediaItems.length === 3

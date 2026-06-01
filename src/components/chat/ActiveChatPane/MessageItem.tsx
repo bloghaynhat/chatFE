@@ -294,8 +294,14 @@ export const MessageItem = ({
 
   return (
     <div
-      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-2.5" : "mb-[2px]"} group`}
+      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-1.5" : "mb-[2px]"} group`}
     >
+      <style>{`
+        @keyframes reactionChipIn {
+          from { opacity: 0; transform: translateY(-3px) scale(0.88); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
       {isGroup && !mine && (
         <div
           className="w-7 h-7 rounded-full shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold shadow-sm mb-0.5"
@@ -322,7 +328,7 @@ export const MessageItem = ({
         key={getMessageId(message, index)}
         data-message-id={getMessageId(message, index)}
         onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[8px] rounded-2xl text-sm flex flex-col relative pb-2 ${
+        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-sm flex flex-col relative overflow-hidden ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
@@ -337,7 +343,7 @@ export const MessageItem = ({
           isFirstInSequence &&
           !isForwarded &&
           !isJumboEmoji && (
-            <span className="text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[5px] pb-0 block leading-tight">
+            <span className="text-[12px] font-semibold text-blue-600 dark:text-blue-400 px-3 pt-[6px] pb-0 block leading-tight">
               {senderName}
             </span>
           )}
@@ -397,15 +403,15 @@ export const MessageItem = ({
 
         {/* Bottom area: Reactions + Timestamp */}
         <div
-          className={`flex items-end gap-2 px-2 pb-2 flex-row flex-wrap justify-between ${
+          className={`flex items-end gap-2 px-[7px] flex-row flex-wrap justify-between ${
             (!message.reactions || message.reactions.length === 0) && !isPoll
-              ? "absolute bottom-0 right-[4px] w-auto pt-2"
-              : "w-full pt-1"
+              ? "absolute bottom-[7px] right-[6px] w-auto pt-0 pb-0"
+              : "w-full pt-1 pb-1"
           } z-10`}
         >
           {/* Render selected reactions */}
           {message?.reactions && message.reactions.length > 0 && (
-            <div className={`flex flex-wrap gap-1 max-w-[390px] justify-start`}>
+            <div className="flex max-w-[390px] flex-wrap justify-start gap-1">
               {message.reactions.map((r, i) => {
                 const hasMyReaction = r.users?.some(
                   (u) => String(u._id || u.id) === String(currentUserId),
@@ -436,13 +442,24 @@ export const MessageItem = ({
                         y: e.clientY,
                       });
                     }}
-                    className={`rounded-[100px] px-2 py-[3px] flex items-center space-x-1 cursor-pointer border shadow-sm transition-colors ${hasMyReaction ? (mine ? "bg-[#55b25f] border-[#55b25f] dark:bg-[#489951] dark:border-[#489951]" : "bg-[#3895e6] border-[#3895e6] dark:bg-[#307bbd] dark:border-[#307bbd]") : "bg-gray-50/90 border-gray-200 dark:bg-slate-700 dark:border-slate-600"}`}
-                    style={{ fontSize: "12.5px", lineHeight: "20px" }}
+                    className={`flex cursor-pointer items-center space-x-1 rounded-full border px-1.5 py-[2px] shadow-sm backdrop-blur-sm transition-all duration-150 hover:-translate-y-0.5 hover:scale-[1.04] active:scale-95 ${
+                      hasMyReaction
+                        ? mine
+                          ? "border-emerald-500/40 bg-emerald-500/90 text-white shadow-emerald-900/10 dark:border-emerald-400/30 dark:bg-emerald-600/85"
+                          : "border-blue-500/40 bg-blue-500/90 text-white shadow-blue-900/10 dark:border-blue-400/30 dark:bg-blue-600/85"
+                        : "border-white/70 bg-white/90 text-gray-700 shadow-slate-900/10 dark:border-slate-600/70 dark:bg-slate-700/90 dark:text-gray-100"
+                    }`}
+                    style={{
+                      fontSize: "12px",
+                      lineHeight: "18px",
+                      animation: "reactionChipIn 180ms cubic-bezier(0.16, 1, 0.3, 1) both",
+                      animationDelay: `${i * 22}ms`,
+                    }}
                   >
-                    <span>{r.emoji}</span>
+                    <span className="leading-none">{r.emoji}</span>
                     {message.reactions.length >= 3 && (
                       <span
-                        className={`font-semibold text-[11.5px] ${hasMyReaction ? "text-white" : "text-gray-600 dark:text-gray-300"}`}
+                        className={`font-semibold text-[11px] ${hasMyReaction ? "text-white" : "text-gray-600 dark:text-gray-300"}`}
                         style={{ paddingLeft: "1px", paddingRight: "1px" }}
                       >
                         {r.count}
@@ -453,7 +470,7 @@ export const MessageItem = ({
                         {r.users?.slice(0, 3).map((u, idx) => (
                           <div
                             key={idx}
-                            className={`w-[20px] h-[20px] rounded-full overflow-hidden border bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 shrink-0 ${hasMyReaction ? (mine ? "border-[#55b25f] dark:border-[#489951]" : "border-[#3895e6] dark:border-[#307bbd]") : "border-white dark:border-slate-800"}`}
+                            className={`w-[18px] h-[18px] rounded-full overflow-hidden border bg-gray-200 flex items-center justify-center text-[8.5px] font-bold text-gray-500 shrink-0 ${hasMyReaction ? (mine ? "border-emerald-500 dark:border-emerald-600" : "border-blue-500 dark:border-blue-600") : "border-white dark:border-slate-800"}`}
                           >
                             {u.avatar || u.avatarUrl || u.profilePicture ? (
                               <img
@@ -480,7 +497,7 @@ export const MessageItem = ({
 
           {/* Render Timestamp */}
           <div
-            className={`shrink-0 flex items-center justify-end gap-[4px] font-medium tracking-tight ml-auto ${
+            className={`shrink-0 flex items-center justify-end gap-[4px] font-medium tracking-tight leading-none ml-auto ${
               isJumboEmoji ||
               (onlyImagesOrVideos &&
                 (!message.reactions || message.reactions.length === 0))
