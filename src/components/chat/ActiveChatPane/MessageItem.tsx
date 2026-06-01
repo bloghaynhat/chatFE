@@ -36,6 +36,7 @@ export const MessageItem = ({
   isFirstInSequence = true,
   isLastInSequence = true,
   handleContextMenu,
+  activeContextMessageId,
   setPreviewVideoUrl,
   currentUserId,
   onNavigateToMessage,
@@ -277,6 +278,10 @@ export const MessageItem = ({
 
   const senderAvatarStr =
     senderName ? senderName.charAt(0).toUpperCase() : "?";
+  const currentMessageId = getMessageId(message, index);
+  const isContextActive =
+    activeContextMessageId &&
+    String(activeContextMessageId) === String(currentMessageId);
 
   if (message.isRevoked || message.deletedAt) {
     return (
@@ -298,7 +303,12 @@ export const MessageItem = ({
 
   return (
     <div
-      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-1.5" : "mb-[2px]"} group`}
+      className={`telegram-message-row w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-1.5" : "mb-[2px]"} group ${
+        isContextActive ? "telegram-message-row-active" : ""
+      }`}
+      data-message-row="true"
+      data-message-id={currentMessageId}
+      onContextMenu={(e) => handleContextMenu(e, message)}
     >
       <style>{`
         @keyframes reactionChipIn {
@@ -329,9 +339,8 @@ export const MessageItem = ({
       <div
         ref={isFirst ? firstMessageRef : null}
         id={`message-${message.id || message._id}`}
-        key={getMessageId(message, index)}
-        data-message-id={getMessageId(message, index)}
-        onContextMenu={(e) => handleContextMenu(e, message)}
+        key={currentMessageId}
+        data-message-id={currentMessageId}
         className={`w-fit max-w-[464px] mx-[6px] text-[14px] md:text-[15px] flex flex-col relative ${
           isJumboEmoji
             ? ""

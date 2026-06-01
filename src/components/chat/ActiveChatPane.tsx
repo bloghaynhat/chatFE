@@ -1211,6 +1211,12 @@ export const ActiveChatPane = ({
         firstMessageRef={firstMessageRef}
         messagesEndRef={messagesEndRef}
         handleContextMenu={handleContextMenu}
+        activeContextMessageId={
+          contextMenu?.message?.id ||
+          contextMenu?.message?._id ||
+          contextMenu?.message?.messageId ||
+          null
+        }
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
         onPollUpdated={onPollUpdated}
