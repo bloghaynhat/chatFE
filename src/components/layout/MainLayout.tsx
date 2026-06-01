@@ -1143,19 +1143,23 @@ const MainLayout = ({ children }: { children?: any }) => {
     [isOpeningConversation, openingChatId],
   );
 
+  const findSavedMessagesConversation = useCallback(async () => {
+    const conversations = await conversationService.getConversations();
+    return (Array.isArray(conversations) ? conversations : []).find(
+      (conversation: any) =>
+        conversation?.type === "saved_messages" ||
+        conversation?.isSavedMessages ||
+        conversation?.isSelfChat ||
+        conversation?.pairKey === `self_${user?.id}`,
+    );
+  }, [user?.id]);
+
   const openSavedMessages = useCallback(async () => {
     setActiveView("chats");
     setChatError("");
 
     try {
-      const conversations = await conversationService.getConversations();
-      const savedMessages = (Array.isArray(conversations) ? conversations : []).find(
-        (conversation: any) =>
-          conversation?.type === "saved_messages" ||
-          conversation?.isSavedMessages ||
-          conversation?.isSelfChat ||
-          conversation?.pairKey === `self_${user?.id}`,
-      );
+      const savedMessages = await findSavedMessagesConversation();
 
       if (!savedMessages) {
         setChatError("Saved Messages not found.");
@@ -1173,7 +1177,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       console.error("Failed to open Saved Messages:", error);
       setChatError("Could not open Saved Messages.");
     }
-  }, [openChatByRow, user?.id]);
+  }, [findSavedMessagesConversation, openChatByRow]);
 
   const retryOpenCurrentChat = useCallback(() => {
     if (!selectedChat) return;
@@ -1279,12 +1283,18 @@ const MainLayout = ({ children }: { children?: any }) => {
 
   const handleForwardToTarget = useCallback(
     (targetChat, msg) => {
+      if (targetChat?.isSavedMessages || targetChat?.type === "saved_messages") {
+        void openSavedMessages();
+        setForwardingMessage(msg);
+        return;
+      }
+
       // Navigate to user's chat
       openChatByRow(targetChat);
       // Set the forwarding message
       setForwardingMessage(msg);
     },
-    [openChatByRow],
+    [openChatByRow, openSavedMessages],
   );
 
   const clearForwardingMessage = useCallback(() => {
@@ -1297,6 +1307,15 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     const targetConversationIds = await Promise.all(
       targetChats.map(async (targetChat) => {
+        if (targetChat?.isSavedMessages || targetChat?.type === "saved_messages") {
+          const savedMessages = await findSavedMessagesConversation();
+          const savedConversationId = resolveConversationId(savedMessages);
+          if (!savedConversationId) {
+            throw new Error("Saved Messages not found");
+          }
+          return savedConversationId;
+        }
+
         if (targetChat.conversationId || targetChat.id?.startsWith?.("conv_")) {
           return targetChat.conversationId || targetChat.id;
         }
@@ -1331,7 +1350,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     toast.success("Đã chuyển tiếp tin nhắn");
     window.dispatchEvent(new Event("chatList:refresh"));
-  }, [selectedConversationId]);
+  }, [findSavedMessagesConversation, selectedConversationId]);
 
   const handleSendMessage = async (payloadOrText, mediaFiles = []) => {
     let conversationId = selectedConversationId || selectedChat?.id;
@@ -1998,6 +2017,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           openingChatId={openingChatId}
           onSelectChat={openChatByRow}
           onForwardToTarget={handleForwardToTarget}
+          onForwardMessages={handleForwardMessagesDirect}
           onOpenSavedMessages={openSavedMessages}
         />
 

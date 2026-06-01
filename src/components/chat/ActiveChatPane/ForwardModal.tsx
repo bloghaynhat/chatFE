@@ -2,6 +2,15 @@ import { useMemo, useState } from "react";
 import { FiX, FiBookmark, FiSearch, FiCheck, FiSend } from "react-icons/fi";
 import { toast } from "sonner";
 
+const SAVED_MESSAGES_TARGET = {
+  id: "__saved_messages__",
+  conversationId: null,
+  type: "saved_messages",
+  isSavedMessages: true,
+  isSelfChat: true,
+  name: "Saved Messages",
+};
+
 export const ForwardModal = ({
   forwardModalVisible,
   setForwardModalVisible,
@@ -15,6 +24,12 @@ export const ForwardModal = ({
   const [searchValue, setSearchValue] = useState("");
   const [selectedTargets, setSelectedTargets] = useState([]);
   const [isSending, setIsSending] = useState(false);
+
+  const savedMessagesMatchesSearch = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return true;
+    return "saved messages forward here to save tin nhan da luu".includes(query);
+  }, [searchValue]);
 
   const filteredFriends = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -33,10 +48,20 @@ export const ForwardModal = ({
     });
   }, [friends, searchValue]);
 
-  const getTargetUserId = (friend) =>
-    friend.friendUserId || friend.userId || friend.id || friend._id;
+  const getTargetKey = (target) => {
+    if (target?.isSavedMessages || target?.type === "saved_messages") {
+      return SAVED_MESSAGES_TARGET.id;
+    }
+    return target?.friendUserId || target?.userId || target?.id || target?._id;
+  };
+
+  const getTargetUserId = (friend) => getTargetKey(friend);
 
   const buildTargetChat = (friend) => {
+    if (friend?.isSavedMessages || friend?.type === "saved_messages") {
+      return SAVED_MESSAGES_TARGET;
+    }
+
     const targetUserId = getTargetUserId(friend);
     return {
       id: friend.conversationId || `temp-${targetUserId}`,
@@ -53,12 +78,42 @@ export const ForwardModal = ({
   };
 
   const toggleTarget = (friend) => {
-    const targetUserId = getTargetUserId(friend);
+    const targetKey = getTargetKey(friend);
     setSelectedTargets((prev) =>
-      prev.some((item) => getTargetUserId(item) === targetUserId)
-        ? prev.filter((item) => getTargetUserId(item) !== targetUserId)
+      prev.some((item) => getTargetKey(item) === targetKey)
+        ? prev.filter((item) => getTargetKey(item) !== targetKey)
         : [...prev, friend],
     );
+  };
+
+  const augmentForwardMessage = (message) => {
+    const augmentedMsg = { ...message };
+    if (!augmentedMsg.sender) augmentedMsg.sender = {};
+
+    const isMyMsg = Boolean(
+      augmentedMsg.isMine ||
+        augmentedMsg.sender?.isMe ||
+        (currentUserId && augmentedMsg.senderId === currentUserId),
+    );
+
+    if (isMyMsg) {
+      augmentedMsg.isMine = true;
+    } else if (!augmentedMsg.sender.name && !augmentedMsg.sender.displayName) {
+      const participant = selectedChat?.participants?.find(
+        (p) =>
+          p.userId === augmentedMsg.senderId ||
+          p.id === augmentedMsg.senderId ||
+          p._id === augmentedMsg.senderId,
+      );
+      if (participant) {
+        augmentedMsg.sender.name =
+          participant.displayName || participant.name || participant.username;
+      } else if (selectedChat?.targetUserId === augmentedMsg.senderId) {
+        augmentedMsg.sender.name = selectedChat?.displayName || selectedChat?.name;
+      }
+    }
+
+    return augmentedMsg;
   };
 
   const handleSend = async () => {
@@ -68,7 +123,7 @@ export const ForwardModal = ({
       if (onForwardMessages) {
         await onForwardMessages(selectedTargets.map(buildTargetChat), messageToForward);
       } else if (onForwardToTarget) {
-        onForwardToTarget(buildTargetChat(selectedTargets[0]), messageToForward);
+        onForwardToTarget(buildTargetChat(selectedTargets[0]), augmentForwardMessage(messageToForward));
       }
       setForwardModalVisible(false);
       setSelectedTargets([]);
@@ -110,24 +165,49 @@ export const ForwardModal = ({
         </div>
 
         <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
-          <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors">
-            <div className="w-11 h-11 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
-              <FiBookmark className="text-xl" />
+          {savedMessagesMatchesSearch && (
+            <div
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+              onClick={() => {
+                toggleTarget(SAVED_MESSAGES_TARGET);
+                if (messageToForward && !onForwardMessages && onForwardToTarget) {
+                  onForwardToTarget(
+                    buildTargetChat(SAVED_MESSAGES_TARGET),
+                    augmentForwardMessage(messageToForward),
+                  );
+                  setForwardModalVisible(false);
+                }
+              }}
+            >
+              <div className="w-11 h-11 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+                <FiBookmark className="text-xl" />
+              </div>
+              <div className="flex flex-col max-w-full overflow-hidden">
+                <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
+                  Saved Messages
+                </span>
+                <span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium truncate">
+                  forward here to save
+                </span>
+              </div>
+              <div
+                className={`ml-auto h-5 w-5 rounded-full border flex items-center justify-center ${
+                  selectedTargets.some((item) => getTargetKey(item) === SAVED_MESSAGES_TARGET.id)
+                    ? "border-blue-500 bg-blue-500 text-white"
+                    : "border-gray-300 dark:border-slate-600"
+                }`}
+              >
+                {selectedTargets.some((item) => getTargetKey(item) === SAVED_MESSAGES_TARGET.id) && (
+                  <FiCheck className="text-[13px]" />
+                )}
+              </div>
             </div>
-            <div className="flex flex-col max-w-full overflow-hidden">
-              <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
-                Saved Messages
-              </span>
-              <span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium truncate">
-                forward here to save
-              </span>
-            </div>
-          </div>
+          )}
 
           {filteredFriends?.map((friend) => {
-            const targetUserId = getTargetUserId(friend);
+            const targetKey = getTargetKey(friend);
             const isSelected = selectedTargets.some(
-              (item) => getTargetUserId(item) === targetUserId,
+              (item) => getTargetKey(item) === targetKey,
             );
 
             return (
@@ -137,43 +217,9 @@ export const ForwardModal = ({
               onClick={() => {
                 toggleTarget(friend);
                 if (messageToForward && !onForwardMessages) {
-                  const augmentedMsg = { ...messageToForward };
-                  if (!augmentedMsg.sender) augmentedMsg.sender = {};
-
-                  const isMyMsg = Boolean(
-                    augmentedMsg.isMine ||
-                      augmentedMsg.sender?.isMe ||
-                      (currentUserId && augmentedMsg.senderId === currentUserId),
-                  );
-
-                  if (isMyMsg) {
-                    augmentedMsg.isMine = true;
-                  } else if (
-                    !augmentedMsg.sender.name &&
-                    !augmentedMsg.sender.displayName
-                  ) {
-                    const participant = selectedChat?.participants?.find(
-                      (p) =>
-                        p.userId === augmentedMsg.senderId ||
-                        p.id === augmentedMsg.senderId ||
-                        p._id === augmentedMsg.senderId,
-                    );
-                    if (participant) {
-                      augmentedMsg.sender.name =
-                        participant.displayName ||
-                        participant.name ||
-                        participant.username;
-                    } else if (
-                      selectedChat?.targetUserId === augmentedMsg.senderId
-                    ) {
-                      augmentedMsg.sender.name =
-                        selectedChat?.displayName || selectedChat?.name;
-                    }
-                  }
-
                   // Create a target chat object compatible with openChatByRow
                   if (onForwardToTarget) {
-                    onForwardToTarget(buildTargetChat(friend), augmentedMsg);
+                    onForwardToTarget(buildTargetChat(friend), augmentForwardMessage(messageToForward));
                   }
                   setForwardModalVisible(false);
                 }

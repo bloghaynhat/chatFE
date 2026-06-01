@@ -29,6 +29,7 @@ export const ResizableChatPanel = ({
   openingChatId,
   onSelectChat,
   onForwardToTarget,
+  onForwardMessages,
   onOpenSavedMessages,
 }: any) => {
   const [width, setWidth] = useState(320); // Default width in pixels
@@ -370,6 +371,7 @@ export const ResizableChatPanel = ({
                 isGlobalSearchEnabled={true}
                 onSelectChat={onSelectChat}
                 onForwardToTarget={onForwardToTarget}
+                onForwardMessages={onForwardMessages}
               />
 
               {!isCollapsed && (
