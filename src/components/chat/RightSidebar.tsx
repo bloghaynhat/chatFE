@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   conversationService,
   groupChatService,
@@ -14,6 +14,8 @@ import { GroupSettingsModal } from "./RightSideBar/GroupSettingsModal";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
 import { groupSettingsService, GroupSettingsPayload } from "../../services/groupSettingsService";
+import { toast } from "sonner";
+import { getWallpaperPresetByValue } from "../../constants/wallpaperPresets";
 
 const getMemberUserId = (member: any) =>
   member?.userId || member?.user?.id || member?.user?._id || member?.id;
@@ -43,6 +45,64 @@ const notifyCurrentUserLeftGroup = (conversationId: string) => {
   window.dispatchEvent(new Event("chatList:refresh"));
 };
 
+const WALLPAPER_CROP_WIDTH = 1600;
+const WALLPAPER_CROP_HEIGHT = 1000;
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+
+const createCroppedWallpaperFile = async (
+  sourceFile: File,
+  imageUrl: string,
+  crop: { offsetX: number; offsetY: number; scale: number },
+  previewSize: { width: number; height: number },
+) => {
+  const image = await loadImage(imageUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = WALLPAPER_CROP_WIDTH;
+  canvas.height = WALLPAPER_CROP_HEIGHT;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Không thể xử lý ảnh trên trình duyệt này");
+
+  const fitScale = Math.min(
+    previewSize.width / image.naturalWidth,
+    previewSize.height / image.naturalHeight,
+  );
+  const displayScale = fitScale * crop.scale;
+  const displayWidth = image.naturalWidth * displayScale;
+  const displayHeight = image.naturalHeight * displayScale;
+  const displayX = (previewSize.width - displayWidth) / 2 + crop.offsetX;
+  const displayY = (previewSize.height - displayHeight) / 2 + crop.offsetY;
+  const outputScaleX = WALLPAPER_CROP_WIDTH / previewSize.width;
+  const outputScaleY = WALLPAPER_CROP_HEIGHT / previewSize.height;
+
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(
+    image,
+    displayX * outputScaleX,
+    displayY * outputScaleY,
+    displayWidth * outputScaleX,
+    displayHeight * outputScaleY,
+  );
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, sourceFile.type === "image/png" ? "image/png" : "image/jpeg", 0.9),
+  );
+  if (!blob) throw new Error("Không thể tạo ảnh hình nền");
+
+  const extension = sourceFile.type === "image/png" ? "png" : "jpg";
+  return new File([blob], `wallpaper-${Date.now()}.${extension}`, {
+    type: blob.type,
+  });
+};
+
 export const RightSidebar = ({
   isOpen,
   selectedChat,
@@ -65,6 +125,18 @@ export const RightSidebar = ({
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUpdatingWallpaper, setIsUpdatingWallpaper] = useState(false);
+  const [wallpaperCropFile, setWallpaperCropFile] = useState<File | null>(null);
+  const [wallpaperCropUrl, setWallpaperCropUrl] = useState<string | null>(null);
+  const [wallpaperCropScale, setWallpaperCropScale] = useState(1);
+  const [wallpaperCropOffset, setWallpaperCropOffset] = useState({
+    x: 0,
+    y: 0,
+  });
+  const [wallpaperImageSize, setWallpaperImageSize] = useState({
+    width: 0,
+    height: 0,
+  });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSelectAdminModalOpen, setIsSelectAdminModalOpen] = useState(false);
   const [isGroupSettingsOpen, setIsGroupSettingsOpen] = useState(false);
@@ -85,6 +157,26 @@ export const RightSidebar = ({
     selectedChat?.type === "saved_messages" ||
     selectedChat?.isSavedMessages ||
     selectedChat?.isSelfChat;
+  const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
+  const wallpaperCropFrameRef = useRef<HTMLDivElement | null>(null);
+  const wallpaperDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  const currentWallpaperUrl =
+    selectedChat?.wallpaperUrl ||
+    info?.conversation?.wallpaperUrl ||
+    info?.wallpaperUrl ||
+    null;
+
+  useEffect(() => {
+    return () => {
+      if (wallpaperCropUrl) URL.revokeObjectURL(wallpaperCropUrl);
+    };
+  }, [wallpaperCropUrl]);
 
   useEffect(() => {
     setActiveSubView("none"); // Reset view when chat changes
@@ -352,6 +444,210 @@ export const RightSidebar = ({
   const handleAvatarChange = (file: File) => {
     setAvatarFile(file);
     setEditAvatarUrl(URL.createObjectURL(file));
+  };
+
+  const closeWallpaperCrop = () => {
+    if (wallpaperCropUrl) URL.revokeObjectURL(wallpaperCropUrl);
+    setWallpaperCropFile(null);
+    setWallpaperCropUrl(null);
+    setWallpaperCropScale(1);
+    setWallpaperCropOffset({ x: 0, y: 0 });
+    setWallpaperImageSize({ width: 0, height: 0 });
+    wallpaperDragRef.current = null;
+  };
+
+  const getClampedWallpaperOffset = (
+    nextOffset: { x: number; y: number },
+    scale = wallpaperCropScale,
+  ) => {
+    const frame = wallpaperCropFrameRef.current;
+    const rect = frame?.getBoundingClientRect();
+    if (
+      !rect?.width ||
+      !rect?.height ||
+      !wallpaperImageSize.width ||
+      !wallpaperImageSize.height
+    ) {
+      return nextOffset;
+    }
+
+    const fitScale = Math.min(
+      rect.width / wallpaperImageSize.width,
+      rect.height / wallpaperImageSize.height,
+    );
+    const displayWidth = wallpaperImageSize.width * fitScale * scale;
+    const displayHeight = wallpaperImageSize.height * fitScale * scale;
+    const maxX = Math.max(0, (displayWidth - rect.width) / 2);
+    const maxY = Math.max(0, (displayHeight - rect.height) / 2);
+
+    return {
+      x: Math.min(maxX, Math.max(-maxX, nextOffset.x)),
+      y: Math.min(maxY, Math.max(-maxY, nextOffset.y)),
+    };
+  };
+
+  const handleWallpaperFileChange = (event: any) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !selectedChat?.id) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Vui lòng chọn ảnh JPG, PNG hoặc WebP");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước ảnh quá lớn, vui lòng chọn ảnh dưới 5MB");
+      return;
+    }
+
+    if (wallpaperCropUrl) URL.revokeObjectURL(wallpaperCropUrl);
+    setWallpaperCropFile(file);
+    setWallpaperCropUrl(URL.createObjectURL(file));
+    setWallpaperCropScale(1);
+    setWallpaperCropOffset({ x: 0, y: 0 });
+    setWallpaperImageSize({ width: 0, height: 0 });
+  };
+
+  const handleWallpaperDragStart = (event: any) => {
+    if (!wallpaperCropUrl || isUpdatingWallpaper) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    wallpaperDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: wallpaperCropOffset.x,
+      offsetY: wallpaperCropOffset.y,
+    };
+  };
+
+  const handleWallpaperDragMove = (event: any) => {
+    const dragState = wallpaperDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    setWallpaperCropOffset(
+      getClampedWallpaperOffset({
+        x: dragState.offsetX + event.clientX - dragState.startX,
+        y: dragState.offsetY + event.clientY - dragState.startY,
+      }),
+    );
+  };
+
+  const handleWallpaperDragEnd = (event: any) => {
+    if (wallpaperDragRef.current?.pointerId === event.pointerId) {
+      wallpaperDragRef.current = null;
+    }
+  };
+
+  const handleConfirmWallpaperCrop = async () => {
+    if (!wallpaperCropFile || !wallpaperCropUrl || !selectedChat?.id) return;
+
+    const toastId = toast.loading("Đang tải ảnh lên...");
+    setIsUpdatingWallpaper(true);
+    try {
+      const frame = wallpaperCropFrameRef.current;
+      const rect = frame?.getBoundingClientRect();
+      const croppedFile = await createCroppedWallpaperFile(
+        wallpaperCropFile,
+        wallpaperCropUrl,
+        {
+          offsetX: wallpaperCropOffset.x,
+          offsetY: wallpaperCropOffset.y,
+          scale: wallpaperCropScale,
+        },
+        {
+          width: rect?.width || WALLPAPER_CROP_WIDTH,
+          height: rect?.height || WALLPAPER_CROP_HEIGHT,
+        },
+      );
+      const uploadResult = await mediaService.uploadMedia(croppedFile);
+      const wallpaperUrl = uploadResult?.url;
+      if (!wallpaperUrl) {
+        throw new Error("Upload thành công nhưng không nhận được URL ảnh");
+      }
+
+      await conversationService.setWallpaper(selectedChat.id, wallpaperUrl);
+      setInfo((prev: any) => ({
+        ...prev,
+        wallpaperUrl,
+        conversation: prev?.conversation
+          ? { ...prev.conversation, wallpaperUrl }
+          : prev?.conversation,
+      }));
+      onGroupUpdated?.({ wallpaperUrl });
+      window.dispatchEvent(new Event("chatList:refresh"));
+      closeWallpaperCrop();
+      toast.success("Cập nhật hình nền thành công!", { id: toastId });
+    } catch (error: any) {
+      console.error("Failed to update wallpaper:", error);
+      toast.error(error?.message || "Không thể cập nhật hình nền", {
+        id: toastId,
+      });
+    } finally {
+      setIsUpdatingWallpaper(false);
+    }
+  };
+
+  const handleRemoveWallpaper = async () => {
+    if (!selectedChat?.id || isUpdatingWallpaper) return;
+
+    const toastId = toast.loading("Đang xóa hình nền...");
+    setIsUpdatingWallpaper(true);
+    try {
+      await conversationService.removeWallpaper(selectedChat.id);
+      setInfo((prev: any) => ({
+        ...prev,
+        wallpaperUrl: null,
+        conversation: prev?.conversation
+          ? { ...prev.conversation, wallpaperUrl: null }
+          : prev?.conversation,
+      }));
+      onGroupUpdated?.({ wallpaperUrl: null });
+      window.dispatchEvent(new Event("chatList:refresh"));
+      toast.success("Đã xóa hình nền", { id: toastId });
+    } catch (error: any) {
+      console.error("Failed to remove wallpaper:", error);
+      toast.error(error?.message || "Không thể xóa hình nền", { id: toastId });
+    } finally {
+      setIsUpdatingWallpaper(false);
+    }
+  };
+
+  const handleSelectWallpaperPreset = async (presetValue: string | null) => {
+    if (!selectedChat?.id || isUpdatingWallpaper) return;
+    if ((currentWallpaperUrl || null) === presetValue) return;
+
+    if (!presetValue) {
+      await handleRemoveWallpaper();
+      return;
+    }
+
+    const preset = getWallpaperPresetByValue(presetValue);
+    const toastId = toast.loading("Đang cập nhật màu nền...");
+    setIsUpdatingWallpaper(true);
+    try {
+      await conversationService.setWallpaper(selectedChat.id, presetValue);
+      setInfo((prev: any) => ({
+        ...prev,
+        wallpaperUrl: presetValue,
+        conversation: prev?.conversation
+          ? { ...prev.conversation, wallpaperUrl: presetValue }
+          : prev?.conversation,
+      }));
+      onGroupUpdated?.({ wallpaperUrl: presetValue });
+      window.dispatchEvent(new Event("chatList:refresh"));
+      toast.success(
+        preset ? `Đã chọn màu nền ${preset.label}` : "Đã cập nhật màu nền",
+        { id: toastId },
+      );
+    } catch (error: any) {
+      console.error("Failed to update wallpaper preset:", error);
+      toast.error(error?.message || "Không thể cập nhật màu nền", {
+        id: toastId,
+      });
+    } finally {
+      setIsUpdatingWallpaper(false);
+    }
   };
 
   const refreshMembers = async () => {
@@ -647,6 +943,13 @@ export const RightSidebar = ({
           : "w-0 border-l-0 opacity-0"
       }`}
     >
+      <input
+        ref={wallpaperInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleWallpaperFileChange}
+      />
       <div
         className={`w-[360px] lg:w-[390px] flex h-full shrink-0 relative transition-transform duration-300 ease-in-out overflow-hidden ${isOpen ? "translate-x-0" : "translate-x-[50px]"}`}
       >
@@ -703,6 +1006,11 @@ export const RightSidebar = ({
                 : null
             }
             conversationId={selectedChat?.id}
+            wallpaperUrl={currentWallpaperUrl}
+            isWallpaperUpdating={isUpdatingWallpaper}
+            onChangeWallpaper={() => wallpaperInputRef.current?.click()}
+            onRemoveWallpaper={handleRemoveWallpaper}
+            onSelectWallpaperPreset={handleSelectWallpaperPreset}
             isSavedMessages={isSavedMessages}
             onShowInChat={
               onShowInChat &&
@@ -820,6 +1128,109 @@ export const RightSidebar = ({
         }}
         onMembersChanged={refreshMembers}
       />
+
+      {wallpaperCropUrl && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-[680px] rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-gray-100">
+                Chỉnh hình nền
+              </h2>
+              <button
+                type="button"
+                onClick={closeWallpaperCrop}
+                disabled={isUpdatingWallpaper}
+                className="w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-gray-300 disabled:opacity-50"
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-5 py-4">
+              <div
+                ref={wallpaperCropFrameRef}
+                className="relative mx-auto w-full max-w-[600px] aspect-[16/10] overflow-hidden rounded-lg bg-slate-950 cursor-grab active:cursor-grabbing select-none border border-gray-200 dark:border-slate-700"
+                onPointerDown={handleWallpaperDragStart}
+                onPointerMove={handleWallpaperDragMove}
+                onPointerUp={handleWallpaperDragEnd}
+                onPointerCancel={handleWallpaperDragEnd}
+              >
+                <img
+                  src={wallpaperCropUrl}
+                  alt=""
+                  draggable={false}
+                  onLoad={(event) => {
+                    const image = event.currentTarget;
+                    setWallpaperImageSize({
+                      width: image.naturalWidth,
+                      height: image.naturalHeight,
+                    });
+                  }}
+                  className="absolute left-1/2 top-1/2 w-full h-full object-contain pointer-events-none"
+                  style={{
+                    transform: `translate(calc(-50% + ${wallpaperCropOffset.x}px), calc(-50% + ${wallpaperCropOffset.y}px)) scale(${wallpaperCropScale})`,
+                  }}
+                />
+                <div className="absolute inset-0 ring-1 ring-inset ring-white/40 pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.22)_1px,transparent_1px)] bg-[length:33.333%_33.333%] pointer-events-none" />
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                <span className="text-[13px] font-medium text-gray-600 dark:text-gray-300 w-20">
+                  Thu phóng
+                </span>
+                <input
+                  type="range"
+                  min="1"
+                  max="4"
+                  step="0.05"
+                  value={wallpaperCropScale}
+                  disabled={isUpdatingWallpaper}
+                  onChange={(event) => {
+                    const nextScale = Number(event.target.value);
+                    setWallpaperCropScale(nextScale);
+                    setWallpaperCropOffset((current) =>
+                      getClampedWallpaperOffset(current, nextScale),
+                    );
+                  }}
+                  className="flex-1 accent-blue-600"
+                />
+                <button
+                  type="button"
+                  disabled={isUpdatingWallpaper}
+                  onClick={() => {
+                    setWallpaperCropScale(1);
+                    setWallpaperCropOffset({ x: 0, y: 0 });
+                  }}
+                  className="px-3 py-2 text-[13px] font-semibold rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Đặt lại
+                </button>
+              </div>
+            </div>
+
+            <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/70 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={isUpdatingWallpaper}
+                onClick={closeWallpaperCrop}
+                className="px-4 py-2 text-[14px] font-semibold rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingWallpaper}
+                onClick={handleConfirmWallpaperCrop}
+                className="px-4 py-2 text-[14px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isUpdatingWallpaper ? "Đang lưu..." : "Lưu hình nền"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {removeMemberState.isConfirmOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4">

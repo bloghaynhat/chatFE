@@ -47,6 +47,11 @@ interface RightSidebarInfoProps {
   onShowInChat?: (mediaUrl: string) => void;
   messages?: any[];
   isSavedMessages?: boolean;
+  wallpaperUrl?: string | null;
+  isWallpaperUpdating?: boolean;
+  onChangeWallpaper?: () => void;
+  onRemoveWallpaper?: () => void;
+  onSelectWallpaperPreset?: (value: string | null) => void;
 }
 
 export const RightSidebarInfo = ({
@@ -73,6 +78,11 @@ export const RightSidebarInfo = ({
   onShowInChat,
   messages,
   isSavedMessages,
+  wallpaperUrl,
+  isWallpaperUpdating,
+  onChangeWallpaper,
+  onRemoveWallpaper,
+  onSelectWallpaperPreset,
 }: RightSidebarInfoProps) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
@@ -331,6 +341,11 @@ export const RightSidebarInfo = ({
             setNotificationsEnabled={setNotificationsEnabled}
             onOpenInviteLink={() => setIsInviteModalOpen(true)}
             canOpenInviteLink={canInviteMembers}
+            wallpaperUrl={wallpaperUrl}
+            isWallpaperUpdating={isWallpaperUpdating}
+            onChangeWallpaper={onChangeWallpaper}
+            onRemoveWallpaper={onRemoveWallpaper}
+            onSelectWallpaperPreset={onSelectWallpaperPreset}
           />
         )}
 

@@ -165,6 +165,24 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async setWallpaper(
+    conversationId: string,
+    wallpaperUrl: string,
+  ): Promise<any> {
+    const response: any = await api.patch(
+      `/conversations/${conversationId}/wallpaper`,
+      { wallpaperUrl },
+    );
+    return response.data || response;
+  },
+
+  async removeWallpaper(conversationId: string): Promise<any> {
+    const response: any = await api.delete(
+      `/conversations/${conversationId}/wallpaper`,
+    );
+    return response.data || response;
+  },
+
   async setGroupAdmin(
     groupId: string,
     targetUserId: string,
