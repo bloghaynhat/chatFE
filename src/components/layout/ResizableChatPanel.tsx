@@ -219,12 +219,11 @@ export const ResizableChatPanel = ({
   }, [isResizing, minWidth, maxWidth, activeView]);
 
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full relative w-full lg:w-auto">
       {/* Chat Panel */}
       <div
         ref={panelRef}
-        style={{ width: `${isCollapsed ? minWidth : width}px` }}
-        className={`flex flex-col bg-white dark:bg-slate-900 relative ${isResizing ? "" : "transition-all duration-200"}`}
+        className={`flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 relative w-full lg:w-[360px] transition-all duration-200`}
       >
         {activeView === "chats" && (
           filterMode === "archived" ? (
@@ -390,7 +389,7 @@ export const ResizableChatPanel = ({
         <div className="flex-1 w-full relative overflow-hidden flex flex-col pointer-events-none">
           {/* Chats View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "chats" ? "translate-x-0 opacity-100 pointer-events-auto" : "-translate-x-[20%] opacity-0 pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "chats" ? "translate-x-0 opacity-100 pointer-events-auto" : "-translate-x-[20%] opacity-0 pointer-events-none"}`}
           >
             <div className="flex-1 overflow-hidden relative flex flex-col">
               {filterMode !== "archived" && archiveStats.count > 0 && !isSearchMode && !debouncedSearchQuery && (
@@ -476,7 +475,7 @@ export const ResizableChatPanel = ({
 
           {/* Contacts View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-20 pointer-events-auto ${activeView === "contacts" ? "translate-x-0" : "translate-x-full"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-20 pointer-events-auto ${activeView === "contacts" ? "translate-x-0" : "translate-x-full"}`}
           >
             <ContactsPanel
               isCollapsed={isCollapsed}
@@ -487,7 +486,7 @@ export const ResizableChatPanel = ({
 
           {/* Settings View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <SettingsPanel
               isCollapsed={isCollapsed}
@@ -498,7 +497,7 @@ export const ResizableChatPanel = ({
 
           {/* Privacy and Security View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <PrivacySecurityPanel
               isCollapsed={isCollapsed}
@@ -509,7 +508,7 @@ export const ResizableChatPanel = ({
 
           {/* Devices View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "devices" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "devices" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           >
             <DevicesPanel
               isCollapsed={isCollapsed}
@@ -519,7 +518,7 @@ export const ResizableChatPanel = ({
 
           {/* Block List View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-50 pointer-events-auto ${activeView === "block-list" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-50 pointer-events-auto ${activeView === "block-list" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           >
             <BlockListPanel
               isCollapsed={isCollapsed}
@@ -529,22 +528,7 @@ export const ResizableChatPanel = ({
         </div>
       </div>
 
-      {/* Resize Handle */}
-      <div
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setIsResizing(true);
-        }}
-        className={`group relative z-50 w-px cursor-col-resize transition-colors duration-150 ${
-          isResizing
-            ? "bg-blue-300/80 dark:bg-blue-500/70"
-            : "bg-gray-200/80 hover:bg-blue-300/70 dark:bg-slate-700/70 dark:hover:bg-blue-500/60"
-        }`}
-        aria-label="Resize chat list"
-        role="separator"
-      >
-        <span className="absolute inset-y-0 -left-[5px] w-[11px]" />
-      </div>
+      {/* Resize Handle Removed */}
 
       {/* Profile Modal - Rendered outside ProfileMenu so it persists when menu closes */}
       <UserProfileModal

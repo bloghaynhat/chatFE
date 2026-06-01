@@ -16,6 +16,7 @@ import {
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { AiSmartReply } from "../AiSmartReply";
 import { AiToneAdjustMenu } from "../AiToneAdjustMenu";
+import TextareaAutosize from "react-textarea-autosize";
 
 // frequentEmojis removed
 
@@ -252,7 +253,7 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
+    <div data-chat-input-root className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
       {(forwardingMessage || editingMessage || replyingMessage) && (
         <div className="max-w-4xl mx-auto mb-2 flex bg-[#edf4f1] dark:bg-slate-800/95 rounded-t-[10px] overflow-hidden relative z-40 p-[8px] pl-[14px] items-center">
           <div className="flex-1 flex flex-col justify-center min-w-0 pr-6 gap-[5px]">
@@ -365,7 +366,7 @@ export const ChatInput = ({
         ) : (
           <div
             ref={attachMenuRef}
-            className={`relative flex-1 h-11 lg:h-12 rounded-full bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${
+            className={`relative flex-1 min-h-[44px] lg:min-h-[48px] h-auto rounded-[24px] bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all flex items-center ${
               disabledReason
                 ? disabledTone === "neutral"
                   ? "border-blue-100 dark:border-slate-700"
@@ -441,19 +442,23 @@ export const ChatInput = ({
               <FiSmile className="text-[20px] lg:text-[22px]" />
             </button>
 
-            <input
-              type="text"
+            <TextareaAutosize
+              minRows={1}
+              maxRows={5}
               value={draftMessage}
               onChange={handleInputChange}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !disabledReason) handleSendMessage();
+                if (e.key === "Enter" && !e.shiftKey && !disabledReason) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
               }}
               disabled={Boolean(disabledReason)}
               placeholder={disabledReason || "Message"}
-              className="absolute left-11 right-11 top-1/2 -translate-y-1/2 h-8 bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed"
+              className="w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none py-[12px] lg:py-[14px] pl-11 pr-[88px]"
             />
 
-            <div className="absolute right-9 top-1/2 -translate-y-1/2">
+            <div className="absolute right-9 bottom-0 top-0 flex items-center">
               <AiToneAdjustMenu
                 currentText={draftMessage}
                 onApplyTone={(newText) => setDraftMessage(newText)}
@@ -467,7 +472,7 @@ export const ChatInput = ({
                 setIsMoreMenuOpen(false);
                 setIsEmojiPickerOpen(false);
               }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+              className="absolute right-1.5 bottom-0 top-0 flex items-center h-full w-8 lg:w-9 justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition"
               title="Open attachment actions"
             >
               <FiPaperclip className="text-[20px] lg:text-[22px]" />

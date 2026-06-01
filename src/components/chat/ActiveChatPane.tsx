@@ -61,6 +61,7 @@ export const ActiveChatPane = ({
   isLoading,
   error,
   messages,
+  pinnedMessages = [],
   typingUsers = new Set(),
   currentUserId,
   onRetry,
@@ -83,6 +84,7 @@ export const ActiveChatPane = ({
   isLoadingOlderMessages = false,
   onLoadOlderMessages,
   onOpenChat,
+  onCloseChat,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -96,7 +98,7 @@ export const ActiveChatPane = ({
   );
 
   const { drafts, setDraft, loadDrafts } = useDraft();
-  
+
   const draftMessage = (selectedConversationId ? drafts[selectedConversationId] : "") || "";
   const setDraftMessage = useCallback((text: string | ((prev: string) => string)) => {
     if (!selectedConversationId) return;
@@ -149,7 +151,7 @@ export const ActiveChatPane = ({
   const callV2 = useCallV2();
   const [activeCallV2, setActiveCallV2] = useState<CallV2Session | null>(null);
 
-  // Computed pinned messages from messages (real-time from socket)
+  // Pinned messages are loaded separately so the bar is not tied to lazy-loaded pages.
   const [enrichedPinnedMessages, setEnrichedPinnedMessages] = useState<
     Message[]
   >([]);
@@ -157,23 +159,22 @@ export const ActiveChatPane = ({
   // Enrich pinned messages with sender info whenever messages change
   useEffect(() => {
     const updatePinnedMessages = async () => {
-      if (!messages || messages.length === 0) {
+      const sourcePinnedMessages =
+        pinnedMessages.length > 0
+          ? pinnedMessages
+          : (messages || []).filter((m) => m.pinnedAt);
+
+      if (!sourcePinnedMessages || sourcePinnedMessages.length === 0) {
         setEnrichedPinnedMessages([]);
         return;
       }
 
-      const pinned = messages.filter((m) => m.pinnedAt);
-      if (pinned.length === 0) {
-        setEnrichedPinnedMessages([]);
-        return;
-      }
-
-      const enriched = await enrichMessagesWithSenderInfo(pinned);
+      const enriched = await enrichMessagesWithSenderInfo(sourcePinnedMessages);
       setEnrichedPinnedMessages(enriched);
     };
 
     updatePinnedMessages();
-  }, [messages]);
+  }, [messages, pinnedMessages]);
 
   const { friends, fetchFriends } = useFriendManagement();
 
@@ -221,10 +222,10 @@ export const ActiveChatPane = ({
       (item: any) =>
         String(
           item?.userId ||
-            item?.user?.id ||
-            item?.user?._id ||
-            item?.id ||
-            item?._id,
+          item?.user?.id ||
+          item?.user?._id ||
+          item?.id ||
+          item?._id,
         ) === String(currentUserId),
     );
     if (member?.role) return member.role;
@@ -281,8 +282,8 @@ export const ActiveChatPane = ({
       selectedChat?.members || selectedChat?.participants || [];
     let inviteeIds = Array.isArray(rawMembers)
       ? rawMembers
-          .map((member) => member?.userId || member?.id || member?._id)
-          .filter(Boolean)
+        .map((member) => member?.userId || member?.id || member?._id)
+        .filter(Boolean)
       : [];
 
     if (inviteeIds.length === 0 && selectedConversationId) {
@@ -364,8 +365,8 @@ export const ActiveChatPane = ({
       target?._id ||
       (selectedChat?.pairKey
         ? selectedChat.pairKey
-            .split("_")
-            .find((id: string) => id !== currentUserId)
+          .split("_")
+          .find((id: string) => id !== currentUserId)
         : null) ||
       null
     );
@@ -387,9 +388,9 @@ export const ActiveChatPane = ({
 
       const relationshipPayload =
         relationshipStatus &&
-        typeof relationshipStatus === "object" &&
-        "status" in relationshipStatus &&
-        "data" in relationshipStatus
+          typeof relationshipStatus === "object" &&
+          "status" in relationshipStatus &&
+          "data" in relationshipStatus
           ? (relationshipStatus as any).data
           : (relationshipStatus as any)?.data || relationshipStatus || {};
 
@@ -472,9 +473,9 @@ export const ActiveChatPane = ({
         callPeerInfo,
         isGroupChat
           ? callPeerInfo?.name ||
-              selectedChat?.name ||
-              selectedChat?.displayName ||
-              null
+          selectedChat?.name ||
+          selectedChat?.displayName ||
+          null
           : null,
       );
     },
@@ -642,15 +643,7 @@ export const ActiveChatPane = ({
     e.preventDefault();
     e.stopPropagation();
 
-    const menuWidth = 200;
-    const menuHeight = 310;
-    let x = e.clientX;
-    let y = e.clientY;
-
-    if (x + menuWidth > window.innerWidth) x -= menuWidth;
-    if (y + menuHeight > window.innerHeight) y -= menuHeight;
-
-    setContextMenu({ x, y, message });
+    setContextMenu({ x: e.clientX, y: e.clientY, message });
   };
 
   const onDrop = useCallback((acceptedFiles, fileRejections, event) => {
@@ -802,8 +795,26 @@ export const ActiveChatPane = ({
     }
   };
 
-  const scrollToBottom = (behavior = "smooth") => {
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const container = document.querySelector<HTMLElement>("[data-chat-container]");
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+      return;
+    }
+
     messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const scheduleScrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const delays = [0, 40, 120, 260];
+    delays.forEach((delay) => {
+      window.setTimeout(() => {
+        requestAnimationFrame(() => scrollToBottom(behavior));
+      }, delay);
+    });
   };
 
   const visibleMessages = useMemo(() => messages, [messages]);
@@ -816,17 +827,17 @@ export const ActiveChatPane = ({
 
   useEffect(() => {
     if (!isLoadingOlderMessages) {
-      scrollToBottom();
+      scheduleScrollToBottom("smooth");
     }
   }, [lastMessageId, typingUsers]);
 
   useEffect(() => {
-    setTimeout(() => scrollToBottom("auto"), 100);
-  }, [selectedConversationId]);
+    scheduleScrollToBottom("auto");
+  }, [selectedConversationId, lastMessageId]);
 
   useEffect(() => {
     if (!isLoading) {
-      setTimeout(() => scrollToBottom("auto"), 100);
+      scheduleScrollToBottom("auto");
     }
   }, [isLoading]);
 
@@ -871,12 +882,6 @@ export const ActiveChatPane = ({
       icon: FiBarChart2,
       onClick: () => setIsCreatePollOpen(true),
       groupOnly: true,
-    },
-    {
-      id: "share-contact",
-      label: "Chia sẻ liên hệ",
-      icon: FiUserPlus,
-      onClick: () => setIsContactPickerOpen(true),
     },
   ];
 
@@ -1153,6 +1158,7 @@ export const ActiveChatPane = ({
         selectedChat={selectedChat}
         currentUserId={currentUserId}
         isLoading={isLoading}
+        onCloseChat={onCloseChat}
         isHeaderSearchOpen={isHeaderSearchOpen}
         setIsHeaderSearchOpen={setIsHeaderSearchOpen}
         headerSearchValue={headerSearchValue}
@@ -1205,6 +1211,12 @@ export const ActiveChatPane = ({
         firstMessageRef={firstMessageRef}
         messagesEndRef={messagesEndRef}
         handleContextMenu={handleContextMenu}
+        activeContextMessageId={
+          contextMenu?.message?.id ||
+          contextMenu?.message?._id ||
+          contextMenu?.message?.messageId ||
+          null
+        }
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
         onPollUpdated={onPollUpdated}

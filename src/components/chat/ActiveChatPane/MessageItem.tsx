@@ -36,6 +36,7 @@ export const MessageItem = ({
   isFirstInSequence = true,
   isLastInSequence = true,
   handleContextMenu,
+  activeContextMessageId,
   setPreviewVideoUrl,
   currentUserId,
   onNavigateToMessage,
@@ -277,6 +278,10 @@ export const MessageItem = ({
 
   const senderAvatarStr =
     senderName ? senderName.charAt(0).toUpperCase() : "?";
+  const currentMessageId = getMessageId(message, index);
+  const isContextActive =
+    activeContextMessageId &&
+    String(activeContextMessageId) === String(currentMessageId);
 
   if (message.isRevoked || message.deletedAt) {
     return (
@@ -298,7 +303,12 @@ export const MessageItem = ({
 
   return (
     <div
-      className={`w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-1.5" : "mb-[2px]"} group`}
+      className={`telegram-message-row w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-1.5" : "mb-[2px]"} group ${
+        isContextActive ? "telegram-message-row-active" : ""
+      }`}
+      data-message-row="true"
+      data-message-id={currentMessageId}
+      onContextMenu={(e) => handleContextMenu(e, message)}
     >
       <style>{`
         @keyframes reactionChipIn {
@@ -329,17 +339,24 @@ export const MessageItem = ({
       <div
         ref={isFirst ? firstMessageRef : null}
         id={`message-${message.id || message._id}`}
-        key={getMessageId(message, index)}
-        data-message-id={getMessageId(message, index)}
-        onContextMenu={(e) => handleContextMenu(e, message)}
-        className={`w-fit max-w-[464px] mx-[6px] rounded-[18px] text-sm flex flex-col relative overflow-hidden ${
+        key={currentMessageId}
+        data-message-id={currentMessageId}
+        className={`w-fit max-w-[464px] mx-[6px] text-[14px] md:text-[15px] flex flex-col relative ${
+          isJumboEmoji
+            ? ""
+            : `telegram-bubble ${mine ? "telegram-bubble-mine" : "telegram-bubble-other"} ${
+                isFirstInSequence ? "telegram-bubble-first" : "telegram-bubble-middle"
+              } ${
+                isLastInSequence ? "telegram-bubble-last telegram-bubble-tail" : "telegram-bubble-middle"
+              }`
+        } ${message.status === 'sending' ? 'opacity-70 transition-opacity duration-300' : ''} ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
               : "self-start bg-transparent"
             : mine
-              ? `${wallpaperTheme?.mine || "shadow-sm self-end bg-[#d9fdd3] dark:bg-emerald-900/70 text-gray-900 dark:text-emerald-50 rounded-br-md border border-transparent dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
-              : `${wallpaperTheme?.other || "shadow-sm self-start bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-gray-100 dark:border-slate-700/50"} ${isCallMessage ? "min-w-[242px]" : ""}`
+              ? `self-end text-gray-900 dark:text-emerald-50 ${isCallMessage ? "min-w-[242px]" : ""}`
+              : `self-start text-gray-800 dark:text-gray-100 ${isCallMessage ? "min-w-[242px]" : ""}`
         }`}
       >
         {isGroup &&
@@ -518,7 +535,7 @@ export const MessageItem = ({
           >
             {message.pinnedAt && (
               <FiMapPin
-                className="text-[14px] text-blue-500 dark:text-blue-400"
+                className="text-[14px] md:text-[15px] text-blue-500 dark:text-blue-400"
                 strokeWidth={2.5}
               />
             )}

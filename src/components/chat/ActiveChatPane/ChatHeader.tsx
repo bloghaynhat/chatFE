@@ -1,4 +1,5 @@
 import {
+  FiArrowLeft,
   FiPhone,
   FiSearch,
   FiMoreVertical,
@@ -42,6 +43,7 @@ export const ChatHeader = ({
   selectedConversationId,
   currentUserId,
   isLoading,
+  onCloseChat,
   isHeaderSearchOpen,
   setIsHeaderSearchOpen,
   headerSearchValue,
@@ -325,10 +327,22 @@ export const ChatHeader = ({
       <div className="px-4 lg:px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         {!isHeaderSearchOpen ? (
           <div className="flex items-center justify-between">
-            <div
-              className="flex items-center gap-3 min-w-0 p-1.5 -ml-1.5 rounded-xl transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer"
-              onClick={handleToggleInfo}
-            >
+            <div className="flex items-center gap-1 md:gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onCloseChat?.();
+                }}
+                className="lg:hidden h-10 w-10 inline-flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-800 shrink-0 relative z-50 cursor-pointer"
+              >
+                <FiArrowLeft className="text-[22px]" />
+              </button>
+              <div
+                className="flex items-center gap-3 min-w-0 p-1.5 -ml-1.5 rounded-xl transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                onClick={handleToggleInfo}
+              >
               <div className="relative shrink-0">
                 <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold flex items-center justify-center overflow-hidden shadow-sm border border-black/5 dark:border-white/10">
                   {isSavedMessages ? (
@@ -351,13 +365,14 @@ export const ChatHeader = ({
               </div>
 
               <div className="min-w-0">
-                <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate">
+                <p className="font-semibold text-base md:text-lg text-gray-900 dark:text-white truncate">
                   {displayName}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
                   {presenceLabel}
                 </p>
               </div>
+            </div>
             </div>
 
             <div className="flex items-center gap-1 text-gray-500 dark:text-gray-300">

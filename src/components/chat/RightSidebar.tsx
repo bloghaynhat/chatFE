@@ -954,13 +954,21 @@ export const RightSidebar = ({
   };
 
   return (
-    <div
-      className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 flex flex-col h-full z-20 shadow-[-5px_0_15px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out relative overflow-hidden ${
-        isOpen
-          ? "w-[360px] lg:w-[390px] border-l opacity-100"
-          : "w-0 border-l-0 opacity-0"
-      }`}
-    >
+    <>
+      {/* Overlay for mobile/tablet */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-20 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      <div
+        className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 flex flex-col h-full z-30 shadow-xl transition-all duration-300 ease-in-out absolute top-0 right-0 overflow-hidden ${
+          isOpen
+            ? "w-[360px] lg:w-[390px] border-l opacity-100"
+            : "w-0 border-l-0 opacity-0"
+        }`}
+      >
       <input
         ref={wallpaperInputRef}
         type="file"
@@ -1296,5 +1304,6 @@ export const RightSidebar = ({
         </div>
       )}
     </div>
+    </>
   );
 };

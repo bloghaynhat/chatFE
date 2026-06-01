@@ -84,6 +84,7 @@ export const MessageList = ({
   firstMessageRef,
   messagesEndRef,
   handleContextMenu,
+  activeContextMessageId,
   setPreviewVideoUrl,
   onNavigateToMessage,
   onPollUpdated,
@@ -93,7 +94,7 @@ export const MessageList = ({
   const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
   const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
   const containerClassName =
-    `flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
+    `chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
   const wallpaperStyle = wallpaperUrl
     ? {
         backgroundImage:
@@ -107,6 +108,28 @@ export const MessageList = ({
   const overlayClassName = wallpaperUrl
     ? "min-h-full -mx-4 lg:-mx-6 -mt-4 -mb-24 px-4 lg:px-6 pt-4 pb-24 bg-white/30 dark:bg-black/35 backdrop-blur-[1px]"
     : "";
+  const handleContainerContextMenu = (event: any) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-message-row='true']")) return;
+
+    const rows = Array.from(
+      event.currentTarget.querySelectorAll("[data-message-row='true']"),
+    ) as HTMLElement[];
+    const matchingRow = rows.find((row) => {
+      const rect = row.getBoundingClientRect();
+      return event.clientY >= rect.top && event.clientY <= rect.bottom;
+    });
+    if (!matchingRow) return;
+
+    const messageId = matchingRow.dataset.messageId;
+    const message = visibleMessages.find((item: any) => {
+      const itemId = item?.id || item?._id || item?.messageId;
+      return String(itemId) === String(messageId);
+    });
+    if (!message) return;
+
+    handleContextMenu(event, message);
+  };
 
   if (isLoading) {
     return (
@@ -158,6 +181,7 @@ export const MessageList = ({
       className={containerClassName}
       style={wallpaperStyle}
       data-chat-container
+      onContextMenu={handleContainerContextMenu}
     >
       <div className={overlayClassName}>
       {visibleMessages.length > 0 && (
@@ -219,6 +243,7 @@ export const MessageList = ({
                     isFirstInSequence={isFirstInSequence}
                     isLastInSequence={isLastInSequence}
                     handleContextMenu={handleContextMenu}
+                    activeContextMessageId={activeContextMessageId}
                     setPreviewVideoUrl={setPreviewVideoUrl}
                     currentUserId={currentUserId}
                     onNavigateToMessage={onNavigateToMessage}

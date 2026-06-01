@@ -90,7 +90,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
         <div className="ml-3 flex-1 overflow-hidden min-w-0">
           <div className="flex justify-between items-center mb-0.5">
             <h3
-              className={`text-sm truncate duration-200 ${isActive ? "font-semibold text-white" : chat.unreadCount ? "font-bold text-gray-950 dark:text-white" : "font-semibold text-gray-800 dark:text-gray-200"}`}
+              className={`text-[15px] md:text-base truncate duration-200 ${isActive ? "font-semibold text-white" : chat.unreadCount ? "font-bold text-gray-950 dark:text-white" : "font-semibold text-gray-800 dark:text-gray-200"}`}
             >
               {chat.name}
             </h3>
@@ -111,7 +111,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
           </div>
           <div className="flex justify-between items-center mt-0.5">
             <p
-              className={`text-sm truncate transition-colors duration-200 ${isActive ? "text-blue-100" : chat.unreadCount ? "font-bold text-gray-900 dark:text-gray-100" : "text-gray-500"}`}
+              className={`text-xs md:text-sm truncate transition-colors duration-200 ${isActive ? "text-blue-100" : chat.unreadCount ? "font-bold text-gray-900 dark:text-gray-100" : "text-gray-500"}`}
             >
               {drafts[chat.id] && !isActive ? (
                 <span className="flex items-center gap-1">
