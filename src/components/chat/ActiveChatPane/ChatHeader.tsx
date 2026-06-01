@@ -68,6 +68,7 @@ export const ChatHeader = ({
   onStartVideoCall,
   onBlockUser,
   onDeleteConversation,
+  onOpenContactPicker,
   activeCallV2,
   callV2Status,
   onJoinActiveCallV2,
@@ -286,6 +287,10 @@ export const ChatHeader = ({
 
     if (action.id === "delete-chat") {
       onDeleteConversation?.();
+    }
+    
+    if (action.id === "share-contact") {
+      onOpenContactPicker?.();
     }
   };
 

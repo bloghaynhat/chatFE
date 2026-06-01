@@ -20,6 +20,7 @@ export const MessageList = ({
   setPreviewVideoUrl,
   onNavigateToMessage,
   onPollUpdated,
+  onOpenChat,
 }: any) => {
   if (isLoading) {
     return (
@@ -140,6 +141,7 @@ export const MessageList = ({
                   currentUserId={currentUserId}
                   onNavigateToMessage={onNavigateToMessage}
                   onPollUpdated={onPollUpdated}
+                  onOpenChat={onOpenChat}
                 />
               );
             })}

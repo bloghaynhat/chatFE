@@ -20,13 +20,14 @@ import { VideoPreviewModal } from "./ActiveChatPane/VideoPreviewModal";
 import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
 import { CreatePollModal } from "./ActiveChatPane/CreatePollModal";
+import { ContactPickerModal } from "./ActiveChatPane/ContactPickerModal";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
 import { pollService } from "../../services/pollService";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
-import { FiImage, FiFile, FiGift, FiCheckCircle, FiBarChart2 } from "react-icons/fi";
+import { FiImage, FiFile, FiGift, FiCheckCircle, FiBarChart2, FiUserPlus } from "react-icons/fi";
 
 export const ActiveChatPane = ({
   selectedChat,
@@ -54,6 +55,7 @@ export const ActiveChatPane = ({
   hasMoreMessages = false,
   isLoadingOlderMessages = false,
   onLoadOlderMessages,
+  onOpenChat,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -71,6 +73,7 @@ export const ActiveChatPane = ({
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
   const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
+  const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
 
   const attachMenuRef = useRef(null);
@@ -401,6 +404,12 @@ export const ActiveChatPane = ({
     }
   }, [forwardModalVisible]);
 
+  useEffect(() => {
+    if (isContactPickerOpen) {
+      fetchFriends();
+    }
+  }, [isContactPickerOpen]);
+
   // Socket-based pin/unpin handlers (now from parent via props)
   const handlePinMessage = async (messageId: string) => {
     if (onPinMessage) {
@@ -703,6 +712,12 @@ export const ActiveChatPane = ({
       groupOnly: true,
     },
     {
+      id: "share-contact",
+      label: "Chia sẻ liên hệ",
+      icon: FiUserPlus,
+      onClick: () => setIsContactPickerOpen(true),
+    },
+    {
       id: "gift-premium",
       label: "Gift Premium",
       icon: FiGift,
@@ -1002,6 +1017,7 @@ export const ActiveChatPane = ({
         onStartVideoCall={() => void handleStartCall("video")}
         onBlockUser={() => void handleBlockUser()}
         onDeleteConversation={onDeleteConversation}
+        onOpenContactPicker={() => setIsContactPickerOpen(true)}
         activeCallV2={activeCallV2}
         callV2Status={callV2.state.status}
         onJoinActiveCallV2={() => void handleJoinActiveCallV2()}
@@ -1035,6 +1051,7 @@ export const ActiveChatPane = ({
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
         onPollUpdated={onPollUpdated}
+        onOpenChat={onOpenChat}
       />
 
       {contextMenu && (
@@ -1110,7 +1127,7 @@ export const ActiveChatPane = ({
           className="absolute inset-x-0 bottom-full bg-white dark:bg-slate-800 border-t dark:border-slate-700 p-2 flex items-center justify-around shadow-[0_-4px_25px_-5px_rgba(0,0,0,0.1)] z-10"
           onMouseLeave={() => setIsAttachMenuOpen(false)}
         >
-          {attachActions.map((action) => (
+          {visibleAttachActions.map((action) => (
             <div
               key={action.id}
               className="flex flex-col items-center cursor-pointer p-2 transition-transform transform hover:scale-105"
@@ -1159,6 +1176,13 @@ export const ActiveChatPane = ({
         onClose={() => setIsCreatePollOpen(false)}
         onCreate={handleCreatePoll}
         isCreating={isCreatingPoll}
+      />
+
+      <ContactPickerModal
+        isOpen={isContactPickerOpen}
+        onClose={() => setIsContactPickerOpen(false)}
+        conversationId={selectedConversationId}
+        friends={friends}
       />
 
       <VideoPreviewModal

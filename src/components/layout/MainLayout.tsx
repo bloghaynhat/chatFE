@@ -1966,6 +1966,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               hasMoreMessages={messagePageInfo.hasMore}
               isLoadingOlderMessages={isLoadingOlderMessages}
               onLoadOlderMessages={handleLoadOlderMessages}
+              onOpenChat={openChatByRow}
             />
           )}
         </div>

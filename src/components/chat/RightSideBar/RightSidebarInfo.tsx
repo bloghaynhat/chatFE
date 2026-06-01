@@ -9,7 +9,9 @@ import { BlockUserModal } from "./RightSideBarTypes/BlockUserModal";
 import { InviteLinkManagerModal } from "./RightSideBarTypes/InviteLinkManagerModal";
 import { MediaGallery } from "./MediaGallery";
 import { GroupNotesPanel, GroupRemindersPanel } from "./GroupUtilities/GroupUtilitiesPanel";
+import { ShareToConversationModal } from "../ActiveChatPane/ShareToConversationModal";
 import React, { useState, useEffect, useCallback } from "react";
+import { FiShare2 } from "react-icons/fi";
 import { useContactsSocketListeners } from "../../../hooks";
 import {
   blockUser,
@@ -85,6 +87,7 @@ export const RightSidebarInfo = ({
     "members" | "images" | "files" | "links" | "voice" | "notes" | "reminders"
   >("images");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isShareProfileOpen, setIsShareProfileOpen] = useState(false);
 
   const canDeleteContact = !isGroup && !isSavedMessages && friendStatus === "ACCEPTED";
 
@@ -306,6 +309,18 @@ export const RightSidebarInfo = ({
           isSavedMessages={isSavedMessages}
         />
 
+        {!isGroup && !isSavedMessages && targetUserId && (
+          <div className="px-5 pb-3 -mt-3 border-b border-gray-100 dark:border-slate-800">
+            <button
+              onClick={() => setIsShareProfileOpen(true)}
+              className="min-h-[44px] w-full rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+            >
+              <FiShare2 className="text-[17px]" />
+              Chia sẻ danh thiếp
+            </button>
+          </div>
+        )}
+
         {!isSavedMessages && (
           <RightSidebarSettings
             isGroup={isGroup}
@@ -478,6 +493,12 @@ export const RightSidebarInfo = ({
           groupAvatar={groupAvatar}
         />
       )}
+
+      <ShareToConversationModal
+        isOpen={isShareProfileOpen}
+        onClose={() => setIsShareProfileOpen(false)}
+        profileUserId={targetUserId}
+      />
     </div>
   );
 };
