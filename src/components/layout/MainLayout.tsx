@@ -218,6 +218,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   // Track pending pin/unpin operations to prevent duplicate requests
   const pendingPinOperations = useRef<Set<string>>(new Set());
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
+  const lastInteractionSeenRef = useRef<string>("");
 
   const shouldSkipDuplicateMemberRemoval = useCallback(
     (conversationId?: string, userId?: string) => {
@@ -294,6 +295,33 @@ const MainLayout = ({ children }: { children?: any }) => {
     },
     [user?.id],
   );
+
+  const handleChatInteractionRead = useCallback(() => {
+    if (!selectedConversationId || messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+    const lastMessageId = getMessageId(lastMessage);
+    if (!lastMessageId) return;
+
+    const senderId =
+      lastMessage.senderId ||
+      lastMessage.sender?.id ||
+      lastMessage.sender?._id ||
+      lastMessage.id_sender ||
+      "";
+    if (String(senderId) === String(user?.id || "")) return;
+
+    const seenKey = `${selectedConversationId}:${lastMessageId}`;
+    if (lastInteractionSeenRef.current === seenKey) return;
+    lastInteractionSeenRef.current = seenKey;
+
+    Promise.allSettled([
+      socketService.markSeen(selectedConversationId, lastMessageId),
+      conversationService.markSeen(selectedConversationId, lastMessageId),
+    ]).then(() => {
+      window.dispatchEvent(new Event("chatList:refresh"));
+    });
+  }, [messages, selectedConversationId, user?.id]);
 
   useEffect(() => {
     if (!selectedConversationId || isOpeningConversation) return;
@@ -2429,6 +2457,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               isLoadingOlderMessages={isLoadingOlderMessages}
               onLoadOlderMessages={handleLoadOlderMessages}
               onOpenChat={openChatByRow}
+              onChatInteractionRead={handleChatInteractionRead}
               onCloseChat={() => {
                 navigate("/", { replace: true });
                 setSelectedChat(null);

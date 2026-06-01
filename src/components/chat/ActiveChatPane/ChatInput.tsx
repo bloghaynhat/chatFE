@@ -49,6 +49,7 @@ export const ChatInput = ({
   isTyping,
   isLastMessageFromCurrentUser,
   disabledTone = "danger",
+  onChatInteractionRead,
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
   const [isSmartReplyOpen, setIsSmartReplyOpen] = useState(false);
@@ -272,7 +273,12 @@ export const ChatInput = ({
   }, [canRequestSmartReply]);
 
   return (
-    <div data-chat-input-root className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
+    <div
+      data-chat-input-root
+      className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent"
+      onPointerDown={onChatInteractionRead}
+      onFocus={onChatInteractionRead}
+    >
       {(forwardingMessage || replyingMessage) && !editingMessage && (
         <div className="relative z-40 mx-auto mb-2 flex max-w-4xl items-center overflow-hidden rounded-[22px] border border-white/70 bg-white/55 py-2 pl-4 pr-12 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/35">
           <div className="absolute left-2 top-2 bottom-2 w-[3px] rounded-full bg-[#2ea6f3]" />

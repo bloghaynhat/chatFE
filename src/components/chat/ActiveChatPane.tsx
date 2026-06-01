@@ -84,6 +84,7 @@ export const ActiveChatPane = ({
   isLoadingOlderMessages = false,
   onLoadOlderMessages,
   onOpenChat,
+  onChatInteractionRead,
   onCloseChat,
 }: any) => {
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
@@ -1221,6 +1222,7 @@ export const ActiveChatPane = ({
         onNavigateToMessage={handleNavigateToMessage}
         onPollUpdated={onPollUpdated}
         onOpenChat={onOpenChat}
+        onChatInteractionRead={onChatInteractionRead}
       />
 
       {contextMenu && (
@@ -1340,6 +1342,7 @@ export const ActiveChatPane = ({
         isLastMessageFromCurrentUser={isLastMessageFromCurrentUser}
         disabledReason={inputDisabledReason}
         disabledTone={inputDisabledTone}
+        onChatInteractionRead={onChatInteractionRead}
       />
 
       <CreatePollModal
