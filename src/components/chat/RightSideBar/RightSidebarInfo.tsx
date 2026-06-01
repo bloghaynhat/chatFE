@@ -11,7 +11,8 @@ import { MediaGallery } from "./MediaGallery";
 import { GroupNotesPanel, GroupRemindersPanel } from "./GroupUtilities/GroupUtilitiesPanel";
 import { ShareToConversationModal } from "../ActiveChatPane/ShareToConversationModal";
 import React, { useState, useEffect, useCallback } from "react";
-import { FiShare2 } from "react-icons/fi";
+import { FiShare2, FiUsers, FiImage, FiFile, FiLink, FiMic, FiFileText, FiBell, FiChevronRight } from "react-icons/fi";
+import { GroupContentOverlay, ContentTabType } from "./GroupContentOverlay";
 import { useContactsSocketListeners } from "../../../hooks";
 import {
   blockUser,
@@ -95,9 +96,8 @@ export const RightSidebarInfo = ({
   const [isBlocking, setIsBlocking] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [targetUserDetails, setTargetUserDetails] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<
-    "members" | "images" | "files" | "links" | "voice" | "notes" | "reminders"
-  >("images");
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [overlayTab, setOverlayTab] = useState<ContentTabType>("images");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isShareProfileOpen, setIsShareProfileOpen] = useState(false);
 
@@ -312,170 +312,206 @@ export const RightSidebarInfo = ({
         )}
       </RightSidebarHeader>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
-        <RightSidebarAvatar
-          avatarUrl={isGroup ? groupAvatar : targetUserDetails?.avatarUrl}
-          name={displayName}
-          canEdit={!isSavedMessages && canEdit}
-          onEditClick={onEditClick}
-          isSavedMessages={isSavedMessages}
-        />
-
-        {!isGroup && !isSavedMessages && targetUserId && (
-          <div className="px-5 pb-3 -mt-3 border-b border-gray-100 dark:border-slate-800">
-            <button
-              onClick={() => setIsShareProfileOpen(true)}
-              className="min-h-[44px] w-full rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
-            >
-              <FiShare2 className="text-[17px]" />
-              Chia sẻ danh thiếp
-            </button>
-          </div>
-        )}
-
-        {!isSavedMessages && (
-          <RightSidebarSettings
-            isGroup={isGroup}
-            targetUserDetails={targetUserDetails}
-            notificationsEnabled={notificationsEnabled}
-            setNotificationsEnabled={setNotificationsEnabled}
-            onOpenInviteLink={() => setIsInviteModalOpen(true)}
-            canOpenInviteLink={canInviteMembers}
-            wallpaperUrl={wallpaperUrl}
-            isWallpaperUpdating={isWallpaperUpdating}
-            onChangeWallpaper={onChangeWallpaper}
-            onRemoveWallpaper={onRemoveWallpaper}
-            onSelectWallpaperPreset={onSelectWallpaperPreset}
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+        {/* Top Section for Info & Settings */}
+        <div className="shrink-0 border-b border-gray-100 dark:border-slate-800">
+          <RightSidebarAvatar
+            avatarUrl={isGroup ? groupAvatar : targetUserDetails?.avatarUrl}
+            name={displayName}
+            canEdit={!isSavedMessages && canEdit}
+            onEditClick={onEditClick}
+            isSavedMessages={isSavedMessages}
           />
-        )}
 
-        {/* Tab Navigation - Members + Media tabs for groups, Media only for private */}
-        {(isGroup || conversationId) && (
-          <div className="flex flex-wrap border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0">
-            {/* Members tab - only for groups */}
-            {isGroup && (
+          {!isGroup && !isSavedMessages && targetUserId && (
+            <div className="px-5 pb-3 -mt-3 border-b border-gray-100 dark:border-slate-800">
               <button
-                onClick={() => setActiveTab("members")}
-                className={`min-w-[92px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                  activeTab === "members"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                }`}
+                onClick={() => setIsShareProfileOpen(true)}
+                className="min-h-[44px] w-full rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
               >
-                Members
+                <FiShare2 className="text-[17px]" />
+                Chia sẻ danh thiếp
               </button>
-            )}
-
-            {/* Media/Files/Links/Voice tabs - for both groups and private */}
-            {conversationId && (
-              <>
-                <button
-                  onClick={() => setActiveTab("images")}
-                  className={`min-w-[76px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "images"
-                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Media
-                </button>
-                <button
-                  onClick={() => setActiveTab("files")}
-                  className={`min-w-[70px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "files"
-                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Files
-                </button>
-                <button
-                  onClick={() => setActiveTab("links")}
-                  className={`min-w-[70px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "links"
-                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Links
-                </button>
-                <button
-                  onClick={() => setActiveTab("voice")}
-                  className={`min-w-[70px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "voice"
-                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Voice
-                </button>
-              </>
-            )}
-            {isGroup && conversationId && (
-              <>
-                <button
-                  onClick={() => setActiveTab("notes")}
-                  className={`min-w-[76px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "notes"
-                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Notes
-                </button>
-                <button
-                  onClick={() => setActiveTab("reminders")}
-                  className={`min-w-[104px] flex-1 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === "reminders"
-                      ? "border-amber-500 text-amber-600 dark:text-amber-400"
-                      : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Reminders
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Content Area */}
-        {activeTab === "members" && isGroup && (
-          <div className="flex-1 overflow-y-auto">
-            <RightSidebarMemberList
-              members={members}
-              isLoading={isLoading}
-              contextMenu={contextMenu}
-              onContextMenu={handleContextMenu}
-            />
-          </div>
-        )}
-
-        {(activeTab === "images" || activeTab === "files" || activeTab === "links" || activeTab === "voice") &&
-          conversationId && (
-            <div className="flex-1 overflow-hidden">
-              <MediaGallery
-                conversationId={conversationId}
-                currentUserId={currentUserId}
-                onShowInChat={onShowInChat}
-                messages={messages}
-                activeTab={activeTab}
-                hideTabNavigation={true}
-              />
             </div>
           )}
 
-        {activeTab === "notes" && isGroup && conversationId && (
-          <div className="flex-1 overflow-hidden">
-            <GroupNotesPanel groupId={conversationId} />
-          </div>
-        )}
+          {!isSavedMessages && (
+            <RightSidebarSettings
+              isGroup={isGroup}
+              targetUserDetails={targetUserDetails}
+              notificationsEnabled={notificationsEnabled}
+              setNotificationsEnabled={setNotificationsEnabled}
+              onOpenInviteLink={() => setIsInviteModalOpen(true)}
+              canOpenInviteLink={canInviteMembers}
+              wallpaperUrl={wallpaperUrl}
+              isWallpaperUpdating={isWallpaperUpdating}
+              onChangeWallpaper={onChangeWallpaper}
+              onRemoveWallpaper={onRemoveWallpaper}
+              onSelectWallpaperPreset={onSelectWallpaperPreset}
+            />
+          )}
+        </div>
 
-        {activeTab === "reminders" && isGroup && conversationId && (
-          <div className="flex-1 overflow-hidden">
-            <GroupRemindersPanel groupId={conversationId} />
-          </div>
-        )}
+        {/* Content Menu List */}
+        <div className="flex-1 px-3 py-4 space-y-1">
+          {isGroup && (
+            <button
+              onClick={() => {
+                setOverlayTab("members");
+                setIsOverlayOpen(true);
+              }}
+              className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                  <FiUsers className="text-lg" />
+                </div>
+                <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                  Members
+                </span>
+                {membersCount !== undefined && (
+                  <span className="text-[13px] font-medium text-gray-400">
+                    {membersCount}
+                  </span>
+                )}
+              </div>
+              <FiChevronRight className="text-gray-400 text-lg" />
+            </button>
+          )}
+
+          {conversationId && (
+            <>
+              <button
+                onClick={() => {
+                  setOverlayTab("images");
+                  setIsOverlayOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                    <FiImage className="text-lg" />
+                  </div>
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    Media
+                  </span>
+                </div>
+                <FiChevronRight className="text-gray-400 text-lg" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setOverlayTab("files");
+                  setIsOverlayOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
+                    <FiFile className="text-lg" />
+                  </div>
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    Files
+                  </span>
+                </div>
+                <FiChevronRight className="text-gray-400 text-lg" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setOverlayTab("links");
+                  setIsOverlayOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                    <FiLink className="text-lg" />
+                  </div>
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    Links
+                  </span>
+                </div>
+                <FiChevronRight className="text-gray-400 text-lg" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setOverlayTab("voice");
+                  setIsOverlayOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-50 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400">
+                    <FiMic className="text-lg" />
+                  </div>
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    Voice
+                  </span>
+                </div>
+                <FiChevronRight className="text-gray-400 text-lg" />
+              </button>
+            </>
+          )}
+
+          {isGroup && conversationId && (
+            <>
+              <button
+                onClick={() => {
+                  setOverlayTab("notes");
+                  setIsOverlayOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                    <FiFileText className="text-lg" />
+                  </div>
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    Notes
+                  </span>
+                </div>
+                <FiChevronRight className="text-gray-400 text-lg" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setOverlayTab("reminders");
+                  setIsOverlayOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                    <FiBell className="text-lg" />
+                  </div>
+                  <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
+                    Reminders
+                  </span>
+                </div>
+                <FiChevronRight className="text-gray-400 text-lg" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Shared Media / Content Overlay */}
+      <GroupContentOverlay
+        isOpen={isOverlayOpen}
+        onClose={() => setIsOverlayOpen(false)}
+        initialTab={overlayTab}
+        isGroup={isGroup}
+        conversationId={conversationId}
+        members={members}
+        isLoadingMembers={isLoading}
+        contextMenu={contextMenu}
+        onContextMenu={handleContextMenu}
+        currentUserId={currentUserId}
+        onShowInChat={onShowInChat}
+        messages={messages}
+      />
 
       <ContextMenuDropdown
         contextMenu={contextMenu}
