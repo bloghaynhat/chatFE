@@ -1279,10 +1279,15 @@ class SocketService {
     }
 
     return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error("Socket request timeout"));
+      }, 10000);
+
       this.messagesSocket.emit(
         "updateGroupSettings",
         { groupId: conversationId, ...settings },
         (res) => {
+          clearTimeout(timer);
           if (res?.success) resolve(res);
           else reject(new Error(res?.error || "Update group settings failed"));
         },

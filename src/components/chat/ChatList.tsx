@@ -1161,7 +1161,35 @@ export const ChatList = ({
 
   // Handle group admin actions: settings, approval/rejection, admin/owner changes
   useEffect(() => {
-    const handleGroupSettingsUpdated = () => fetchChats(false);
+    const handleGroupSettingsUpdated = (data: any) => {
+      const conversationId =
+        data?.conversationId || data?.groupId || data?.id || data?.conversation?.id;
+      const rawSettings = data?.settings || data?.data?.settings || data;
+      const settings = {
+        ...(rawSettings?.whoCanSendMessages !== undefined && {
+          whoCanSendMessages: rawSettings.whoCanSendMessages,
+        }),
+        ...(rawSettings?.requireApproval !== undefined && {
+          requireApproval: rawSettings.requireApproval,
+        }),
+        ...(rawSettings?.allowMemberInvite !== undefined && {
+          allowMemberInvite: rawSettings.allowMemberInvite,
+        }),
+        ...(rawSettings?.allowSendLink !== undefined && {
+          allowSendLink: rawSettings.allowSendLink,
+        }),
+      };
+      if (!conversationId || !settings || typeof settings !== "object") return;
+      if (Object.keys(settings).length === 0) return;
+
+      setChats((prev) =>
+        prev.map((chat) =>
+          String(chat.id) === String(conversationId)
+            ? { ...chat, settings: { ...(chat.settings || {}), ...settings } }
+            : chat,
+        ),
+      );
+    };
     const handleMemberApproved = () => fetchChats(false);
     const handleMemberRejected = () => fetchChats(false);
     const handleAdminChanged = () => fetchChats(false);

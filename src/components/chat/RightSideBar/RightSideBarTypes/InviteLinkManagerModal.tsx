@@ -21,6 +21,7 @@ interface InviteLinkManagerModalProps {
   onClose: () => void;
   groupId: string;
   isAdmin: boolean;
+  canUseInviteLink?: boolean;
   groupName: string;
   groupAvatar?: string;
 }
@@ -30,6 +31,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
   onClose,
   groupId,
   isAdmin,
+  canUseInviteLink = isAdmin,
   groupName,
   groupAvatar,
 }) => {
@@ -39,11 +41,14 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
   const qrRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const { data: inviteData, isLoading } = useQuery({
+  const { data: inviteData, isLoading, error: inviteError } = useQuery({
     queryKey: ["group-invite", groupId],
     queryFn: () => inviteService.getInviteLink(groupId),
-    enabled: isOpen,
+    enabled: isOpen && canUseInviteLink,
     staleTime: 60000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const regenerateMutation = useMutation({
@@ -69,8 +74,6 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
     : inviteData?.joinUrl
       ? inviteData.joinUrl
       : "";
-
-  console.log("[InviteLinkManagerModal] inviteData:", inviteData, "inviteUrl:", inviteUrl);
 
   const handleCopy = async () => {
     if (!inviteUrl) return;
@@ -182,7 +185,19 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
 
           {/* Content */}
           <div className="p-6">
-            {isLoading ? (
+            {!canUseInviteLink ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">
+                  You do not have permission to view this invite link.
+                </p>
+              </div>
+            ) : inviteError ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Could not load the invite link. Please check your group permissions.
+                </p>
+              </div>
+            ) : isLoading ? (
               <div className="animate-pulse flex flex-col gap-4">
                 <div className="h-12 bg-gray-200 dark:bg-slate-700 rounded-xl"></div>
                 <div className="h-40 bg-gray-200 dark:bg-slate-700 rounded-xl mt-4"></div>

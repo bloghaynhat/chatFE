@@ -3,6 +3,67 @@ import { PhotoProvider } from "react-photo-view";
 import { MessageItem } from "./MessageItem";
 import { getDateLabel, groupMediaMessages, getMessageTime } from "../../../utils/chatUtils";
 
+const getProfileId = (profile: any) =>
+  profile?.userId ||
+  profile?.id ||
+  profile?._id ||
+  profile?.user?.id ||
+  profile?.user?._id ||
+  profile?.user?.userId ||
+  null;
+
+const getSenderId = (message: any) => {
+  const senderId =
+    message?.senderId ||
+    message?.sender?.id ||
+    message?.sender?._id ||
+    message?.id_sender ||
+    message?.user_id;
+
+  return typeof senderId === "object" ? getProfileId(senderId) : senderId || (message?.isMine ? "me" : null);
+};
+
+const normalizeMemberProfile = (member: any) => {
+  const user = member?.user || member?.profile || member;
+
+  return {
+    id: getProfileId(member) || getProfileId(user),
+    displayName:
+      member?.displayName ||
+      user?.displayName ||
+      member?.name ||
+      user?.name ||
+      member?.username ||
+      user?.username,
+    name: member?.name || user?.name,
+    username: member?.username || user?.username,
+    avatarUrl:
+      member?.avatarUrl ||
+      user?.avatarUrl ||
+      member?.avatar ||
+      user?.avatar ||
+      member?.profilePicture ||
+      user?.profilePicture,
+    avatar: member?.avatar || user?.avatar,
+    profilePicture: member?.profilePicture || user?.profilePicture,
+  };
+};
+
+const buildGroupSenderMap = (selectedChat: any) => {
+  const rawMembers = [
+    ...(selectedChat?.members || []),
+    ...(selectedChat?.participants || []),
+    ...(selectedChat?.conversation?.members || []),
+    ...(selectedChat?.conversation?.participants || []),
+  ];
+
+  return rawMembers.reduce((map: Map<string, any>, member: any) => {
+    const profile = normalizeMemberProfile(member);
+    if (profile.id) map.set(String(profile.id), profile);
+    return map;
+  }, new Map<string, any>());
+};
+
 export const MessageList = ({
   isLoading,
   error,
@@ -88,63 +149,59 @@ export const MessageList = ({
               )}
             </div>
 
-            {groupMediaMessages(visibleMessages).map((message, index) => {
-              const mine = Boolean(
-                message?.isMine ||
-                message?.sender?.isMe ||
-                (currentUserId &&
-                  (message?.senderId === currentUserId ||
-                    message?.sender === currentUserId ||
-                    message?.sender?.id === currentUserId ||
-                    message?.sender?._id === currentUserId ||
-                    message?.id_sender === currentUserId)),
-              );
-
+            {(() => {
               const groupedMessages = groupMediaMessages(visibleMessages);
+              const senderMap = buildGroupSenderMap(selectedChat);
 
-              const prevMessage = index > 0 ? groupedMessages[index - 1] : null;
-              const nextMessage = index < groupedMessages.length - 1 ? groupedMessages[index + 1] : null;
+              return groupedMessages.map((message, index) => {
+                const currentSenderId = getSenderId(message);
+                const mine = Boolean(
+                  message?.isMine ||
+                    message?.sender?.isMe ||
+                    (currentUserId && currentSenderId && String(currentSenderId) === String(currentUserId)),
+                );
+                const prevMessage = index > 0 ? groupedMessages[index - 1] : null;
+                const nextMessage = index < groupedMessages.length - 1 ? groupedMessages[index + 1] : null;
+                const senderFallback = currentSenderId ? senderMap.get(String(currentSenderId)) : null;
+                const isFirstInSequence =
+                  !prevMessage ||
+                  getSenderId(prevMessage) !== currentSenderId ||
+                  (getMessageTime(prevMessage) !== getMessageTime(message) &&
+                    Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 300000);
+                const isLastInSequence =
+                  !nextMessage ||
+                  getSenderId(nextMessage) !== currentSenderId ||
+                  (getMessageTime(nextMessage) !== getMessageTime(message) &&
+                    Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 300000);
 
-              const getSenderId = (m) => m?.senderId || m?.sender?.id || m?.id_sender || (m?.isMine ? "me" : null);
+                const isGroup =
+                  selectedChat?.type === "group" ||
+                  selectedChat?.type === "GROUP" ||
+                  selectedChat?.isGroup === true;
 
-              const currentSenderId = getSenderId(message);
-              const isFirstInSequence =
-                !prevMessage ||
-                getSenderId(prevMessage) !== currentSenderId ||
-                (getMessageTime(prevMessage) !== getMessageTime(message) &&
-                  Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) > 300000);
-              const isLastInSequence =
-                !nextMessage ||
-                getSenderId(nextMessage) !== currentSenderId ||
-                (getMessageTime(nextMessage) !== getMessageTime(message) &&
-                  Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) > 300000);
-
-              const isGroup =
-                selectedChat?.type === "group" ||
-                selectedChat?.type === "GROUP" ||
-                selectedChat?.isGroup === true;
-
-              return (
-                <MessageItem
-                  key={message.id || message._id || index}
-                  message={message}
-                  messages={visibleMessages}
-                  index={index}
-                  isFirst={index === 0}
-                  firstMessageRef={firstMessageRef}
-                  mine={mine}
-                  isGroup={isGroup}
-                  isFirstInSequence={isFirstInSequence}
-                  isLastInSequence={isLastInSequence}
-                  handleContextMenu={handleContextMenu}
-                  setPreviewVideoUrl={setPreviewVideoUrl}
-                  currentUserId={currentUserId}
-                  onNavigateToMessage={onNavigateToMessage}
-                  onPollUpdated={onPollUpdated}
-                  onOpenChat={onOpenChat}
-                />
-              );
-            })}
+                return (
+                  <MessageItem
+                    key={message.id || message._id || index}
+                    message={message}
+                    messages={visibleMessages}
+                    index={index}
+                    isFirst={index === 0}
+                    firstMessageRef={firstMessageRef}
+                    mine={mine}
+                    isGroup={isGroup}
+                    isFirstInSequence={isFirstInSequence}
+                    isLastInSequence={isLastInSequence}
+                    handleContextMenu={handleContextMenu}
+                    setPreviewVideoUrl={setPreviewVideoUrl}
+                    currentUserId={currentUserId}
+                    onNavigateToMessage={onNavigateToMessage}
+                    onPollUpdated={onPollUpdated}
+                    onOpenChat={onOpenChat}
+                    senderFallback={senderFallback}
+                  />
+                );
+              });
+            })()}
 
             {/* Typing Indicator */}
             {typingUsers.size > 0 &&

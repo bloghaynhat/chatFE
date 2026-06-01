@@ -122,6 +122,13 @@ export interface MediaFile {
  * Group settings that control behavior of a group conversation
  */
 export interface GroupSettings {
+  whoCanSendMessages?: "all" | "admins";
+  whoCanAddMembers?: "all" | "admins";
+  utilityPermissions?: {
+    poll?: "all" | "admins";
+    reminder?: "all" | "admins";
+    note?: "all" | "admins";
+  };
   allowSendLink: boolean;
   requireApproval: boolean;
   allowMemberInvite: boolean;

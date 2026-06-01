@@ -12,6 +12,7 @@ interface RightSidebarSettingsProps {
   notificationsEnabled: boolean;
   setNotificationsEnabled: (enabled: boolean) => void;
   onOpenInviteLink?: () => void;
+  canOpenInviteLink?: boolean;
 }
 
 const formatProfileValue = (value: any) => {
@@ -27,6 +28,7 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
   notificationsEnabled,
   setNotificationsEnabled,
   onOpenInviteLink,
+  canOpenInviteLink = true,
 }) => {
   const profileRows = targetUserDetails
     ? [
@@ -69,16 +71,22 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
         ))}
 
       {isGroup && (
-        <div 
-          onClick={onOpenInviteLink}
-          className="flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group"
+        <button
+          type="button"
+          disabled={!canOpenInviteLink}
+          onClick={canOpenInviteLink ? onOpenInviteLink : undefined}
+          className="w-full flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
         >
           <FiInfoIcon className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
           <div className="flex-1">
             <div className="text-[15px] font-medium text-gray-800 dark:text-gray-200">Invite Link</div>
-            <div className="text-[13px] text-gray-500">Tap to manage group invite link</div>
+            <div className="text-[13px] text-gray-500">
+              {canOpenInviteLink
+                ? "Tap to manage group invite link"
+                : "Only admins or permitted members can invite"}
+            </div>
           </div>
-        </div>
+        </button>
       )}
 
       <div
