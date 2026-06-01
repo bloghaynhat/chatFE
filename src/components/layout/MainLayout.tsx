@@ -368,6 +368,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                 : m,
             ),
           );
+          window.dispatchEvent(new Event("chatList:refresh"));
         });
 
         socketService.onMessageStatusUpdate((payload) => {
@@ -1699,6 +1700,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               : msg,
           ),
         );
+        window.dispatchEvent(new Event("chatList:refresh"));
       }
     } catch (error) {
       console.error("Failed to revoke message:", error);
