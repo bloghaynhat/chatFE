@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -52,7 +53,7 @@ export const ShareToConversationModal = ({
 
   const sendingId = mutation.variables as string | undefined;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
@@ -122,4 +123,6 @@ export const ShareToConversationModal = ({
       )}
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : null;
 };

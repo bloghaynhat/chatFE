@@ -2,6 +2,7 @@ import { configureRuntime } from "./runtime";
 import { BrowserRouter } from "react-router-dom";
 import ReactDOM from "react-dom/client";
 import { AuthProvider } from "./context";
+import { DraftProvider } from "./context/DraftContext";
 import { CallV2SocketProvider } from "./providers/CallV2SocketProvider";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -21,19 +22,21 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
-        <CallV2SocketProvider>
-        <Toaster 
-          richColors 
-          position="top-center" 
-          toastOptions={{
-            className: 'text-[15px] font-medium p-4',
-          }}
-        />
-        <App />
-        <IncomingCallModal />
-        <OutgoingCallModal />
-        <ActiveCallView />
-      </CallV2SocketProvider>
+        <DraftProvider>
+          <CallV2SocketProvider>
+          <Toaster 
+            richColors 
+            position="top-center" 
+            toastOptions={{
+              className: 'text-[15px] font-medium p-4',
+            }}
+          />
+          <App />
+          <IncomingCallModal />
+          <OutgoingCallModal />
+          <ActiveCallView />
+        </CallV2SocketProvider>
+        </DraftProvider>
     </AuthProvider>
   </BrowserRouter>
   </QueryClientProvider>,
