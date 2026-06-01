@@ -24,6 +24,7 @@ import { inviteService } from "../../../services/inviteService";
 import {
   groupSettingsService,
   GroupSettingsPayload,
+  PermissionScope,
   UpdateGroupSettingsPayload,
   WhoCanSendMessages,
 } from "../../../services/groupSettingsService";
@@ -59,11 +60,40 @@ const tabs: { id: TabId; label: string; icon: React.ComponentType<any>; adminOnl
   { id: "pending", label: "Duyệt thành viên", icon: FiUserCheck, adminOnly: true },
 ];
 
-const defaultSettings: Required<Pick<GroupSettingsPayload, "whoCanSendMessages" | "requireApproval" | "allowMemberInvite" | "allowSendLink">> = {
+const defaultUtilityPermissions: NonNullable<GroupSettingsPayload["utilityPermissions"]> = {
+  poll: "all",
+  reminder: "all",
+  note: "all",
+};
+
+const defaultSettings: GroupSettingsPayload = {
   whoCanSendMessages: "all",
   requireApproval: false,
   allowMemberInvite: true,
   allowSendLink: true,
+  utilityPermissions: defaultUtilityPermissions,
+};
+
+const mergeGroupSettings = (
+  ...sources: Array<GroupSettingsPayload | UpdateGroupSettingsPayload | undefined | null>
+): GroupSettingsPayload => {
+  return sources.reduce<GroupSettingsPayload>(
+    (merged, source) => {
+      if (!source) return merged;
+      return {
+        ...merged,
+        ...source,
+        utilityPermissions: {
+          ...(merged.utilityPermissions || {}),
+          ...(source.utilityPermissions || {}),
+        },
+      };
+    },
+    {
+      ...defaultSettings,
+      utilityPermissions: { ...defaultUtilityPermissions },
+    },
+  );
 };
 
 const getUserId = (item: any) =>
@@ -163,7 +193,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    const nextSettings = { ...defaultSettings, ...settings };
+    const nextSettings = mergeGroupSettings(settings);
     setLocalSettings(nextSettings);
     setDraftSettings(nextSettings);
   }, [
@@ -172,6 +202,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
     settings?.allowMemberInvite,
     settings?.allowSendLink,
     settings?.requireApproval,
+    settings?.utilityPermissions,
     settings?.whoCanSendMessages,
   ]);
 
@@ -194,7 +225,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
 
       const incomingSettings = event?.settings || event?.data?.settings || {};
       setLocalSettings((current) => {
-        const nextSettings = { ...defaultSettings, ...current, ...incomingSettings };
+        const nextSettings = mergeGroupSettings(current, incomingSettings);
         setDraftSettings(nextSettings);
         return nextSettings;
       });
@@ -287,7 +318,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
 
   const updateDraftSetting = (patch: UpdateGroupSettingsPayload) => {
     setSettingsError("");
-    setDraftSettings((current) => ({ ...current, ...patch }));
+    setDraftSettings((current) => mergeGroupSettings(current, patch));
   };
 
   const supportedSettingsPayload = (payload: UpdateGroupSettingsPayload) => ({
@@ -325,8 +356,8 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
       const payload = supportedSettingsPayload(draftSettings);
       const response: any = await socketService.updateGroupSettings(groupId, payload);
       const nextSettings = response?.conversation?.settings || payload;
-      setLocalSettings((current) => ({ ...current, ...nextSettings }));
-      setDraftSettings((current) => ({ ...current, ...nextSettings }));
+      setLocalSettings((current) => mergeGroupSettings(current, nextSettings));
+      setDraftSettings((current) => mergeGroupSettings(current, nextSettings));
       onSettingsUpdated?.(nextSettings);
     } catch (error: any) {
       setSettingsError(error?.message || "Không thể lưu cài đặt nhóm.");
@@ -614,6 +645,30 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         >
                           <option value="all">Tất cả mọi người</option>
+                          <option value="admins">Chỉ quản trị viên</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-slate-800">
+                        <div className="pr-4">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ai có thể tạo bình chọn</div>
+                          <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                            Cho phép thành viên thường tạo poll trong nhóm, hoặc chỉ cho quản trị viên.
+                          </div>
+                        </div>
+                        <select
+                          value={draftSettings.utilityPermissions?.poll || "all"}
+                          disabled={isSubmittingSettings}
+                          onChange={(event) =>
+                            updateDraftSetting({
+                              utilityPermissions: {
+                                ...(draftSettings.utilityPermissions || {}),
+                                poll: event.target.value as PermissionScope,
+                              },
+                            })
+                          }
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        >
+                          <option value="all">Tất cả thành viên</option>
                           <option value="admins">Chỉ quản trị viên</option>
                         </select>
                       </div>

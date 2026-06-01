@@ -1,6 +1,4 @@
 import React, { Fragment } from "react";
-import { FiCheck, FiEye } from "react-icons/fi";
-import { getMessageTime } from "../../../../utils/chatUtils";
 import { AnimatedEmojiMessage, JUMBO_EMOJI_ASSETS } from "./AnimatedEmojiMessage";
 
 const renderTextWithLinks = (text) => {
@@ -37,14 +35,14 @@ export const MessageText = ({ message, text, mine, isSeen }) => {
   const isNewMsg = message?.createdAt ? new Date().getTime() - new Date(message.createdAt).getTime() < 5000 : false;
 
   return (
-    <div className={`${isJumboEmoji ? "p-0" : `px-2.5 ${!!text ? "pt-1 pb-2" : "pt-0"}`} cursor-default relative`}>
+    <div className={`${isJumboEmoji ? "p-0" : `px-3 ${!!text ? "py-[6px]" : "pt-0"}`} cursor-default relative`}>
       {!!text &&
         (isJumboEmoji ? (
           <AnimatedEmojiMessage emoji={trimmedText} isNew={isNewMsg} isMine={mine} />
         ) : (
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.3] pb-[8px]">
+          <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.32]">
             {renderTextWithLinks(text)}
-            {!hasReactions && <span className="inline-block w-[60px] h-[8px]" aria-hidden="true" />}
+            {!hasReactions && <span className="inline-block w-[58px] h-0" aria-hidden="true" />}
           </p>
         ))}
     </div>

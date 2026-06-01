@@ -111,8 +111,22 @@ export const MessageContextMenu = ({
       style={{ top: Math.max(contextMenu.y - 50, 10), left: contextMenu.x }}
       onClick={(e) => e.stopPropagation()}
     >
+      <style>{`
+        @keyframes reactionBarIn {
+          from { opacity: 0; transform: translateY(8px) scale(0.94); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes reactionEmojiPop {
+          0% { opacity: 0; transform: translateY(8px) scale(0.45); }
+          70% { opacity: 1; transform: translateY(-2px) scale(1.12); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
       {/* Reaction Picker above menu */}
-      <div className="bg-white dark:bg-slate-800 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_15px_rgba(0,0,0,0.3)] flex items-center px-1.5 py-1 gap-0.5 border border-gray-100 dark:border-slate-700 w-max">
+      <div
+        className="flex w-max flex-row items-center gap-0.5 rounded-full border border-white/80 bg-white/95 px-1.5 py-1 shadow-[0_10px_30px_rgba(15,23,42,0.18)] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/95 dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
+        style={{ animation: "reactionBarIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both" }}
+      >
         {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => {
           const hasMyReaction = contextMenu.message?.reactions
             ?.find((r: any) => r.emoji === emoji)
@@ -124,7 +138,7 @@ export const MessageContextMenu = ({
             <div
               key={emoji}
               onClick={() => handleReaction(emoji)}
-              className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full w-9 h-9 flex items-center justify-center text-[22px] transition-transform hover:scale-125 origin-bottom ${hasMyReaction ? "bg-blue-50 dark:bg-blue-900/30" : ""}`}
+              className={`cursor-pointer rounded-full w-9 h-9 flex items-center justify-center text-[22px] transition-all duration-150 hover:-translate-y-1.5 hover:scale-125 active:scale-95 origin-bottom animate-[reactionEmojiPop_240ms_cubic-bezier(0.16,1,0.3,1)_both] ${hasMyReaction ? "bg-blue-100 shadow-inner ring-1 ring-blue-200 dark:bg-blue-900/40 dark:ring-blue-700/60" : "hover:bg-gray-100 dark:hover:bg-slate-700"}`}
             >
               {emoji}
             </div>

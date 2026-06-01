@@ -30,6 +30,19 @@ import { callV2Service } from "../../services/callV2.service";
 import type { CallV2Session } from "../../services/callV2.types";
 import { FiImage, FiFile, FiGift, FiCheckCircle, FiBarChart2, FiUserPlus } from "react-icons/fi";
 
+const mergeGroupSettings = (...sources: any[]) =>
+  sources.reduce((merged, source) => {
+    if (!source) return merged;
+    return {
+      ...merged,
+      ...source,
+      utilityPermissions: {
+        ...(merged.utilityPermissions || {}),
+        ...(source.utilityPermissions || {}),
+      },
+    };
+  }, {});
+
 export const ActiveChatPane = ({
   selectedChat,
   selectedConversationId,
@@ -147,7 +160,7 @@ export const ActiveChatPane = ({
   );
 
   useEffect(() => {
-    setEffectiveGroupSettings(selectedChat?.settings || selectedChat?.groupSettings || {});
+    setEffectiveGroupSettings(mergeGroupSettings(selectedChat?.settings, selectedChat?.groupSettings));
   }, [selectedChat?.id, selectedChat?.settings, selectedChat?.groupSettings]);
 
   useEffect(() => {
@@ -160,10 +173,7 @@ export const ActiveChatPane = ({
       if (String(eventConversationId) !== String(conversationId)) return;
 
       const incomingSettings = event?.settings || event?.data?.settings || {};
-      setEffectiveGroupSettings((current: any) => ({
-        ...(current || {}),
-        ...incomingSettings,
-      }));
+      setEffectiveGroupSettings((current: any) => mergeGroupSettings(current, incomingSettings));
     });
 
     return () => {
@@ -210,6 +220,12 @@ export const ActiveChatPane = ({
     }
 
     return null;
+  }, [effectiveGroupSettings, isCurrentUserGroupAdmin, isGroupChat]);
+
+  const canCreatePoll = useMemo(() => {
+    if (!isGroupChat) return false;
+    const pollPermission = effectiveGroupSettings?.utilityPermissions?.poll || "all";
+    return pollPermission !== "admins" || isCurrentUserGroupAdmin;
   }, [effectiveGroupSettings, isCurrentUserGroupAdmin, isGroupChat]);
 
   const resolveInviteeIds = useCallback(async () => {
@@ -801,6 +817,7 @@ export const ActiveChatPane = ({
   ];
 
   const visibleAttachActions = attachActions.filter((action: any) => {
+    if (action.id === "poll") return canCreatePoll;
     if (!action.groupOnly) return true;
     return selectedChat?.type === "group" || selectedChat?.type === "GROUP";
   });
