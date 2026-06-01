@@ -67,6 +67,7 @@ export const ChatHeader = ({
   onStartAudioCall,
   onStartVideoCall,
   onBlockUser,
+  onDeleteConversation,
   activeCallV2,
   callV2Status,
   onJoinActiveCallV2,
@@ -280,6 +281,11 @@ export const ChatHeader = ({
 
     if (action.id === "block-user") {
       onBlockUser?.();
+      return;
+    }
+
+    if (action.id === "delete-chat") {
+      onDeleteConversation?.();
     }
   };
 

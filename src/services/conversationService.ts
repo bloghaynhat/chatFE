@@ -127,6 +127,11 @@ export const conversationService = {
     return response.data || response;
   },
 
+  async deleteConversationForMe(conversationId: string): Promise<any> {
+    const response: any = await api.delete(`/conversations/${conversationId}`);
+    return response.data || response;
+  },
+
   async setGroupAdmin(
     groupId: string,
     targetUserId: string,

@@ -831,8 +831,16 @@ export const ChatList = ({
       }
       fetchChats(false);
     };
+    const handleConversationDeletedForMe = (event: any) => {
+      const conversationId = event?.detail?.conversationId;
+      if (conversationId) {
+        setChats((prev) => prev.filter((chat) => String(chat.id) !== String(conversationId)));
+      }
+      fetchChats(false);
+    };
     window.addEventListener("chatList:refresh", handleRefresh);
     window.addEventListener("group:currentUserLeft", handleCurrentUserLeftGroup);
+    window.addEventListener("conversation:deletedForMe", handleConversationDeletedForMe);
 
     // Also listen to socket event if the other party accepted our request
     const unsubFriendAccepted = socketService.on("friend_request:accepted", () => {
@@ -844,6 +852,10 @@ export const ChatList = ({
       window.removeEventListener(
         "group:currentUserLeft",
         handleCurrentUserLeftGroup,
+      );
+      window.removeEventListener(
+        "conversation:deletedForMe",
+        handleConversationDeletedForMe,
       );
       if (unsubFriendAccepted) unsubFriendAccepted();
     };

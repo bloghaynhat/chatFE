@@ -1170,6 +1170,38 @@ const MainLayout = ({ children }: { children?: any }) => {
     openChatByRow(selectedChat);
   }, [openChatByRow, selectedChat]);
 
+  const handleDeleteConversation = useCallback(async () => {
+    if (!selectedConversationId) return;
+
+    const chatName =
+      selectedChat?.name ||
+      selectedChat?.displayName ||
+      selectedChat?.title ||
+      "this chat";
+    const confirmed = window.confirm(
+      `Delete ${chatName} from your chat list? This only deletes the conversation for you.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const deletedConversationId = selectedConversationId;
+      await conversationService.deleteConversationForMe(deletedConversationId);
+      setSelectedChat(null);
+      setSelectedConversationId(null);
+      setMessages([]);
+      setChatError("");
+      setIsRightSidebarOpen(false);
+      window.dispatchEvent(
+        new CustomEvent("conversation:deletedForMe", {
+          detail: { conversationId: deletedConversationId },
+        }),
+      );
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (error: any) {
+      alert(error?.message || "Could not delete this conversation.");
+    }
+  }, [selectedChat, selectedConversationId]);
+
   const handleLoadOlderMessages = useCallback(async () => {
     if (
       !selectedConversationId ||
@@ -1930,6 +1962,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               onUnpinMessage={handleUnpinMessage}
               onPollCreated={appendLocalMessage}
               onPollUpdated={updatePollInMessages}
+              onDeleteConversation={handleDeleteConversation}
               hasMoreMessages={messagePageInfo.hasMore}
               isLoadingOlderMessages={isLoadingOlderMessages}
               onLoadOlderMessages={handleLoadOlderMessages}
