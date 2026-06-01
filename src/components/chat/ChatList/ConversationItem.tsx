@@ -26,6 +26,11 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   const chatType = (chat as any).type;
   const isGroup = chatType === "group" || chatType === "GROUP" || (chat as any).isGroup === true;
   const showOnlineDot = !isSavedMessages && !isGroup && Boolean((chat as any).isOnline);
+  const isLastMessageSeen =
+    chat.lastMessageStatus === "seen" ||
+    (chat as any).lastMessageStatus === "read" ||
+    chat.lastMessage?.status === "seen" ||
+    (chat.lastMessage as any)?.status === "read";
 
   return (
     <div
@@ -81,7 +86,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             <div className={`flex items-center ml-2 ${isActive ? "text-blue-100" : "text-gray-500"}`}>
               {isMine && chat.lastMessage && (
                 <span className="mr-1 mt-[1px]">
-                  {chat.lastMessageStatus === "seen" || chat.lastMessage?.status === "seen" ? (
+                  {isLastMessageSeen ? (
                     <FiEye className="text-[11px]" />
                   ) : (
                     <FiCheck className="text-[11px]" />

@@ -19,10 +19,51 @@ const sortMessagesByCreatedAt = (items: any[] = []) =>
     return dateA - dateB;
   });
 
+const getMessageId = (message: any) =>
+  message?.id || message?._id || message?.messageId || null;
+
+const applyMemberSeenMapToMessages = (
+  items: any[] = [],
+  memberSeenMap: Record<string, string> = {},
+  currentUserId?: string,
+) => {
+  if (!currentUserId || !memberSeenMap || Object.keys(memberSeenMap).length === 0) {
+    return items;
+  }
+
+  const sorted = sortMessagesByCreatedAt(items);
+  const messageIndexById = new Map<string, number>();
+  sorted.forEach((message, index) => {
+    const messageId = getMessageId(message);
+    if (messageId) messageIndexById.set(String(messageId), index);
+  });
+
+  const otherSeenIndexes = Object.entries(memberSeenMap)
+    .filter(([userId]) => String(userId) !== String(currentUserId))
+    .map(([, lastSeenMessageId]) => messageIndexById.get(String(lastSeenMessageId)))
+    .filter((index): index is number => typeof index === "number");
+
+  if (otherSeenIndexes.length === 0) return sorted;
+
+  const maxSeenIndex = Math.max(...otherSeenIndexes);
+
+  return sorted.map((message, index) => {
+    const isOwnMessage = String(message?.senderId || message?.sender?.id || "") === String(currentUserId);
+    if (!isOwnMessage || index > maxSeenIndex) return message;
+
+    return {
+      ...message,
+      status: "seen",
+      isSeen: true,
+      readAt: message.readAt || new Date().toISOString(),
+    };
+  });
+};
+
 const mergeUniqueMessages = (olderMessages: any[], currentMessages: any[]) => {
   const seen = new Set<string>();
   const merged = [...olderMessages, ...currentMessages].filter((message) => {
-    const id = message?.id || message?._id || message?.messageId;
+    const id = getMessageId(message);
     if (!id) return true;
     if (seen.has(String(id))) return false;
     seen.add(String(id));
@@ -45,6 +86,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     nextCursor: string | null;
     hasMore: boolean;
   }>({ nextCursor: null, hasMore: false });
+  const [memberSeenMap, setMemberSeenMap] = useState<Record<string, string>>({});
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [typingUsers, setTypingUsers] = useState(new Set());
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
@@ -313,15 +355,27 @@ const MainLayout = ({ children }: { children?: any }) => {
           // payload might contain { messageId, status } or { id, conversationId }
           // Mark all messages up to lastSeenMessageId as seen
           const lastSeenMessageId = payload?.lastSeenMessageId;
+          const seenUserId = payload?.userId;
 
           if (!lastSeenMessageId) return;
+
+          if (seenUserId) {
+            setMemberSeenMap((prev) => ({
+              ...prev,
+              [seenUserId]: lastSeenMessageId,
+            }));
+          }
+
+          if (seenUserId && String(seenUserId) === String(user?.id)) {
+            return;
+          }
 
           setMessages((prev) => {
             let foundIndex = -1;
 
             // Find the index of the lastSeenMessageId
             for (let i = 0; i < prev.length; i++) {
-              const msgId = prev[i].id || prev[i]._id;
+              const msgId = getMessageId(prev[i]);
               if (String(msgId) === String(lastSeenMessageId)) {
                 foundIndex = i;
                 break;
@@ -331,7 +385,9 @@ const MainLayout = ({ children }: { children?: any }) => {
             // If found, mark all messages up to and including this index as seen
             if (foundIndex !== -1) {
               return prev.map((m, idx) => {
-                if (idx <= foundIndex) {
+                const isOwnMessage =
+                  String(m?.senderId || m?.sender?.id || "") === String(user?.id);
+                if (isOwnMessage && idx <= foundIndex) {
                   return {
                     ...m,
                     status: "seen",
@@ -992,8 +1048,13 @@ const MainLayout = ({ children }: { children?: any }) => {
           messageResult.messages || [],
         );
 
+        setMemberSeenMap(messageResult.memberSeenMap || {});
         setMessages(
-          mergeSearchTargetMessages(sortedMessages, processedChat, conversationId),
+          applyMemberSeenMapToMessages(
+            mergeSearchTargetMessages(sortedMessages, processedChat, conversationId),
+            messageResult.memberSeenMap || {},
+            user?.id,
+          ),
         );
         setMessagePageInfo({
           nextCursor: messageResult.nextCursor,
@@ -1004,12 +1065,18 @@ const MainLayout = ({ children }: { children?: any }) => {
         const lastMessage = sortedMessages[sortedMessages.length - 1];
         if (lastMessage) {
           const lastMessageId = lastMessage.id;
-          conversationService
-            .markDelivered(conversationId, lastMessageId)
-            .catch(() => {});
-          conversationService
-            .markSeen(conversationId, lastMessageId)
-            .catch(() => {});
+          const isLastMessageFromCurrentUser =
+            String(lastMessage.senderId || lastMessage.sender?.id || "") ===
+            String(user?.id || "");
+
+          if (!isLastMessageFromCurrentUser) {
+            conversationService
+              .markDelivered(conversationId, lastMessageId)
+              .catch(() => {});
+            conversationService
+              .markSeen(conversationId, lastMessageId)
+              .catch(() => {});
+          }
         }
       } catch (error) {
         setMessages([]);
@@ -1095,8 +1162,19 @@ const MainLayout = ({ children }: { children?: any }) => {
       );
 
       setMessages((prev) =>
-        mergeUniqueMessages(messageResult.messages || [], prev),
+        applyMemberSeenMapToMessages(
+          mergeUniqueMessages(messageResult.messages || [], prev),
+          {
+            ...memberSeenMap,
+            ...(messageResult.memberSeenMap || {}),
+          },
+          user?.id,
+        ),
       );
+      setMemberSeenMap((prev) => ({
+        ...prev,
+        ...(messageResult.memberSeenMap || {}),
+      }));
       requestAnimationFrame(() => {
         const updatedContainer = document.querySelector(
           "[data-chat-container]",
@@ -1117,9 +1195,11 @@ const MainLayout = ({ children }: { children?: any }) => {
     }
   }, [
     isLoadingOlderMessages,
+    memberSeenMap,
     messagePageInfo.hasMore,
     messagePageInfo.nextCursor,
     selectedConversationId,
+    user?.id,
   ]);
 
   const handleForwardToTarget = useCallback(

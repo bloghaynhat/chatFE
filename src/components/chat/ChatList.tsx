@@ -108,6 +108,62 @@ const getPrivateChatTargetUserId = (chat: any, currentUserId?: string | null) =>
   );
 };
 
+const isOwnLastMessage = (chat: any, currentUserId?: string | null) =>
+  Boolean(currentUserId) &&
+  String(chat?.lastMessage?.senderId || "") === String(currentUserId);
+
+const getChatMessageId = (message: any) =>
+  message?.id || message?._id || message?.messageId || null;
+
+const isMessageCoveredBySeenId = (messageId: any, lastSeenMessageId: any) => {
+  if (!messageId || !lastSeenMessageId) return false;
+  if (String(messageId) === String(lastSeenMessageId)) return true;
+
+  // Backend uses time-sortable message IDs, so lexicographic compare lets the
+  // list item follow the same "messageId <= lastSeenMessageId" rule.
+  return String(messageId) <= String(lastSeenMessageId);
+};
+
+const resolveLastMessageSeenStatus = async (chat: any, currentUserId?: string | null) => {
+  if (!chat?.id || !isOwnLastMessage(chat, currentUserId)) return null;
+
+  const lastMessageId = getChatMessageId(chat.lastMessage);
+  if (!lastMessageId) return null;
+
+  const messageResult = await conversationService.getConversationMessages(chat.id, {
+    limit: 100,
+  });
+  const messages = sortMessagesForSeenCheck(messageResult.messages || []);
+  const messageIndexById = new Map<string, number>();
+  messages.forEach((message, index) => {
+    const messageId = getChatMessageId(message);
+    if (messageId) messageIndexById.set(String(messageId), index);
+  });
+
+  const lastMessageIndex = messageIndexById.get(String(lastMessageId));
+  if (typeof lastMessageIndex !== "number") return null;
+
+  const isSeen = Object.entries(messageResult.memberSeenMap || {}).some(
+    ([userId, seenMessageId]) => {
+      if (String(userId) === String(currentUserId)) return false;
+      const seenIndex = messageIndexById.get(String(seenMessageId));
+      return typeof seenIndex === "number" && seenIndex >= lastMessageIndex;
+    },
+  );
+
+  return {
+    conversationId: chat.id,
+    isSeen,
+  };
+};
+
+const sortMessagesForSeenCheck = (messages: any[]) =>
+  [...messages].sort((a, b) => {
+    const dateA = new Date(a?.createdAt || a?.updatedAt || 0).getTime();
+    const dateB = new Date(b?.createdAt || b?.updatedAt || 0).getTime();
+    return dateA - dateB;
+  });
+
 const formatSearchMessageTime = (value: any) => {
   if (!value) return "";
   const date = new Date(value);
@@ -676,6 +732,41 @@ export const ChatList = ({
       const fetchedChats = Array.isArray(data) ? data : [];
       setChats((previousChats) => mergeFetchedChats(previousChats, fetchedChats));
       refreshOnlineStatuses(fetchedChats);
+
+      const ownLastMessageChats = fetchedChats.filter((chat) =>
+        isOwnLastMessage(chat, user?.id),
+      );
+      if (ownLastMessageChats.length > 0) {
+        Promise.all(
+          ownLastMessageChats.map((chat) =>
+            resolveLastMessageSeenStatus(chat, user?.id).catch(() => null),
+          ),
+        ).then((statuses) => {
+          const statusByConversationId = new Map(
+            statuses
+              .filter(Boolean)
+              .map((status: any) => [String(status.conversationId), status]),
+          );
+
+          if (statusByConversationId.size === 0) return;
+
+          setChats((previousChats) =>
+            previousChats.map((chat) => {
+              const status = statusByConversationId.get(String(chat.id));
+              if (!status) return chat;
+
+              return {
+                ...chat,
+                lastMessageStatus: status.isSeen ? "seen" : "sent",
+                lastMessage: {
+                  ...chat.lastMessage,
+                  status: status.isSeen ? "seen" : "sent",
+                },
+              };
+            }),
+          );
+        });
+      }
     } catch (err) {
       console.error("Fetch conversations error:", err);
       setChats([]);
@@ -859,6 +950,7 @@ export const ChatList = ({
           senderId: message.senderId || message.sender?.id || message.sender?._id || message.id_sender,
           textPreview: getChatMessagePreview(message),
           type: message.type || "text",
+          status: "sent",
         };
 
         if (idx !== -1) {
@@ -868,6 +960,10 @@ export const ChatList = ({
           const updatedChat = {
             ...chat,
             lastMessage: newLastMessage,
+            lastMessageStatus:
+              String(newLastMessage.senderId || "") === String(user?.id || "")
+                ? "sent"
+                : chat.lastMessageStatus,
             lastMessageTimeFormatted: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             unreadCount: isCurrentlyActive ? 0 : (chat.unreadCount || 0) + 1,
             lastMessageAt: newLastMessage.createdAt,
@@ -888,7 +984,7 @@ export const ChatList = ({
       // Call the unsubscribe function returned by our event manager
       unsubscribe();
     };
-  }, [activeChatId, openingChatId, fetchChats]);
+  }, [activeChatId, openingChatId, fetchChats, user?.id]);
 
   // Listen to seen/delivered events to update the status for the latest message
   // so the sender immediately sees the "eye" icon without refreshing
@@ -896,16 +992,20 @@ export const ChatList = ({
     const unsubSeen = socketService.onMessageStatusUpdate((payload) => {
       const convId = payload?.conversationId;
       const lastSeenId = payload?.lastSeenMessageId || payload?.messageId;
+      const seenUserId = payload?.userId;
 
       if (!convId || !lastSeenId) return;
+      if (seenUserId && String(seenUserId) === String(user?.id)) return;
 
       setChats((prev) =>
         prev.map((c) => {
           if (c.id === convId) {
+            if (!isOwnLastMessage(c, user?.id)) return c;
+
             // Because the frontend only keeps the ID of the last message
             const currentLastMsgId = c.lastMessage?.messageId || c.lastMessage?.id;
             // Update if the seen message is the last message
-            if (currentLastMsgId && String(currentLastMsgId) === String(lastSeenId)) {
+            if (isMessageCoveredBySeenId(currentLastMsgId, lastSeenId)) {
               return {
                 ...c,
                 lastMessageStatus: "seen",
@@ -961,7 +1061,7 @@ export const ChatList = ({
       fetchChats(false);
     });
     return () => unsubUpdated();
-  }, [fetchChats]);
+  }, [fetchChats, user?.id]);
 
   // Handle new conversation created (e.g., group creation)
   useEffect(() => {
