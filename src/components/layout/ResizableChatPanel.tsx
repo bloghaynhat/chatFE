@@ -44,6 +44,11 @@ export const ResizableChatPanel = ({
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isSearchClosing, setIsSearchClosing] = useState(false);
   const [filterMode, setFilterMode] = useState("all");
+  const [archiveStats, setArchiveStats] = useState({
+    count: 0,
+    unreadCount: 0,
+    preview: "",
+  });
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const panelRef = useRef(null);
   const navigationMenuRef = useRef(null);
@@ -67,6 +72,23 @@ export const ResizableChatPanel = ({
   const maxWidth = activeView === "contacts" ? 420 : 500;
   const isCollapsed = width <= 120;
 
+  const openArchivedChats = () => {
+    setFilterMode("archived");
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setIsSearchMode(false);
+    setIsSearchClosing(false);
+    setIsNavigationOpen(false);
+  };
+
+  const backToAllChats = () => {
+    setFilterMode("all");
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setIsSearchMode(false);
+    setIsSearchClosing(false);
+  };
+
   // Ensure width bounds are respected when switching views
   useEffect(() => {
     setWidth((currentWidth) =>
@@ -88,9 +110,7 @@ export const ResizableChatPanel = ({
     }
 
     if (actionId === "archived") {
-      setFilterMode("archived");
-      setSearchQuery("");
-      setIsNavigationOpen(false);
+      openArchivedChats();
       return;
     }
 
@@ -204,37 +224,60 @@ export const ResizableChatPanel = ({
       <div
         ref={panelRef}
         style={{ width: `${isCollapsed ? minWidth : width}px` }}
-        className={`flex flex-col bg-white dark:bg-slate-900 border-r dark:border-slate-700 relative ${isResizing ? "" : "transition-all duration-200"}`}
+        className={`flex flex-col bg-white dark:bg-slate-900 relative ${isResizing ? "" : "transition-all duration-200"}`}
       >
         {activeView === "chats" && (
-          <MainTaskbar
-            searchValue={searchQuery}
-            onSearchChange={(value) => {
-              setIsSearchClosing(false);
-              setSearchQuery(value);
-              setFilterMode("all");
-              setIsSearchMode(true);
-            }}
-            onSearchFocus={() => {
-              setIsSearchClosing(false);
-              setFilterMode("all");
-              setIsSearchMode(true);
-            }}
-            onOpenMenu={() => setIsNavigationOpen(true)}
-            onClearSearch={() => setSearchQuery("")}
-            onExitSearch={() => {
-              setIsSearchClosing(true);
-              window.setTimeout(() => {
-                setSearchQuery("");
-                setDebouncedSearchQuery("");
-                setIsSearchMode(false);
+          filterMode === "archived" ? (
+            <div className="h-[58px] shrink-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center px-2 gap-2">
+              <button
+                onClick={backToAllChats}
+                className="h-10 w-10 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+                title="Back to chats"
+                aria-label="Back to chats"
+              >
+                <FiArrowLeft className="text-xl" />
+              </button>
+              {!isCollapsed && (
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-gray-950 dark:text-white truncate">
+                    Archived Chats
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {archiveStats.count} conversation{archiveStats.count === 1 ? "" : "s"}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <MainTaskbar
+              searchValue={searchQuery}
+              onSearchChange={(value) => {
                 setIsSearchClosing(false);
-              }, 180);
-            }}
-            isSearchMode={isSearchMode}
-            friendRequestCount={friendRequests.length}
-            isCollapsed={isCollapsed}
-          />
+                setSearchQuery(value);
+                setFilterMode("all");
+                setIsSearchMode(true);
+              }}
+              onSearchFocus={() => {
+                setIsSearchClosing(false);
+                setFilterMode("all");
+                setIsSearchMode(true);
+              }}
+              onOpenMenu={() => setIsNavigationOpen(true)}
+              onClearSearch={() => setSearchQuery("")}
+              onExitSearch={() => {
+                setIsSearchClosing(true);
+                window.setTimeout(() => {
+                  setSearchQuery("");
+                  setDebouncedSearchQuery("");
+                  setIsSearchMode(false);
+                  setIsSearchClosing(false);
+                }, 180);
+              }}
+              isSearchMode={isSearchMode}
+              friendRequestCount={friendRequests.length}
+              isCollapsed={isCollapsed}
+            />
+          )
         )}
 
         {/* Navigation Drawer */}
@@ -290,9 +333,11 @@ export const ResizableChatPanel = ({
                   <FiArchive className="text-lg opacity-70" />
                   <span>Archived Chats</span>
                 </div>
-                <span className="text-xs font-semibold bg-gray-200 dark:bg-slate-700 px-2 py-0.5 rounded-full text-gray-500 dark:text-gray-400">
-                  1
-                </span>
+                {archiveStats.unreadCount > 0 && (
+                  <span className="text-xs font-semibold bg-gray-500 text-white px-2 py-0.5 rounded-full">
+                    {archiveStats.unreadCount > 99 ? "99+" : archiveStats.unreadCount}
+                  </span>
+                )}
               </button>
 
               <button
@@ -347,20 +392,57 @@ export const ResizableChatPanel = ({
           <div
             className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-10 ${activeView === "chats" ? "translate-x-0 opacity-100 pointer-events-auto" : "-translate-x-[20%] opacity-0 pointer-events-none"}`}
           >
-            <div className="flex-1 overflow-hidden relative">
-              <ChatList
-                searchQuery={debouncedSearchQuery}
-                isSearchMode={isSearchMode}
-                isSearchClosing={isSearchClosing}
-                filterMode={filterMode}
-                isCollapsed={isCollapsed}
-                activeChatId={activeChatId}
-                openingChatId={openingChatId}
-                isGlobalSearchEnabled={true}
-                onSelectChat={onSelectChat}
-                onForwardToTarget={onForwardToTarget}
-                onForwardMessages={onForwardMessages}
-              />
+            <div className="flex-1 overflow-hidden relative flex flex-col">
+              {filterMode !== "archived" && archiveStats.count > 0 && !isSearchMode && !debouncedSearchQuery && (
+                <button
+                  onClick={openArchivedChats}
+                  className={`w-full h-[74px] flex items-center px-3 gap-3 border-b border-gray-100 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 transition text-left ${
+                    isCollapsed ? "justify-center px-2" : ""
+                  }`}
+                >
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-sm">
+                    <FiArchive className="text-xl" />
+                    {isCollapsed && archiveStats.unreadCount > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gray-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                        {archiveStats.unreadCount > 99 ? "99+" : archiveStats.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] font-semibold text-gray-950 dark:text-white truncate">
+                          Archived Chats
+                        </p>
+                        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400 truncate">
+                          {archiveStats.preview || `${archiveStats.count} archived conversation${archiveStats.count === 1 ? "" : "s"}`}
+                        </p>
+                      </div>
+                      {archiveStats.unreadCount > 0 && (
+                        <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-gray-500 px-2 text-xs font-bold text-white">
+                          {archiveStats.unreadCount > 99 ? "99+" : archiveStats.unreadCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </button>
+              )}
+              <div className="flex-1 min-h-0">
+                <ChatList
+                  searchQuery={debouncedSearchQuery}
+                  isSearchMode={isSearchMode}
+                  isSearchClosing={isSearchClosing}
+                  filterMode={filterMode}
+                  isCollapsed={isCollapsed}
+                  activeChatId={activeChatId}
+                  openingChatId={openingChatId}
+                  isGlobalSearchEnabled={true}
+                  onArchiveStatsChange={setArchiveStats}
+                  onSelectChat={onSelectChat}
+                  onForwardToTarget={onForwardToTarget}
+                  onForwardMessages={onForwardMessages}
+                />
+              </div>
 
               {!isCollapsed && (
                 <QuickActionFab
@@ -394,7 +476,7 @@ export const ResizableChatPanel = ({
 
           {/* Contacts View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-20 pointer-events-auto ${activeView === "contacts" ? "translate-x-0" : "translate-x-full"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-20 pointer-events-auto ${activeView === "contacts" ? "translate-x-0" : "translate-x-full"}`}
           >
             <ContactsPanel
               isCollapsed={isCollapsed}
@@ -405,7 +487,7 @@ export const ResizableChatPanel = ({
 
           {/* Settings View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <SettingsPanel
               isCollapsed={isCollapsed}
@@ -416,7 +498,7 @@ export const ResizableChatPanel = ({
 
           {/* Privacy and Security View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <PrivacySecurityPanel
               isCollapsed={isCollapsed}
@@ -427,7 +509,7 @@ export const ResizableChatPanel = ({
 
           {/* Devices View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-40 pointer-events-auto ${activeView === "devices" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "devices" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           >
             <DevicesPanel
               isCollapsed={isCollapsed}
@@ -437,7 +519,7 @@ export const ResizableChatPanel = ({
 
           {/* Block List View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] shadow-[-5px_0_15px_rgba(0,0,0,0.05)] dark:shadow-[-5px_0_15px_rgba(0,0,0,0.2)] z-50 pointer-events-auto ${activeView === "block-list" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-50 pointer-events-auto ${activeView === "block-list" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           >
             <BlockListPanel
               isCollapsed={isCollapsed}
@@ -453,8 +535,16 @@ export const ResizableChatPanel = ({
           e.preventDefault();
           setIsResizing(true);
         }}
-        className={`w-1 bg-gray-200 dark:bg-slate-700 hover:bg-blue-500 dark:hover:bg-blue-500 cursor-col-resize transition-colors z-50 ${isResizing ? "bg-blue-500" : ""}`}
-      />
+        className={`group relative z-50 w-px cursor-col-resize transition-colors duration-150 ${
+          isResizing
+            ? "bg-blue-300/80 dark:bg-blue-500/70"
+            : "bg-gray-200/80 hover:bg-blue-300/70 dark:bg-slate-700/70 dark:hover:bg-blue-500/60"
+        }`}
+        aria-label="Resize chat list"
+        role="separator"
+      >
+        <span className="absolute inset-y-0 -left-[5px] w-[11px]" />
+      </div>
 
       {/* Profile Modal - Rendered outside ProfileMenu so it persists when menu closes */}
       <UserProfileModal

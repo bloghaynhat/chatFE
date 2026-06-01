@@ -1,7 +1,9 @@
 import { useCallback, useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { conversationService, mediaService } from "../../services";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
+import { DeleteConversationModal } from "../chat/ActiveChatPane/DeleteConversationModal";
 import { RightSidebar } from "../chat/RightSidebar";
 import { ResizableChatPanel } from "./ResizableChatPanel";
 import { useAuth } from "../../hooks";
@@ -12,6 +14,29 @@ import type {
 import { toast } from "sonner";
 
 const MESSAGE_PAGE_SIZE = 30;
+
+const slugifyChatName = (value: string = "") => {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || "chat";
+};
+
+const getConversationUrl = (conversationId: string, chatName?: string) =>
+  `/c/${encodeURIComponent(conversationId)}/${slugifyChatName(chatName)}`;
+
+const hasDisplayInfo = (conversation: any) =>
+  Boolean(
+    conversation?.name ||
+      conversation?.displayName ||
+      conversation?.targetUser?.displayName ||
+      conversation?.participant?.displayName ||
+      conversation?.user?.displayName,
+  );
 
 const sortMessagesByCreatedAt = (items: any[] = []) =>
   [...items].sort((a, b) => {
@@ -82,6 +107,8 @@ const MainLayout = ({ children }: { children?: any }) => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [isDeleteConversationModalOpen, setIsDeleteConversationModalOpen] = useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [messages, setMessages] = useState([]);
   const [messagePageInfo, setMessagePageInfo] = useState<{
     nextCursor: string | null;
@@ -96,6 +123,8 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { conversationId: routeConversationId } = useParams();
 
   // Track pending pin/unpin operations to prevent duplicate requests
   const pendingPinOperations = useRef<Set<string>>(new Set());
@@ -998,7 +1027,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
 
   const openChatByRow = useCallback(
-    async (chat) => {
+    async (chat, options: { syncUrl?: boolean; replaceUrl?: boolean } = {}) => {
       if (!chat?.id) {
         setChatError("Couldn’t open this conversation");
         return;
@@ -1058,6 +1087,17 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
 
         setSelectedConversationId(conversationId);
+
+        if (options.syncUrl !== false) {
+          const chatName =
+            processedChat.name ||
+            processedChat.displayName ||
+            processedChat.title ||
+            "chat";
+          navigate(getConversationUrl(conversationId, chatName), {
+            replace: Boolean(options.replaceUrl),
+          });
+        }
 
         // Nếu là group chat, fetch thông tin nhóm mới nhất và update selectedChat
         const isGroupChat =
@@ -1141,9 +1181,84 @@ const MainLayout = ({ children }: { children?: any }) => {
         setOpeningChatId(null);
       }
     },
-    [isOpeningConversation, openingChatId],
+    [isOpeningConversation, navigate, openingChatId, user?.id],
   );
 
+  useEffect(() => {
+    if (!routeConversationId || !user?.id) return;
+    if (String(selectedConversationId) === String(routeConversationId)) return;
+    if (isOpeningConversation && String(openingChatId) === String(routeConversationId)) return;
+
+    let cancelled = false;
+
+    const openConversationFromUrl = async () => {
+      try {
+        setActiveView("chats");
+        setChatError("");
+        let conversation = await conversationService.getConversationById(routeConversationId);
+        if (cancelled) return;
+
+        let detail: any = conversation;
+        if (!detail?.id && !detail?.conversationId) {
+          setChatError("Conversation not found.");
+          return;
+        }
+
+        const conversationId = detail.id || detail.conversationId;
+        if (!hasDisplayInfo(detail)) {
+          const conversations = await conversationService.getConversations();
+          if (cancelled) return;
+
+          const listItem = (Array.isArray(conversations) ? conversations : []).find(
+            (item: any) => String(item?.id || item?.conversationId) === String(conversationId),
+          );
+
+          if (listItem) {
+            detail = {
+              ...detail,
+              ...listItem,
+              members: detail.members || listItem.members,
+              participants: detail.participants || listItem.participants,
+              settings: {
+                ...(listItem.settings || {}),
+                ...(detail.settings || {}),
+                utilityPermissions: {
+                  ...(listItem.settings?.utilityPermissions || {}),
+                  ...(detail.settings?.utilityPermissions || {}),
+                },
+              },
+            };
+          }
+        }
+
+        await openChatByRow(
+          {
+            ...detail,
+            id: conversationId,
+            conversationId,
+          },
+          { syncUrl: false },
+        );
+      } catch (error: any) {
+        if (cancelled) return;
+        setChatError(error?.message || "Could not open this conversation.");
+      }
+    };
+
+    void openConversationFromUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpeningConversation,
+    openChatByRow,
+    openingChatId,
+    routeConversationId,
+    selectedConversationId,
+    user?.id,
+  ]);
+  
   const findSavedMessagesConversation = useCallback(async () => {
     const conversations = await conversationService.getConversations();
     return (Array.isArray(conversations) ? conversations : []).find(
@@ -1188,24 +1303,17 @@ const MainLayout = ({ children }: { children?: any }) => {
   const handleDeleteConversation = useCallback(async () => {
     if (!selectedConversationId) return;
 
-    const chatName =
-      selectedChat?.name ||
-      selectedChat?.displayName ||
-      selectedChat?.title ||
-      "this chat";
-    const confirmed = window.confirm(
-      `Delete ${chatName} from your chat list? This only deletes the conversation for you.`,
-    );
-    if (!confirmed) return;
-
+    setIsDeletingConversation(true);
     try {
       const deletedConversationId = selectedConversationId;
       await conversationService.deleteConversationForMe(deletedConversationId);
+      setIsDeleteConversationModalOpen(false);
       setSelectedChat(null);
       setSelectedConversationId(null);
       setMessages([]);
       setChatError("");
       setIsRightSidebarOpen(false);
+      navigate("/", { replace: true });
       window.dispatchEvent(
         new CustomEvent("conversation:deletedForMe", {
           detail: { conversationId: deletedConversationId },
@@ -1214,8 +1322,10 @@ const MainLayout = ({ children }: { children?: any }) => {
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error: any) {
       alert(error?.message || "Could not delete this conversation.");
+    } finally {
+      setIsDeletingConversation(false);
     }
-  }, [selectedChat, selectedConversationId]);
+  }, [navigate, selectedConversationId]);
 
   const handleLoadOlderMessages = useCallback(async () => {
     if (
@@ -2048,7 +2158,7 @@ const MainLayout = ({ children }: { children?: any }) => {
               onUnpinMessage={handleUnpinMessage}
               onPollCreated={appendLocalMessage}
               onPollUpdated={updatePollInMessages}
-              onDeleteConversation={handleDeleteConversation}
+              onDeleteConversation={() => setIsDeleteConversationModalOpen(true)}
               hasMoreMessages={messagePageInfo.hasMore}
               isLoadingOlderMessages={isLoadingOlderMessages}
               onLoadOlderMessages={handleLoadOlderMessages}
@@ -2092,6 +2202,23 @@ const MainLayout = ({ children }: { children?: any }) => {
               });
             }
           }}
+        />
+
+        <DeleteConversationModal
+          isOpen={isDeleteConversationModalOpen}
+          isLoading={isDeletingConversation}
+          chatName={
+            selectedChat?.name ||
+            selectedChat?.displayName ||
+            selectedChat?.title ||
+            "this chat"
+          }
+          onClose={() => {
+            if (!isDeletingConversation) {
+              setIsDeleteConversationModalOpen(false);
+            }
+          }}
+          onConfirm={handleDeleteConversation}
         />
       </div>
     </div>

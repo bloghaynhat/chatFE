@@ -101,6 +101,18 @@ export const conversationService = {
     return normalizeConversationPage(response);
   },
 
+  async getConversationById(conversationId: string): Promise<Conversation | null> {
+    const response: any = await api.get(`/conversations/${conversationId}`);
+    const detail = response?.data || response || {};
+    const conversation = detail?.conversation || detail;
+    return normalizeConversation({
+      ...conversation,
+      members: detail?.members || conversation?.members,
+      participants: detail?.members || conversation?.participants,
+      currentUserRole: detail?.currentUserRole || conversation?.currentUserRole,
+    });
+  },
+
   async createPrivateConversation(targetUserId: string): Promise<Conversation> {
     const response: any = await api.post("/conversations/private", {
       targetUserId,
@@ -172,6 +184,10 @@ export const conversationService = {
     const response: any = await api.patch(
       `/conversations/${conversationId}/wallpaper`,
       { wallpaperUrl },
+  async pinConversation(conversationId: string): Promise<any> {
+    const response: any = await api.post(
+      `/conversations/${conversationId}/pin-conversation`,
+      {},
     );
     return response.data || response;
   },
@@ -179,6 +195,24 @@ export const conversationService = {
   async removeWallpaper(conversationId: string): Promise<any> {
     const response: any = await api.delete(
       `/conversations/${conversationId}/wallpaper`,
+  async unpinConversation(conversationId: string): Promise<any> {
+    const response: any = await api.delete(
+      `/conversations/${conversationId}/pin-conversation`,
+    );
+    return response.data || response;
+  },
+
+  async archiveConversation(conversationId: string): Promise<any> {
+    const response: any = await api.post(
+      `/conversations/${conversationId}/archive`,
+      {},
+    );
+    return response.data || response;
+  },
+
+  async unarchiveConversation(conversationId: string): Promise<any> {
+    const response: any = await api.delete(
+      `/conversations/${conversationId}/archive`,
     );
     return response.data || response;
   },

@@ -19,7 +19,7 @@ export const MainTaskbar = ({
     >
       <button
         onClick={isSearchMode ? onExitSearch : onOpenMenu}
-        className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0 relative overflow-hidden"
+        className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0 relative overflow-visible"
         title={isSearchMode ? "Back" : "Open navigation menu"}
       >
         <span
@@ -37,7 +37,7 @@ export const MainTaskbar = ({
           <FiArrowLeft className="text-xl" />
         </span>
         {!isSearchMode && friendRequestCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute -right-1 -top-1 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900">
             {friendRequestCount > 9 ? "9+" : friendRequestCount}
           </span>
         )}

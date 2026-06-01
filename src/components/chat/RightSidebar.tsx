@@ -101,6 +101,20 @@ const createCroppedWallpaperFile = async (
   return new File([blob], `wallpaper-${Date.now()}.${extension}`, {
     type: blob.type,
   });
+const mergeGroupSettings = (
+  ...sources: Array<GroupSettingsPayload | undefined | null>
+): GroupSettingsPayload => {
+  return sources.reduce<GroupSettingsPayload>((merged, source) => {
+    if (!source) return merged;
+    return {
+      ...merged,
+      ...source,
+      utilityPermissions: {
+        ...(merged.utilityPermissions || {}),
+        ...(source.utilityPermissions || {}),
+      },
+    };
+  }, {});
 };
 
 export const RightSidebar = ({
@@ -427,6 +441,10 @@ export const RightSidebar = ({
         ? "admin"
         : currentUserMember?.role || "member";
   const canEditGroup = isPrivilegedRole(currentUserRole);
+  const groupSettings = mergeGroupSettings(
+    selectedChat?.settings,
+    info?.conversation?.settings || info?.settings,
+  );
   const canDissolveGroup = isOwnerRole(currentUserRole);
   const groupSettings = {
     ...(selectedChat?.settings || {}),
@@ -715,9 +733,11 @@ export const RightSidebar = ({
           name: actualInfo.conversation?.name || actualInfo.name,
           avatarUrl: actualInfo.conversation?.avatarUrl || actualInfo.avatarUrl,
           settings: {
-            ...(selectedChat?.settings || {}),
-            ...(info?.conversation?.settings || info?.settings || {}),
-            ...settingsPayload,
+            ...mergeGroupSettings(
+              selectedChat?.settings,
+              info?.conversation?.settings || info?.settings,
+              settingsPayload,
+            ),
           },
         });
       }
@@ -1112,11 +1132,11 @@ export const RightSidebar = ({
         onAvatarChange={handleAvatarChange}
         onSaveGeneral={handleSaveGroupInfo}
         onSettingsUpdated={(settings) => {
-          const nextSettings = {
-            ...(selectedChat?.settings || {}),
-            ...(info?.conversation?.settings || info?.settings || {}),
-            ...settings,
-          };
+          const nextSettings = mergeGroupSettings(
+            selectedChat?.settings,
+            info?.conversation?.settings || info?.settings,
+            settings,
+          );
           setInfo((prev: any) => ({
             ...prev,
             settings: nextSettings,

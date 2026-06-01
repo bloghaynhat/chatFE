@@ -150,6 +150,9 @@ export interface Conversation {
   role: "member" | "admin";
   lastMessageStatus: "sent" | "delivered" | "seen";
   lastMessageTimeFormatted: string;
+  pinned?: boolean;
+  pinnedAt?: string;
+  archived?: boolean;
   /**
    * Group-specific fields (may be undefined for private conversations)
    */
