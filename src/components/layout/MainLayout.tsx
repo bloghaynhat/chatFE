@@ -331,11 +331,19 @@ const MainLayout = ({ children }: { children?: any }) => {
           if (!editedMsg || (!editedMsg._id && !editedMsg.id)) return;
 
           setMessages((prev) =>
-            prev.map((m) =>
-              String(m._id || m.id) === String(editedMsg._id || editedMsg.id)
-                ? { ...m, ...editedMsg, isEdited: true }
-                : m,
-            ),
+            prev.map((m) => {
+              if (String(m._id || m.id) === String(editedMsg._id || editedMsg.id)) {
+                const newText = editedMsg.text || editedMsg.content || editedMsg.message || m.text;
+                return {
+                  ...m,
+                  ...editedMsg,
+                  isEdited: true,
+                  text: newText,
+                  content: newText,
+                };
+              }
+              return m;
+            }),
           );
         });
 
@@ -1350,9 +1358,23 @@ const MainLayout = ({ children }: { children?: any }) => {
           );
 
           await socketService.editMessage(payloadOrText.id, payloadOrText.text);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to edit message", error);
-          // Ideally revert UI state here, but logging is minimum.
+          let errorMessage = error?.message || "Chỉnh sửa tin nhắn thất bại";
+          if (errorMessage.includes("limit exceeded") || errorMessage.includes("15 minutes")) {
+            errorMessage = "Không thể chỉnh sửa tin nhắn đã gửi quá 15 phút.";
+          }
+          toast.error(errorMessage);
+          // Revert UI state
+          setMessages((prev) => {
+            const originalMsg = messages.find((m) => String(m.id || m._id) === String(payloadOrText.id));
+            if (!originalMsg) return prev;
+            return prev.map((msg) =>
+              String(msg.id || msg._id) === String(payloadOrText.id)
+                ? { ...originalMsg }
+                : msg,
+            );
+          });
         }
         return;
       }
