@@ -12,6 +12,7 @@ import {
   FiType,
   FiTrash2,
   FiLock,
+  FiZap,
 } from "react-icons/fi";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { AiSmartReply } from "../AiSmartReply";
@@ -48,8 +49,11 @@ export const ChatInput = ({
   isTyping,
   isLastMessageFromCurrentUser,
   disabledTone = "danger",
+  onChatInteractionRead,
 }) => {
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
+  const [isSmartReplyOpen, setIsSmartReplyOpen] = useState(false);
+  const [manualSmartReplyKey, setManualSmartReplyKey] = useState("");
 
   useEffect(() => {
     if (replyingMessage) {
@@ -252,20 +256,42 @@ export const ChatInput = ({
     return text || "Attachments";
   };
 
+  const canRequestSmartReply =
+    Boolean(selectedConversationId) &&
+    !draftMessage.trim() &&
+    !isTyping &&
+    !isLastMessageFromCurrentUser &&
+    !editingMessage &&
+    !replyingMessage &&
+    !forwardingMessage &&
+    !disabledReason;
+
+  useEffect(() => {
+    if (!canRequestSmartReply) {
+      setIsSmartReplyOpen(false);
+    }
+  }, [canRequestSmartReply]);
+
   return (
-    <div data-chat-input-root className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent">
-      {(forwardingMessage || editingMessage || replyingMessage) && (
-        <div className="max-w-4xl mx-auto mb-2 flex bg-[#edf4f1] dark:bg-slate-800/95 rounded-t-[10px] overflow-hidden relative z-40 p-[8px] pl-[14px] items-center">
-          <div className="flex-1 flex flex-col justify-center min-w-0 pr-6 gap-[5px]">
-            <span className="text-[14px] font-medium text-[#2ea6f3] flex items-center gap-1.5 leading-none">
+    <div
+      data-chat-input-root
+      className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent"
+      onPointerDown={onChatInteractionRead}
+      onFocus={onChatInteractionRead}
+    >
+      {(forwardingMessage || replyingMessage) && !editingMessage && (
+        <div className="relative z-40 mx-auto mb-2 flex max-w-4xl items-center overflow-hidden rounded-[22px] border border-white/70 bg-white/55 py-2 pl-4 pr-12 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/35">
+          <div className="absolute left-2 top-2 bottom-2 w-[3px] rounded-full bg-[#2ea6f3]" />
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 pl-2">
+            <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-[#2ea6f3]">
               {editingMessage ? (
-                <FiEdit2 className="text-[17px]" strokeWidth={2} />
+                <FiEdit2 className="text-[15px]" strokeWidth={2} />
               ) : replyingMessage ? (
-                <FiCornerUpLeft className="text-[16px]" strokeWidth={2.5} />
+                <FiCornerUpLeft className="text-[15px]" strokeWidth={2.5} />
               ) : (
                 <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
               )}
-              <span className="text-[14.5px] tracking-tight">
+              <span className="truncate">
                 {editingMessage
                   ? "Editing"
                   : replyingMessage
@@ -273,7 +299,7 @@ export const ChatInput = ({
                     : "Forward Message"}
               </span>
             </span>
-            <p className="text-[13.5px] text-gray-500/90 dark:text-gray-400 truncate leading-none flex gap-1 items-center pb-0.5">
+            <p className="flex items-center gap-1 truncate text-[13px] leading-tight text-gray-500/90 dark:text-slate-400">
               {editingMessage || replyingMessage ? null : (
                 <span className="font-medium text-gray-700 dark:text-gray-300">
                   {forwardingMessage?.senderId === currentUserId
@@ -304,39 +330,34 @@ export const ChatInput = ({
                 onClearForwarding();
               }
             }}
-            className="absolute right-3 text-gray-400 hover:text-[#2ea6f3] transition-colors p-[8px]"
+            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-white/70 hover:text-[#2ea6f3] dark:hover:bg-slate-800"
+            title="Cancel"
           >
             <FiX
-              className="text-[#3e3e3e]"
+              className="text-current"
               strokeWidth={1}
-              style={{ fontSize: "22px" }}
+              style={{ fontSize: "21px" }}
             />
           </button>
-          <div className="absolute left-[3px] top-1/2 -translate-y-1/2 w-[3px] h-[70%] bg-[#2ea6f3] rounded-[5px]"></div>
         </div>
       )}
 
       {/* Tích hợp AI Smart Reply ở đây */}
       <AiSmartReply
         conversationId={selectedConversationId}
-        triggerKey={smartReplyTriggerKey}
+        triggerKey={manualSmartReplyKey || smartReplyTriggerKey}
         userId={currentUserId}
         onSelectReply={(text) => {
           setDraftMessage(text);
+          setIsSmartReplyOpen(false);
         }}
-        shouldFetch={
-          Boolean(selectedConversationId) &&
-          !draftMessage.trim() &&
-          !isTyping &&
-          !isLastMessageFromCurrentUser &&
-          !editingMessage &&
-          !replyingMessage &&
-          !forwardingMessage
-        }
+        onClose={() => setIsSmartReplyOpen(false)}
+        shouldFetch={isSmartReplyOpen && canRequestSmartReply}
       />
 
       <div
-        className={`relative flex items-center gap-2 max-w-4xl mx-auto ${forwardingMessage || editingMessage || replyingMessage ? "-mt-4 z-40" : ""}`}
+        className={`relative mx-auto flex max-w-4xl gap-2 ${editingMessage ? "items-end" : "items-center"
+          }`}
       >
         {isRecordingAudio ? (
           <div className="relative flex-1 h-11 lg:h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-between px-4 border border-red-500/20 shadow-lg">
@@ -366,27 +387,55 @@ export const ChatInput = ({
         ) : (
           <div
             ref={attachMenuRef}
-            className={`relative flex-1 min-h-[44px] lg:min-h-[48px] h-auto rounded-[24px] bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all flex items-center ${
-              disabledReason
+            className={`relative flex-1 h-auto bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${editingMessage
+              ? "min-h-[106px] rounded-[16px] flex flex-col items-stretch py-2"
+              : "min-h-[44px] lg:min-h-[48px] rounded-[24px] flex items-center"
+              } ${disabledReason
                 ? disabledTone === "neutral"
                   ? "border-blue-100 dark:border-slate-700"
                   : "border-red-200 dark:border-red-800"
                 : isListeningText
                   ? "border-blue-300 dark:border-blue-500/50 shadow-blue-500/10"
                   : "border-white/90 dark:border-slate-700/90"
-            }`}
+              }`}
           >
             {disabledReason && (
               <div
-                className={`absolute inset-0 z-[80] flex items-center justify-center rounded-full px-5 text-center text-sm font-semibold backdrop-blur-sm ${
-                  disabledTone === "neutral"
-                    ? "bg-white/95 text-gray-500 dark:bg-slate-800/95 dark:text-slate-300"
-                    : "bg-red-50/95 text-red-600 dark:bg-red-950/90 dark:text-red-200"
-                }`}
+                className={`absolute inset-0 z-[80] flex items-center justify-center rounded-full px-5 text-center text-sm font-semibold backdrop-blur-sm ${disabledTone === "neutral"
+                  ? "bg-white/95 text-gray-500 dark:bg-slate-800/95 dark:text-slate-300"
+                  : "bg-red-50/95 text-red-600 dark:bg-red-950/90 dark:text-red-200"
+                  }`}
               >
                 <FiLock className="mr-2 shrink-0 text-[16px]" />
                 <span className="truncate">{disabledReason}</span>
               </div>
+            )}
+
+            {editingMessage && (
+              <>
+                <div className="absolute left-4 top-5 flex h-6 w-6 items-center justify-center text-[#ef5b7d]">
+                  <FiEdit2 className="text-[20px]" strokeWidth={2} />
+                </div>
+                <div className="mx-12 rounded-[5px] bg-[#fae9ed] px-3 py-1.5 dark:bg-rose-950/35">
+                  <div className="text-[13px] font-semibold leading-tight text-[#ef5b7d]">
+                    Edit Message
+                  </div>
+                  <div className="truncate text-[13px] leading-tight text-gray-700 dark:text-slate-200">
+                    {getPreviewText(editingMessage)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingMessage(null);
+                    setDraftMessage("");
+                  }}
+                  className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-[#ef5b7d] transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  title="Cancel editing"
+                >
+                  <FiX className="text-[24px]" strokeWidth={1.6} />
+                </button>
+              </>
             )}
 
             <div
@@ -436,7 +485,10 @@ export const ChatInput = ({
                 setIsAttachMenuOpen(false);
                 setIsMoreMenuOpen(false);
               }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+              className={`absolute left-2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${editingMessage
+                ? "bottom-2"
+                : "top-1/2 -translate-y-1/2"
+                }`}
               title="Open emoji picker"
             >
               <FiSmile className="text-[20px] lg:text-[22px]" />
@@ -455,10 +507,14 @@ export const ChatInput = ({
               }}
               disabled={Boolean(disabledReason)}
               placeholder={disabledReason || "Message"}
-              className="w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none py-[12px] lg:py-[14px] pl-11 pr-[88px]"
+              className={`w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${editingMessage ? "pt-2 pb-1.5" : "py-[12px] lg:py-[14px]"
+                }`}
             />
 
-            <div className="absolute right-9 bottom-0 top-0 flex items-center">
+            <div
+              className={`absolute right-9 flex items-center ${editingMessage ? "bottom-1.5 h-10" : "bottom-0 top-0"
+                }`}
+            >
               <AiToneAdjustMenu
                 currentText={draftMessage}
                 onApplyTone={(newText) => setDraftMessage(newText)}
@@ -472,7 +528,8 @@ export const ChatInput = ({
                 setIsMoreMenuOpen(false);
                 setIsEmojiPickerOpen(false);
               }}
-              className="absolute right-1.5 bottom-0 top-0 flex items-center h-full w-8 lg:w-9 justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition"
+              className={`absolute right-1.5 flex w-8 lg:w-9 items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition ${editingMessage ? "bottom-1.5 h-10" : "bottom-0 top-0 h-full"
+                }`}
               title="Open attachment actions"
             >
               <FiPaperclip className="text-[20px] lg:text-[22px]" />
@@ -482,6 +539,24 @@ export const ChatInput = ({
 
         {!isRecordingAudio && (
           <div className="relative flex items-center shrink-0">
+            {canRequestSmartReply && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSmartReplyOpen((prev) => !prev);
+                  setManualSmartReplyKey(`manual-${Date.now()}`);
+                  setIsVoiceMenuOpen(false);
+                }}
+                className={`absolute bottom-[calc(100%+12px)] right-0 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 shadow-md backdrop-blur-sm transition lg:h-12 lg:w-12 ${isSmartReplyOpen
+                  ? "bg-blue-50 text-blue-600"
+                  : "animate-pulse bg-white/80 text-gray-600 ring-2 ring-blue-400/25 hover:bg-white hover:text-blue-600"
+                  } dark:border-slate-700/70 dark:bg-slate-800/85 dark:text-slate-200 dark:hover:text-blue-300`}
+                title="Gợi ý trả lời AI"
+              >
+                <FiZap className="text-[20px] lg:text-[22px]" />
+              </button>
+            )}
+
             {isVoiceMenuOpen && (
               <div
                 ref={voiceMenuRef}
@@ -531,13 +606,12 @@ export const ChatInput = ({
             )}
 
             <button
-              className={`h-11 w-11 lg:h-12 lg:w-12 rounded-full inline-flex items-center justify-center shadow-md transition cursor-pointer z-50 relative ${
-                disabledReason
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : isListeningText
-                    ? "bg-blue-100 text-blue-600 animate-pulse hover:bg-blue-200"
-                    : "bg-[#2ea6f3] text-white hover:bg-[#1f97e5]"
-              }`}
+              className={`h-11 w-11 lg:h-12 lg:w-12 rounded-full inline-flex items-center justify-center shadow-md transition cursor-pointer z-50 relative ${disabledReason
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : isListeningText
+                  ? "bg-blue-100 text-blue-600 animate-pulse hover:bg-blue-200"
+                  : "bg-[#2ea6f3] text-white hover:bg-[#1f97e5]"
+                }`}
               onClick={() => {
                 if (disabledReason) return;
                 if (
@@ -557,9 +631,9 @@ export const ChatInput = ({
               }}
             >
               {editingMessage ||
-              draftMessage.trim() ||
-              forwardingMessage ||
-              replyingMessage ? (
+                draftMessage.trim() ||
+                forwardingMessage ||
+                replyingMessage ? (
                 <FiSend className="text-[20px] lg:text-[22px]" />
               ) : (
                 <FiMic className="text-[20px] lg:text-[22px]" />

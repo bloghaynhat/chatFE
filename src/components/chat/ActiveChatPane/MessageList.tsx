@@ -89,6 +89,7 @@ export const MessageList = ({
   onNavigateToMessage,
   onPollUpdated,
   onOpenChat,
+  onChatInteractionRead,
 }: any) => {
   const wallpaperPreset = getWallpaperPresetByValue(wallpaperUrl);
   const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
@@ -181,6 +182,7 @@ export const MessageList = ({
       className={containerClassName}
       style={wallpaperStyle}
       data-chat-container
+      onPointerDown={onChatInteractionRead}
       onContextMenu={handleContainerContextMenu}
     >
       <div className={overlayClassName}>
