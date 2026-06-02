@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { FiCheck, FiEye, FiEyeOff } from "react-icons/fi";
 import { useAuth } from "../../hooks";
 
 const resolveFieldErrors = (error) => {
@@ -51,7 +52,43 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register } = useAuth();
+
+  const passwordChecks = [
+    {
+      id: "length",
+      label: "Ít nhất 8 ký tự",
+      passed: formData.password.length >= 8,
+    },
+    {
+      id: "uppercase",
+      label: "Có chữ in hoa",
+      passed: /[A-Z]/.test(formData.password),
+    },
+    {
+      id: "numberSpecial",
+      label: "Có số hoặc ký tự đặc biệt",
+      passed: /[\d\W_]/.test(formData.password),
+    },
+  ];
+  const strengthScore = passwordChecks.filter((check) => check.passed).length;
+  const strengthLabel =
+    strengthScore <= 1 ? "Yếu" : strengthScore === 2 ? "Trung bình" : "Mạnh";
+  const strengthColor =
+    strengthScore <= 1
+      ? "bg-red-500"
+      : strengthScore === 2
+        ? "bg-amber-500"
+        : "bg-emerald-500";
+  const strengthTextColor =
+    strengthScore <= 1
+      ? "text-red-500"
+      : strengthScore === 2
+        ? "text-amber-500"
+        : "text-emerald-500";
+  const strengthWidth = `${Math.max(strengthScore, formData.password ? 1 : 0) * 33.33}%`;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -190,28 +227,61 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             value={formData.password}
-            onChange={handleChange}
+            visible={showPassword}
             placeholder="Nhập mật khẩu"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
+            onChange={handleChange}
+            onToggleVisibility={() => setShowPassword((visible) => !visible)}
           />
           {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
+          {formData.password && (
+            <div className="mt-3 rounded-lg bg-gray-50 border border-gray-100 px-3 py-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[13px] font-medium text-gray-600">Độ mạnh mật khẩu</span>
+                <span className={`text-[13px] font-semibold ${strengthTextColor}`}>{strengthLabel}</span>
+              </div>
+              <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${strengthColor}`}
+                  style={{ width: strengthWidth }}
+                />
+              </div>
+              <div className="mt-3 space-y-1.5">
+                {passwordChecks.map((check) => (
+                  <div
+                    key={check.id}
+                    className={`flex items-center gap-2 text-[13px] transition ${
+                      check.passed ? "text-emerald-600" : "text-gray-500"
+                    }`}
+                  >
+                    <span className={`h-4 w-4 rounded-full flex items-center justify-center border ${
+                      check.passed
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : "border-gray-300"
+                    }`}>
+                      {check.passed && <FiCheck className="text-[11px]" />}
+                    </span>
+                    <span>{check.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu</label>
-          <input
-            type="password"
+          <PasswordInput
             name="confirmPassword"
             value={formData.confirmPassword}
-            onChange={handleChange}
+            visible={showConfirmPassword}
             placeholder="Nhập lại mật khẩu"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
+            onChange={handleChange}
+            onToggleVisibility={() => setShowConfirmPassword((visible) => !visible)}
           />
         </div>
 
@@ -250,3 +320,43 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
     </div>
   );
 };
+
+const PasswordInput = ({
+  name,
+  value,
+  visible,
+  placeholder,
+  disabled,
+  onChange,
+  onToggleVisibility,
+}: {
+  name: string;
+  value: string;
+  visible: boolean;
+  placeholder: string;
+  disabled: boolean;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onToggleVisibility: () => void;
+}) => (
+  <div className="relative">
+    <input
+      type={visible ? "text" : "password"}
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full rounded-lg border border-gray-300 px-4 py-2 pr-11 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+      disabled={disabled}
+      autoComplete={name === "password" ? "new-password" : "new-password"}
+    />
+    <button
+      type="button"
+      onClick={onToggleVisibility}
+      disabled={disabled}
+      className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+      title={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+    >
+      {visible ? <FiEyeOff /> : <FiEye />}
+    </button>
+  </div>
+);
