@@ -22,7 +22,7 @@ interface AuthContextType {
   login: (phone: string, password: string) => Promise<User>;
   register: (userData: RegisterData) => Promise<any>;
   sendVerification: (payload: { email: string }) => Promise<any>;
-  verifyEmail: (payload: { email: string; otp: string }) => Promise<any>;
+  verifyEmail: (payload: { email: string; code: string }) => Promise<any>;
   resendVerification: (payload: { email: string }) => Promise<any>;
   logout: () => Promise<void>;
   updateProfile: () => Promise<User>;
@@ -32,9 +32,9 @@ interface AuthContextType {
 interface RegisterData {
   phone: string;
   password: string;
-  email?: string;
-  displayName?: string;
-  bio?: string;
+  email: string;
+  displayName: string;
+  sendVerificationEmail: boolean;
 }
 
 // Helper to generate UUID with fallback
@@ -214,7 +214,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const verifyEmail = useCallback(
-    async (payload: { email: string; otp: string }): Promise<any> => {
+    async (payload: { email: string; code: string }): Promise<any> => {
       try {
         setError(null);
         setLoading(true);
@@ -303,7 +303,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // eslint-disable-next-line no-console
         console.debug("[AuthProvider] login setUser (state)");
         socketService.connect().catch((socketError) => {
-          console.error("Failed to initialize sockets after login:", socketError);
+          console.error(
+            "Failed to initialize sockets after login:",
+            socketError,
+          );
         });
 
         return userProfile;

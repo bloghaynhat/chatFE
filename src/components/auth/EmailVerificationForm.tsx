@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../../hooks";
+import { useLanguage } from "../../context";
+import { authService } from "../../services/authService";
 
 const resolveFieldErrors = (error) => {
   const details = error?.details;
@@ -26,59 +29,114 @@ const resolveFieldErrors = (error) => {
   return {};
 };
 
-export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false, fromLogin = false }: any) => {
+const getAutoSendKey = (email: string) =>
+  `auth:email-verification:auto-sent:${email.trim().toLowerCase()}`;
+
+const hasAutoSentVerification = (email: string) => {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(getAutoSendKey(email)) === "1";
+};
+
+const markAutoSentVerification = (email: string) => {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(getAutoSendKey(email), "1");
+};
+
+const clearAutoSentVerification = (email: string) => {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(getAutoSendKey(email));
+};
+
+export const EmailVerificationForm = ({
+  initialEmail = "",
+  initialPhone = "",
+  fromRegister = false,
+  fromLogin = false,
+}: any) => {
   const navigate = useNavigate();
-  const { verifyEmail, resendVerification } = useAuth();
+  const { verifyEmail, sendVerification, resendVerification } = useAuth();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [successMessage, setSuccessMessage] = useState("");
-  const [countdown, setCountdown] = useState(fromRegister || fromLogin ? 60 : -1);
+  const [, setSuccessMessage] = useState("");
+  const [resolvingEmail, setResolvingEmail] = useState(false);
   const autoSentRef = useRef(false);
+
+  useEffect(() => {
+    if (!fromLogin || email.trim() || !initialPhone) return;
+
+    let isActive = true;
+    const resolveEmail = async () => {
+      setResolvingEmail(true);
+      try {
+        const resolvedEmail = await authService.getVerificationEmailByPhone(initialPhone);
+        if (!isActive) return;
+
+        if (resolvedEmail) {
+          setEmail(resolvedEmail);
+          return;
+        }
+
+        const message = t("emailVerification.resolveEmailNotFound");
+        setError(message);
+        toast.error(message);
+      } catch (err) {
+        if (!isActive) return;
+        const message = err?.message || t("emailVerification.resolveEmailFailed");
+        setError(message);
+        toast.error(message);
+      } finally {
+        if (isActive) setResolvingEmail(false);
+      }
+    };
+
+    resolveEmail();
+
+    return () => {
+      isActive = false;
+    };
+  }, [fromLogin, email, initialPhone, t]);
 
   useEffect(() => {
     if (!fromRegister && !fromLogin) return;
     if (autoSentRef.current) return;
 
     if (fromRegister) {
-      setSuccessMessage("Mã OTP đã được gửi từ bước đăng ký. Vui lòng kiểm tra email và nhập mã để xác thực.");
+      const message = t("emailVerification.registerOtpSent");
+      setSuccessMessage(message);
       autoSentRef.current = true;
     } else if (fromLogin && email) {
-      // call api resend khi màn hình build lên nếu đi từ luồng login
+      const normalizedEmail = email.trim();
+
+      if (hasAutoSentVerification(normalizedEmail)) {
+        autoSentRef.current = true;
+        return;
+      }
+
       autoSentRef.current = true;
+      markAutoSentVerification(normalizedEmail);
+
       const autoSendOtp = async () => {
         try {
-          await resendVerification({ email: email.trim() });
-          setSuccessMessage("Tài khoản chưa được xác thực. Chúng tôi đã tự động gửi mã OTP mới đến email của bạn.");
+          await sendVerification({ email: normalizedEmail });
+          setOtp("");
+          const message = t("emailVerification.accountOtpSent");
+          setSuccessMessage(message);
+          toast.info(message);
         } catch (err) {
-          setError(err?.message || "Không thể gửi OTP. Vui lòng nhấn gửi lại.");
+          clearAutoSentVerification(normalizedEmail);
+          const message = err?.message || t("emailVerification.sendOtpFailed");
+          setError(message);
+          toast.error(message);
         }
       };
       autoSendOtp();
     }
-  }, [fromRegister, fromLogin, email, resendVerification]);
-
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
-      return () => clearInterval(timer);
-    } else if (countdown === 0 && email) {
-      setCountdown(-1);
-      const autoResend = async () => {
-        try {
-          await resendVerification({ email: email.trim() });
-          setSuccessMessage("Mã OTP mới đã tự động được gửi đến email của bạn.");
-          setCountdown(60);
-        } catch (err) {
-          setError(err?.message || "Tự động gửi lại OTP thất bại.");
-        }
-      };
-      autoResend();
-    }
-  }, [countdown, email, resendVerification]);
+  }, [fromRegister, fromLogin, email, sendVerification, t]);
 
   const handleManualResend = async () => {
     if (!email.trim() || loading) return;
@@ -90,10 +148,14 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
 
     try {
       await resendVerification({ email: email.trim() });
-      setSuccessMessage("Mã OTP mới đã được gửi đến email của bạn.");
-      setCountdown(60);
+      setOtp("");
+      const message = t("emailVerification.otpResent");
+      setSuccessMessage(message);
+      toast.success(message);
     } catch (err) {
-      setError(err?.message || "Gửi lại OTP thất bại.");
+      const message = err?.message || t("emailVerification.resendFailed");
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -106,7 +168,9 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
     setFieldErrors({});
 
     if (!email.trim() || !otp.trim()) {
-      setError("Vui lòng nhập đầy đủ email và OTP.");
+      const message = t("emailVerification.required");
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -114,12 +178,15 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
     try {
       await verifyEmail({
         email: email.trim(),
-        otp: otp.trim(),
+        code: otp.trim(),
       });
 
-      setSuccessMessage("Xác thực email thành công. Bạn có thể đăng nhập ngay.");
+      const message = t("emailVerification.success");
+      setSuccessMessage(message);
+      toast.success(message);
       setTimeout(() => {
         navigate("/login", {
+          replace: true,
           state: { justVerified: true, email: email.trim() },
         });
       }, 700);
@@ -128,7 +195,9 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
       if (Object.keys(detailErrors).length > 0) {
         setFieldErrors(detailErrors);
       }
-      setError(err?.message || "Xác thực OTP thất bại");
+      const message = err?.message || t("emailVerification.failed");
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -137,7 +206,7 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.email")}</label>
         <input
           type="email"
           value={email}
@@ -150,17 +219,17 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
               return next;
             });
           }}
-          placeholder="your@email.com"
-          disabled={loading}
+          placeholder={t("auth.emailPlaceholder")}
+          disabled={loading || resolvingEmail}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {resolvingEmail && <p className="mt-1 text-xs text-gray-500">{t("emailVerification.resolvingEmail")}</p>}
         {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
       </div>
 
       <div>
         <div className="flex justify-between items-center mb-1">
-          <label className="block text-sm font-medium text-gray-700">Mã OTP</label>
-          {countdown > 0 && <span className="text-sm text-gray-500">Tự động gửi lại sau {countdown}s</span>}
+          <label className="block text-sm font-medium text-gray-700">{t("auth.otp")}</label>
         </div>
         <input
           type="text"
@@ -175,7 +244,7 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
               return next;
             });
           }}
-          placeholder="Nhập mã OTP"
+          placeholder={t("auth.otpPlaceholder")}
           disabled={loading}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -183,22 +252,16 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
         {fieldErrors.code && <p className="mt-1 text-xs text-red-600">{fieldErrors.code}</p>}
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          {successMessage}
-        </div>
-      )}
-
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || resolvingEmail}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2.5 px-4 rounded-lg transition"
       >
-        {loading ? "Đang xác thực..." : "Xác thực email"}
+        {resolvingEmail
+          ? t("emailVerification.preparingOtp")
+          : loading
+            ? t("emailVerification.verifying")
+            : t("emailVerification.verifyEmail")}
       </button>
 
       <button
@@ -207,7 +270,7 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
         onClick={handleManualResend}
         className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium py-2.5 px-4 rounded-lg transition"
       >
-        Gửi lại mã OTP
+        {t("emailVerification.resendOtp")}
       </button>
 
       <button
@@ -215,7 +278,7 @@ export const EmailVerificationForm = ({ initialEmail = "", fromRegister = false,
         onClick={() => navigate("/register")}
         className="w-full border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium py-2.5 px-4 rounded-lg transition"
       >
-        Quay lại đăng ký
+        {t("emailVerification.backToRegister")}
       </button>
     </form>
   );

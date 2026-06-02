@@ -1,4 +1,4 @@
-import { FiArrowLeft, FiChevronRight, FiLock } from "react-icons/fi";
+import { FiArrowLeft, FiChevronRight, FiKey, FiLock } from "react-icons/fi";
 import { useLanguage } from "../../context";
 
 export const PrivacySecurityPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
@@ -26,6 +26,16 @@ export const PrivacySecurityPanel = ({ isCollapsed, onBack, onNavigate }: any) =
 
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900">
         <div className="h-2 bg-gray-100/50 dark:bg-slate-950 w-full" />
+        <button
+          onClick={() => onNavigate("change-password")}
+          className="w-full flex items-center px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition gap-2 text-left"
+        >
+          <div className="w-9 flex justify-center text-gray-500 dark:text-gray-400 text-[22px]">
+            <FiKey />
+          </div>
+          <span className="text-[15px] text-gray-900 dark:text-white flex-1">{t("privacy.changePassword")}</span>
+          <FiChevronRight className="text-gray-400 text-lg" />
+        </button>
         <button
           onClick={() => onNavigate("block-list")}
           className="w-full flex items-center px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition gap-2 text-left"

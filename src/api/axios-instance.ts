@@ -157,7 +157,12 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (!originalRequest || statusCode !== 401 || originalRequest._retry) {
+    if (
+      !originalRequest ||
+      originalRequest.skipAuth ||
+      statusCode !== 401 ||
+      originalRequest._retry
+    ) {
       return Promise.reject(error);
     }
 

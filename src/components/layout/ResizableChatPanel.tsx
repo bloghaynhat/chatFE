@@ -6,6 +6,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { DevicesPanel } from "./DevicesPanel";
 import { PrivacySecurityPanel } from "./PrivacySecurityPanel";
 import { BlockListPanel } from "./BlockListPanel";
+import { ChangePasswordPanel } from "./ChangePasswordPanel";
 import { UserProfileModal, CreateGroupModal } from "../common";
 import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
@@ -488,7 +489,7 @@ export const ResizableChatPanel = ({
 
           {/* Settings View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" || activeView === "change-password" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <SettingsPanel
               isCollapsed={isCollapsed}
@@ -499,7 +500,7 @@ export const ResizableChatPanel = ({
 
           {/* Privacy and Security View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "privacy-security" ? "translate-x-0" : activeView === "block-list" || activeView === "change-password" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <PrivacySecurityPanel
               isCollapsed={isCollapsed}
@@ -523,6 +524,16 @@ export const ResizableChatPanel = ({
             className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-50 pointer-events-auto ${activeView === "block-list" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           >
             <BlockListPanel
+              isCollapsed={isCollapsed}
+              onBack={() => onViewChange("privacy-security")}
+            />
+          </div>
+
+          {/* Change Password View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-50 pointer-events-auto ${activeView === "change-password" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+          >
+            <ChangePasswordPanel
               isCollapsed={isCollapsed}
               onBack={() => onViewChange("privacy-security")}
             />

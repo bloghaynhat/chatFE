@@ -1,9 +1,11 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { RegisterForm, RegistrationContext } from "../components/auth/RegisterForm";
+import { useLanguage } from "../context";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleRegisterSuccess = (registrationContext: RegistrationContext) => {
     navigate("/verify-email", {
@@ -15,21 +17,21 @@ export const RegisterPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center px-4 py-6 sm:py-8">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md sm:max-w-lg lg:max-w-xl p-5 sm:p-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-2">
-          Tạo tài khoản mới
+          {t("registerPage.title")}
         </h1>
         <p className="text-sm sm:text-base text-gray-600 text-center mb-6 sm:mb-8">
-          Tham gia ChatChit và bắt đầu kết nối với bạn bè.
+          {t("registerPage.subtitle")}
         </p>
 
         <RegisterForm onSuccess={handleRegisterSuccess} />
 
         <p className="text-center text-sm sm:text-base text-gray-600 mt-6">
-          Đã có tài khoản?{" "}
+          {t("registerPage.haveAccount")}{" "}
           <Link
             to="/login"
             className="text-blue-600 hover:underline font-medium"
           >
-            Quay lại đăng nhập
+            {t("registerPage.backToLogin")}
           </Link>
         </p>
       </div>
