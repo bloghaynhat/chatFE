@@ -257,6 +257,64 @@ const formatBlockedAt = (value?: string) => {
 const getErrorMessage = (error: any, fallback: string) =>
   error?.message || error?.payload?.message || error?.payload?.msg || fallback;
 
+const getPendingUserId = (item: any) =>
+  getRefId(item?.userId) ||
+  getRefId(item?.user?.id) ||
+  getRefId(item?.user?._id) ||
+  getRefId(item?.profile?.id) ||
+  getRefId(item?.profile?._id);
+
+const getPendingUserInfo = (item: any) =>
+  unwrapUserProfile(item?.profile) ||
+  unwrapUserProfile(item?.user) ||
+  item;
+
+const getPendingDisplayName = (item: any) => {
+  const user = getPendingUserInfo(item);
+  return user?.displayName || user?.name || user?.username || user?.email || "Người dùng";
+};
+
+const getPendingAvatarUrl = (item: any) => {
+  const user = getPendingUserInfo(item);
+  return user?.avatarUrl || user?.avatar || user?.photoUrl || "";
+};
+
+const hasPendingDisplayableUserInfo = (item: any) => {
+  const user = getPendingUserInfo(item);
+  return Boolean(
+    user?.displayName ||
+      user?.name ||
+      user?.username ||
+      user?.email ||
+      user?.avatarUrl ||
+      user?.avatar,
+  );
+};
+
+const enrichPendingMembers = async (items: any[]) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const userId = getPendingUserId(item);
+      if (hasPendingDisplayableUserInfo(item) || !userId) return item;
+
+      try {
+        const profileResponse =
+          typeof userService.getPublicProfileById === "function"
+            ? await userService.getPublicProfileById(userId)
+            : await userService.getUserById(userId);
+        const profile = unwrapUserProfile(profileResponse);
+        return {
+          ...item,
+          ...(profile && { profile }),
+        };
+      } catch (error) {
+        console.warn("[GroupSettingsModal] Failed to hydrate pending member", userId, error);
+        return item;
+      }
+    }),
+  );
+};
+
 const Switch = ({
   checked,
   disabled,
@@ -422,7 +480,10 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
 
   const { data: pendingMembers = [], isLoading: isPendingLoading } = useQuery({
     queryKey: ["group-pending-members", groupId],
-    queryFn: () => groupSettingsService.getPendingMembers(groupId),
+    queryFn: async () => {
+      const items = await groupSettingsService.getPendingMembers(groupId);
+      return enrichPendingMembers(items);
+    },
     enabled: isOpen && activeTab === "pending" && isAdmin,
   });
 
@@ -1017,16 +1078,21 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                         <EmptyState text="Không có yêu cầu nào đang chờ duyệt." />
                       ) : (
                         pendingMembers.map((item) => {
-                          const userId = getUserId(item);
-                          const avatar = getAvatarUrl(item);
+                          const userId = getPendingUserId(item);
+                          const avatar = getPendingAvatarUrl(item);
+                          const name = getPendingDisplayName(item);
                           return (
                             <div key={userId} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
                               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-500 text-sm font-semibold text-white">
-                                {avatar ? <img src={avatar} alt={getDisplayName(item)} className="h-full w-full object-cover" /> : getDisplayName(item).charAt(0).toUpperCase()}
+                                {avatar ? <img src={avatar} alt={name} className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{getDisplayName(item)}</div>
-                                <div className="truncate text-xs text-gray-500">{userId}</div>
+                                <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{name}</div>
+                                <div className="truncate text-xs text-gray-500">
+                                  {item?.requestedAt
+                                    ? `Yêu cầu tham gia ${formatBlockedAt(item.requestedAt)}`
+                                    : userId}
+                                </div>
                               </div>
                               <button type="button" onClick={() => approveMutation.mutate(userId)} className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-semibold text-white">
                                 Phê duyệt

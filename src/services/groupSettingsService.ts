@@ -47,6 +47,7 @@ export const groupSettingsService = {
     const response: any = await api.get(`/groups/${groupId}/members/pending`);
     const payload = unwrapData(response);
     if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.pendingMembers)) return payload.pendingMembers;
     if (Array.isArray(payload?.items)) return payload.items;
     if (Array.isArray(payload?.members)) return payload.members;
     if (Array.isArray(payload?.users)) return payload.users;
