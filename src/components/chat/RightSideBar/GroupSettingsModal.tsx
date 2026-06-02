@@ -646,10 +646,10 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
           initial={{ opacity: 0, scale: 0.96, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 16 }}
-          className="relative flex h-[580px] w-full max-w-[760px] overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
+          className="relative flex flex-col md:flex-row h-[90vh] md:h-[580px] w-full max-w-[760px] overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
         >
-          <aside className="flex w-[240px] shrink-0 flex-col border-r border-gray-100 bg-gray-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
-            <div className="mb-5 flex items-center justify-between">
+          <aside className="flex w-full md:w-[240px] shrink-0 flex-col border-b md:border-b-0 md:border-r border-gray-100 bg-gray-50 py-3 md:p-4 dark:border-slate-800 dark:bg-slate-950/50">
+            <div className="mb-2 md:mb-5 px-4 md:px-0 flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Cài đặt nhóm</h2>
               <button
                 type="button"
@@ -660,7 +660,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 <FiX />
               </button>
             </div>
-            <nav className="space-y-1">
+            <nav className="flex overflow-x-auto snap-x snap-mandatory md:flex-col space-x-2 md:space-x-0 md:space-y-1 pb-1 md:pb-0 px-4 md:px-0 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -668,15 +668,18 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                    onClick={(e) => {
+                      setActiveTab(tab.id);
+                      e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                    }}
+                    className={`flex snap-start shrink-0 w-auto md:w-full items-center gap-2 md:gap-3 rounded-lg px-3 py-2 md:py-2.5 text-left text-sm font-medium transition-colors ${
                       isActive
                         ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                         : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
                     }`}
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <span className="truncate">{tab.label}</span>
+                    <Icon className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                    <span className="truncate whitespace-nowrap">{tab.label}</span>
                   </button>
                 );
               })}
