@@ -9,6 +9,7 @@ import {
   FiCopy,
   FiDownload,
   FiLink,
+  FiLock,
   FiRefreshCw,
   FiSearch,
   FiSettings,
@@ -20,6 +21,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { inviteService } from "../../../services/inviteService";
 import {
   groupSettingsService,
@@ -29,6 +31,7 @@ import {
   WhoCanSendMessages,
 } from "../../../services/groupSettingsService";
 import { socketService } from "../../../services/socketService";
+import { userService } from "../../../services/userService";
 
 type TabId = "general" | "invite" | "permissions" | "blocked" | "pending";
 
@@ -96,12 +99,76 @@ const mergeGroupSettings = (
   );
 };
 
-const getUserId = (item: any) =>
-  item?.userId || item?.blockedUserId || item?.targetUserId || item?.user?.id || item?.user?._id || item?.id || item?._id;
+const unwrapApiData = (payload: any) => {
+  if (!payload || typeof payload !== "object") return payload;
+  if ("status" in payload && "data" in payload) return payload.data;
+  return payload.data || payload;
+};
 
-const getUserInfo = (item: any) => item?.user || item?.blockedUser || item?.targetUser || item;
+const unwrapUserProfile = (payload: any) => {
+  const data = unwrapApiData(payload);
+  if (!data || typeof data !== "object") return null;
+  return data?.user || data?.profile || data?.data?.user || data?.data?.profile || data;
+};
+
+const getRefId = (value: any) => {
+  if (!value) return null;
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return value?.id || value?._id || value?.userId || null;
+};
+
+const isLikelyBlockRecord = (item: any) =>
+  Boolean(
+    item?.groupId ||
+      item?.conversationId ||
+      item?.blockedBy ||
+      item?.blockedById ||
+      item?.blockedByUserId ||
+      item?.blockedAt ||
+      item?.targetUserId ||
+      item?.blockedUserId ||
+      item?.blockedId,
+  );
+
+const getUserId = (item: any) =>
+  getRefId(item?.block?.userId) ||
+  getRefId(item?.blockedUserId) ||
+  getRefId(item?.blockedUserID) ||
+  getRefId(item?.blocked_user_id) ||
+  getRefId(item?.targetUserId) ||
+  getRefId(item?.target_user_id) ||
+  getRefId(item?.blockedId) ||
+  getRefId(item?.blockedMemberId) ||
+  getRefId(item?.targetId) ||
+  getRefId(item?.memberId) ||
+  getRefId(item?.userId) ||
+  getRefId(item?.blockedUser) ||
+  getRefId(item?.blocked_user) ||
+  getRefId(item?.targetUser) ||
+  getRefId(item?.target_user) ||
+  getRefId(item?.member) ||
+  getRefId(item?.user) ||
+  getRefId(item?.profile) ||
+  getRefId(item?.member?.user) ||
+  (!isLikelyBlockRecord(item) ? getRefId(item) : null);
+
+const getUserInfo = (item: any) =>
+  unwrapUserProfile(item?.profile) ||
+  unwrapUserProfile(item?.blockedUser) ||
+  unwrapUserProfile(item?.targetUser) ||
+  unwrapUserProfile(item?.user) ||
+  unwrapUserProfile(item?.member?.user) ||
+  (item?.userDisplayName
+    ? {
+        id: getRefId(item?.block?.userId),
+        displayName: item.userDisplayName,
+        avatarUrl: item?.userAvatarUrl || item?.avatarUrl || "",
+      }
+    : null) ||
+  (!isLikelyBlockRecord(item) ? item : {});
 
 const getDisplayName = (item: any) => {
+  if (item?.userDisplayName) return item.userDisplayName;
   const user = getUserInfo(item);
   return user?.displayName || user?.name || user?.username || user?.email || "Người dùng";
 };
@@ -109,6 +176,143 @@ const getDisplayName = (item: any) => {
 const getAvatarUrl = (item: any) => {
   const user = getUserInfo(item);
   return user?.avatarUrl || user?.avatar || user?.photoUrl || "";
+};
+
+const hasDisplayableUserInfo = (item: any) => {
+  const user = getUserInfo(item);
+  return Boolean(
+    user?.displayName ||
+      user?.name ||
+      user?.username ||
+      user?.email ||
+      user?.avatarUrl ||
+      user?.avatar,
+  );
+};
+
+const enrichBlockedUsers = async (items: any[]) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const userId = getUserId(item);
+      const blockedById = getRefId(item?.block?.blockedBy) || getRefId(item?.blockedBy);
+
+      const [profile, blockedByProfile] = await Promise.all([
+        hasDisplayableUserInfo(item) || !userId
+          ? Promise.resolve(null)
+          : (async () => {
+              try {
+                const profileResponse =
+                  typeof userService.getPublicProfileById === "function"
+                    ? await userService.getPublicProfileById(userId)
+                    : await userService.getUserById(userId);
+                return unwrapUserProfile(profileResponse);
+              } catch (error) {
+                console.warn("[GroupSettingsModal] Failed to hydrate blocked user", userId, error);
+                return null;
+              }
+            })(),
+        !blockedById || unwrapUserProfile(item?.blockedByProfile) || unwrapUserProfile(item?.blockedByUser)
+          ? Promise.resolve(null)
+          : (async () => {
+              try {
+                const profileResponse =
+                  typeof userService.getPublicProfileById === "function"
+                    ? await userService.getPublicProfileById(blockedById)
+                    : await userService.getUserById(blockedById);
+                return unwrapUserProfile(profileResponse);
+              } catch (error) {
+                console.warn("[GroupSettingsModal] Failed to hydrate blocker user", blockedById, error);
+                return null;
+              }
+            })(),
+      ]);
+
+      return {
+        ...item,
+        ...(profile && { profile }),
+        ...(blockedByProfile && { blockedByProfile }),
+      };
+    }),
+  );
+};
+
+const getBlockedByName = (item: any) => {
+  const admin = item?.blockedByProfile || item?.blockedByUser || item?.block?.blockedBy || item?.blockedBy || item?.admin || item?.actor;
+  if (!admin || typeof admin === "string") return admin || "quản trị viên";
+  return admin?.displayName || admin?.name || admin?.username || "quản trị viên";
+};
+
+const getBlockedAt = (item: any) => item?.block?.createdAt || item?.blockedAt || item?.createdAt || item?.updatedAt;
+
+const formatBlockedAt = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+};
+
+const getErrorMessage = (error: any, fallback: string) =>
+  error?.message || error?.payload?.message || error?.payload?.msg || fallback;
+
+const getPendingUserId = (item: any) =>
+  getRefId(item?.userId) ||
+  getRefId(item?.user?.id) ||
+  getRefId(item?.user?._id) ||
+  getRefId(item?.profile?.id) ||
+  getRefId(item?.profile?._id);
+
+const getPendingUserInfo = (item: any) =>
+  unwrapUserProfile(item?.profile) ||
+  unwrapUserProfile(item?.user) ||
+  item;
+
+const getPendingDisplayName = (item: any) => {
+  const user = getPendingUserInfo(item);
+  return user?.displayName || user?.name || user?.username || user?.email || "Người dùng";
+};
+
+const getPendingAvatarUrl = (item: any) => {
+  const user = getPendingUserInfo(item);
+  return user?.avatarUrl || user?.avatar || user?.photoUrl || "";
+};
+
+const hasPendingDisplayableUserInfo = (item: any) => {
+  const user = getPendingUserInfo(item);
+  return Boolean(
+    user?.displayName ||
+      user?.name ||
+      user?.username ||
+      user?.email ||
+      user?.avatarUrl ||
+      user?.avatar,
+  );
+};
+
+const enrichPendingMembers = async (items: any[]) => {
+  return Promise.all(
+    items.map(async (item) => {
+      const userId = getPendingUserId(item);
+      if (hasPendingDisplayableUserInfo(item) || !userId) return item;
+
+      try {
+        const profileResponse =
+          typeof userService.getPublicProfileById === "function"
+            ? await userService.getPublicProfileById(userId)
+            : await userService.getUserById(userId);
+        const profile = unwrapUserProfile(profileResponse);
+        return {
+          ...item,
+          ...(profile && { profile }),
+        };
+      } catch (error) {
+        console.warn("[GroupSettingsModal] Failed to hydrate pending member", userId, error);
+        return item;
+      }
+    }),
+  );
 };
 
 const Switch = ({
@@ -260,15 +464,26 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
     refetchOnReconnect: false,
   });
 
-  const { data: blockedUsers = [], isLoading: isBlocksLoading } = useQuery({
-    queryKey: ["group-blocks", groupId],
-    queryFn: () => groupSettingsService.getBlockedUsers(groupId),
+  const {
+    data: blockedUsers = [],
+    isLoading: isBlocksLoading,
+    error: blocksError,
+  } = useQuery({
+    queryKey: ["group-blocked", groupId],
+    queryFn: async () => {
+      const items = await groupSettingsService.getBlockedUsers(groupId);
+      return enrichBlockedUsers(items);
+    },
     enabled: isOpen && activeTab === "blocked" && isAdmin,
+    retry: false,
   });
 
   const { data: pendingMembers = [], isLoading: isPendingLoading } = useQuery({
     queryKey: ["group-pending-members", groupId],
-    queryFn: () => groupSettingsService.getPendingMembers(groupId),
+    queryFn: async () => {
+      const items = await groupSettingsService.getPendingMembers(groupId);
+      return enrichPendingMembers(items);
+    },
     enabled: isOpen && activeTab === "pending" && isAdmin,
   });
 
@@ -288,14 +503,30 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
   const blockMutation = useMutation({
     mutationFn: (userId: string) => groupSettingsService.blockUser(groupId, userId),
     onSuccess: () => {
+      toast.success(`Đã chặn và xóa ${blockUserId.trim() || "thành viên"} khỏi nhóm`);
       setBlockUserId("");
+      queryClient.invalidateQueries({ queryKey: ["group-members", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["group-blocked", groupId] });
       queryClient.invalidateQueries({ queryKey: ["group-blocks", groupId] });
+      onMembersChanged?.();
+      window.dispatchEvent(new Event("chatList:refresh"));
+    },
+    onError: (error: any) => {
+      toast.error(getErrorMessage(error, "Không thể chặn thành viên này."));
     },
   });
 
   const unblockMutation = useMutation({
     mutationFn: (userId: string) => groupSettingsService.unblockUser(groupId, userId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["group-blocks", groupId] }),
+    onSuccess: (_data, userId) => {
+      const item = blockedUsers.find((blocked: any) => String(getUserId(blocked)) === String(userId));
+      toast.success(`Đã gỡ chặn cho ${item ? getDisplayName(item) : "người dùng"}`);
+      queryClient.invalidateQueries({ queryKey: ["group-blocked", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["group-blocks", groupId] });
+    },
+    onError: (error: any) => {
+      toast.error(getErrorMessage(error, "Không thể gỡ chặn người dùng này."));
+    },
   });
 
   const approveMutation = useMutation({
@@ -722,6 +953,9 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 {activeTab === "blocked" && (
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Danh sách chặn</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                      Người bị chặn sẽ bị xóa khỏi nhóm và không thể tham gia lại cho đến khi được gỡ chặn.
+                    </p>
                     <form
                       className="mt-5 flex gap-2"
                       onSubmit={(event) => {
@@ -742,30 +976,93 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                         Chặn
                       </button>
                     </form>
-                    <div className="mt-5 rounded-xl border border-gray-200 dark:border-slate-700">
+                    <div className="mt-5 overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
                       {isBlocksLoading ? (
-                        <div className="p-4 text-sm text-gray-500">Đang tải...</div>
-                      ) : blockedUsers.length === 0 ? (
-                        <EmptyState text="Chưa có người dùng nào bị chặn." />
-                      ) : (
-                        blockedUsers.map((item) => {
-                          const userId = getUserId(item);
-                          const avatar = getAvatarUrl(item);
-                          return (
-                            <div key={userId} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
-                              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-500 text-sm font-semibold text-white">
-                                {avatar ? <img src={avatar} alt={getDisplayName(item)} className="h-full w-full object-cover" /> : getDisplayName(item).charAt(0).toUpperCase()}
+                        <div className="space-y-3 p-4">
+                          {[0, 1, 2].map((item) => (
+                            <div key={item} className="flex items-center gap-3">
+                              <div className="h-11 w-11 animate-pulse rounded-full bg-gray-200 dark:bg-slate-800" />
+                              <div className="min-w-0 flex-1 space-y-2">
+                                <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200 dark:bg-slate-800" />
+                                <div className="h-3 w-2/3 animate-pulse rounded bg-gray-100 dark:bg-slate-800/70" />
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{getDisplayName(item)}</div>
-                                <div className="truncate text-xs text-gray-500">{userId}</div>
-                              </div>
-                              <button type="button" onClick={() => unblockMutation.mutate(userId)} className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-500">
-                                Gỡ chặn
-                              </button>
+                              <div className="h-9 w-20 animate-pulse rounded-lg bg-gray-100 dark:bg-slate-800/70" />
                             </div>
-                          );
-                        })
+                          ))}
+                        </div>
+                      ) : blocksError ? (
+                        <div className="flex flex-col items-center justify-center px-5 py-12 text-center">
+                          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500 dark:bg-red-950/40">
+                            <FiLock className="h-6 w-6" />
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            Không thể xem danh sách chặn
+                          </p>
+                          <p className="mt-1 max-w-[320px] text-sm text-gray-500 dark:text-slate-400">
+                            {getErrorMessage(blocksError, "Bạn không có quyền xem nội dung này.")}
+                          </p>
+                        </div>
+                      ) : blockedUsers.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center px-5 py-14 text-center">
+                          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40">
+                            <FiShield className="h-7 w-7" />
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            Nhóm của bạn đang rất an toàn.
+                          </p>
+                          <p className="mt-1 max-w-[340px] text-sm text-gray-500 dark:text-slate-400">
+                            Chưa có thành viên nào bị chặn.
+                          </p>
+                        </div>
+                      ) : (
+                        <ul>
+                          <AnimatePresence initial={false}>
+                            {blockedUsers.map((item, index) => {
+                              const userId = getUserId(item);
+                              const avatar = getAvatarUrl(item);
+                              const name = getDisplayName(item);
+                              const blockedAt = formatBlockedAt(getBlockedAt(item));
+                              const blockedBy = getBlockedByName(item);
+                              return (
+                                <motion.li
+                                  key={userId}
+                                  layout
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.8, height: 0 }}
+                                  transition={{ type: "spring", stiffness: 420, damping: 34, delay: index * 0.035 }}
+                                  className="flex items-center gap-3 overflow-hidden border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-slate-800"
+                                >
+                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-red-400 text-sm font-semibold text-white grayscale opacity-70">
+                                    {avatar ? <img src={avatar} alt={name} className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <span className="truncate text-sm font-semibold text-slate-500 line-through dark:text-slate-400">
+                                        {name}
+                                      </span>
+                                      <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold uppercase text-red-500 dark:bg-red-950/40 dark:text-red-300">
+                                        Banned
+                                      </span>
+                                    </div>
+                                    <div className="truncate text-xs text-gray-500 dark:text-slate-400">
+                                      Bị chặn bởi {blockedBy}{blockedAt ? ` vào lúc ${blockedAt}` : ""}
+                                    </div>
+                                  </div>
+                                  <motion.button
+                                    type="button"
+                                    whileTap={{ scale: 0.96 }}
+                                    disabled={unblockMutation.isPending}
+                                    onClick={() => unblockMutation.mutate(userId)}
+                                    className="min-h-[36px] rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:hover:bg-red-950/30"
+                                  >
+                                    Gỡ chặn
+                                  </motion.button>
+                                </motion.li>
+                              );
+                            })}
+                          </AnimatePresence>
+                        </ul>
                       )}
                     </div>
                   </div>
@@ -781,16 +1078,21 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                         <EmptyState text="Không có yêu cầu nào đang chờ duyệt." />
                       ) : (
                         pendingMembers.map((item) => {
-                          const userId = getUserId(item);
-                          const avatar = getAvatarUrl(item);
+                          const userId = getPendingUserId(item);
+                          const avatar = getPendingAvatarUrl(item);
+                          const name = getPendingDisplayName(item);
                           return (
                             <div key={userId} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
                               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-500 text-sm font-semibold text-white">
-                                {avatar ? <img src={avatar} alt={getDisplayName(item)} className="h-full w-full object-cover" /> : getDisplayName(item).charAt(0).toUpperCase()}
+                                {avatar ? <img src={avatar} alt={name} className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{getDisplayName(item)}</div>
-                                <div className="truncate text-xs text-gray-500">{userId}</div>
+                                <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{name}</div>
+                                <div className="truncate text-xs text-gray-500">
+                                  {item?.requestedAt
+                                    ? `Yêu cầu tham gia ${formatBlockedAt(item.requestedAt)}`
+                                    : userId}
+                                </div>
                               </div>
                               <button type="button" onClick={() => approveMutation.mutate(userId)} className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-semibold text-white">
                                 Phê duyệt

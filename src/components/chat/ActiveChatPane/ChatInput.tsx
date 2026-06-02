@@ -18,6 +18,7 @@ import EmojiPicker, { Theme } from "emoji-picker-react";
 import { AiSmartReply } from "../AiSmartReply";
 import { AiToneAdjustMenu } from "../AiToneAdjustMenu";
 import TextareaAutosize from "react-textarea-autosize";
+import { toast } from "sonner";
 
 // frequentEmojis removed
 
@@ -114,7 +115,7 @@ export const ChatInput = ({
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói!");
+      toast.error("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói!");
       return;
     }
 
@@ -181,7 +182,7 @@ export const ChatInput = ({
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      alert("Không thể truy cập Microphone");
+      toast.error("Không thể truy cập Microphone");
     }
   };
 

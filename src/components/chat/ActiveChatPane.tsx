@@ -41,6 +41,7 @@ import {
   FiBarChart2,
   FiUserPlus,
 } from "react-icons/fi";
+import { toast } from "sonner";
 
 const mergeGroupSettings = (...sources: any[]) =>
   sources.reduce((merged, source) => {
@@ -509,7 +510,7 @@ export const ActiveChatPane = ({
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err: any) {
       console.error("[ActiveChatPane] Failed to block user:", err);
-      alert(err?.message || "Failed to block user");
+      toast.error(err?.message || "Failed to block user");
     }
   }, [privateTargetUserId]);
 
@@ -906,7 +907,7 @@ export const ActiveChatPane = ({
       if (poll) onPollUpdated?.(poll);
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error: any) {
-      alert(error?.message || "Could not create poll.");
+      toast.error(error?.message || "Could not create poll.");
       throw error;
     } finally {
       setIsCreatingPoll(false);

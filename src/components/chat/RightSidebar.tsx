@@ -14,7 +14,9 @@ import { GroupSettingsModal } from "./RightSideBar/GroupSettingsModal";
 import { DeleteGroupModal } from "./ActiveChatPane/DeleteGroupModal";
 import { SelectAdminModal } from "./ActiveChatPane/SelectAdminModal";
 import { groupSettingsService, GroupSettingsPayload } from "../../services/groupSettingsService";
+import { groupBlockService } from "../../services/groupBlockService";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { getWallpaperPresetByValue } from "../../constants/wallpaperPresets";
 
 const getMemberUserId = (member: any) =>
@@ -166,6 +168,16 @@ export const RightSidebar = ({
     isConfirmOpen: false,
     isSubmitting: false,
   });
+  const [blockMemberState, setBlockMemberState] = useState<{
+    targetUserId?: string;
+    targetName?: string;
+    isConfirmOpen: boolean;
+    isSubmitting: boolean;
+    error?: string;
+  }>({
+    isConfirmOpen: false,
+    isSubmitting: false,
+  });
 
   const isGroup =
     selectedChat?.type === "group" || selectedChat?.type === "GROUP";
@@ -174,6 +186,8 @@ export const RightSidebar = ({
     selectedChat?.isSavedMessages ||
     selectedChat?.isSelfChat;
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
+  const cancelBlockRef = useRef<HTMLButtonElement | null>(null);
+  const queryClient = useQueryClient();
   const wallpaperCropFrameRef = useRef<HTMLDivElement | null>(null);
   const wallpaperDragRef = useRef<{
     pointerId: number;
@@ -193,6 +207,11 @@ export const RightSidebar = ({
       if (wallpaperCropUrl) URL.revokeObjectURL(wallpaperCropUrl);
     };
   }, [wallpaperCropUrl]);
+
+  useEffect(() => {
+    if (!blockMemberState.isConfirmOpen) return;
+    window.setTimeout(() => cancelBlockRef.current?.focus(), 0);
+  }, [blockMemberState.isConfirmOpen]);
 
   useEffect(() => {
     setActiveSubView("none"); // Reset view when chat changes
@@ -307,6 +326,42 @@ export const RightSidebar = ({
       handleMembersAdded,
     );
 
+    const handleMemberBlocked = (data: any) => {
+      const eventGroupId =
+        data?.conversationId || data?.groupId || data?.data?.conversationId || data?.data?.groupId;
+      if (String(eventGroupId) !== String(selectedChat?.id)) return;
+
+      const targetUserId =
+        data?.targetUserId ||
+        data?.blockedUserId ||
+        data?.userId ||
+        data?.data?.targetUserId ||
+        data?.data?.blockedUserId ||
+        data?.data?.userId;
+      if (!targetUserId) return;
+
+      if (String(targetUserId) === String(currentUserId)) {
+        onClose();
+        notifyCurrentUserLeftGroup(selectedChat.id);
+        toast.warning("Bạn đã bị quản trị viên mời khỏi nhóm này.");
+        return;
+      }
+
+      setMembers((prev) =>
+        prev.filter((m: any) => String(getMemberUserId(m)) !== String(targetUserId)),
+      );
+      window.dispatchEvent(new Event("chatList:refresh"));
+    };
+
+    const cleanupGroupMemberBlocked = socketService.on(
+      "GROUP_MEMBER_BLOCKED",
+      handleMemberBlocked,
+    );
+    const cleanupGroupMemberBlockedLower = socketService.on(
+      "group:member_blocked",
+      handleMemberBlocked,
+    );
+
     const handleOwnerTransferred = async (data: any) => {
       if (data.conversationId === selectedChat?.id) {
         try {
@@ -396,6 +451,8 @@ export const RightSidebar = ({
       isMounted = false;
       if (cleanupRemoved) cleanupRemoved();
       if (cleanupAdded) cleanupAdded();
+      if (cleanupGroupMemberBlocked) cleanupGroupMemberBlocked();
+      if (cleanupGroupMemberBlockedLower) cleanupGroupMemberBlockedLower();
       if (cleanupOwnerTransfer) cleanupOwnerTransfer();
       if (cleanupGroupRenamed) cleanupGroupRenamed();
       if (cleanupGroupAvatarChanged) cleanupGroupAvatarChanged();
@@ -820,6 +877,57 @@ export const RightSidebar = ({
     });
   };
 
+  const handleBlockMember = async (userId: string) => {
+    const targetMember = members.find(
+      (m: any) => String(getMemberUserId(m)) === String(userId),
+    );
+    setBlockMemberState({
+      targetUserId: userId,
+      targetName: getMemberDisplayName(targetMember),
+      isConfirmOpen: true,
+      isSubmitting: false,
+    });
+  };
+
+  const handleConfirmBlockMember = async () => {
+    const userId = blockMemberState.targetUserId;
+    if (!userId || !selectedChat?.id) return;
+
+    try {
+      setBlockMemberState((prev) => ({
+        ...prev,
+        isSubmitting: true,
+        error: undefined,
+      }));
+      await groupBlockService.blockGroupMember(selectedChat.id, userId);
+      setMembers((prev) =>
+        prev.filter((m: any) => String(getMemberUserId(m)) !== String(userId)),
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["group-members", selectedChat.id] }),
+        queryClient.invalidateQueries({ queryKey: ["group-blocked", selectedChat.id] }),
+        queryClient.invalidateQueries({ queryKey: ["group-blocks", selectedChat.id] }),
+      ]);
+      toast.success(`Đã chặn và xóa ${blockMemberState.targetName || "thành viên"} khỏi nhóm`);
+      setBlockMemberState({ isConfirmOpen: false, isSubmitting: false });
+      onGroupUpdated?.({ membersCount: Math.max(0, membersCount - 1) });
+    } catch (error: any) {
+      console.error("Failed to block member", error);
+      const message =
+        error?.status === 403
+          ? error?.message || "Bạn không có quyền chặn thành viên này."
+          : error?.message || "Không thể chặn thành viên này.";
+      toast.error(message);
+      setBlockMemberState((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        error: message,
+      }));
+    } finally {
+      window.dispatchEvent(new Event("chatList:refresh"));
+    }
+  };
+
   const handleConfirmRemoveMember = async () => {
     const userId = removeMemberState.targetUserId;
     if (!userId) return;
@@ -1081,6 +1189,7 @@ export const RightSidebar = ({
             currentUserId={currentUserId}
             canInviteMembers={canInviteMembers}
             onRemoveMember={handleRemoveMember}
+            onBlockMember={handleBlockMember}
             onPromoteAdmin={handlePromoteAdmin}
             onSendMessage={onSendMessage}
             onLeaveGroup={handleLeaveGroup}
@@ -1252,6 +1361,65 @@ export const RightSidebar = ({
                 className="px-4 py-2 text-[14px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {isUpdatingWallpaper ? "Đang lưu..." : "Lưu hình nền"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {blockMemberState.isConfirmOpen && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="block-member-title"
+            aria-describedby="block-member-description"
+            className="bg-white/95 dark:bg-slate-900/95 w-full max-w-[420px] rounded-2xl shadow-2xl border border-red-100/80 dark:border-red-900/40 overflow-hidden"
+          >
+            <div className="px-5 pt-5 pb-4 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-2xl text-red-500 dark:bg-red-950/50">
+                !
+              </div>
+              <h2
+                id="block-member-title"
+                className="text-[17px] font-bold text-gray-950 dark:text-gray-50"
+              >
+                Chặn khỏi nhóm
+              </h2>
+              <p
+                id="block-member-description"
+                className="mt-2 text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed"
+              >
+                Bạn có chắc muốn chặn {blockMemberState.targetName || "thành viên này"}? Người này sẽ bị xóa khỏi nhóm và không thể tự tham gia lại.
+              </p>
+              {blockMemberState.error && (
+                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-[13px] font-medium text-red-600 dark:bg-red-950/40 dark:text-red-200">
+                  {blockMemberState.error}
+                </p>
+              )}
+            </div>
+            <div className="px-5 py-4 bg-gray-50/90 dark:bg-slate-800/70 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                ref={cancelBlockRef}
+                type="button"
+                disabled={blockMemberState.isSubmitting}
+                onClick={() =>
+                  setBlockMemberState({
+                    isConfirmOpen: false,
+                    isSubmitting: false,
+                  })
+                }
+                className="min-h-[44px] px-4 py-2 text-[14px] font-semibold rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={blockMemberState.isSubmitting}
+                onClick={handleConfirmBlockMember}
+                className="min-h-[44px] px-4 py-2 text-[14px] font-bold rounded-lg bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] disabled:opacity-50"
+              >
+                {blockMemberState.isSubmitting ? "Đang chặn..." : "Chặn"}
               </button>
             </div>
           </div>

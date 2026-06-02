@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { FiUsers, FiArrowLeft, FiAlertCircle } from "react-icons/fi";
+import { toast } from "sonner";
 import { inviteService } from "../services/inviteService";
 import { useAuth } from "../hooks/useAuth";
 
@@ -28,7 +29,7 @@ export const InvitePreviewPage: React.FC = () => {
     onSuccess: (data) => {
       // Navigate to the group chat or show pending message
       if (data?.isPending) {
-        alert("Your request to join the group is pending approval from administrators.");
+        toast.info("Your request to join the group is pending approval from administrators.");
         navigate("/");
       } else if (data?.conversationId || preview?.groupId) {
         window.dispatchEvent(new Event("chatList:refresh"));
@@ -38,7 +39,7 @@ export const InvitePreviewPage: React.FC = () => {
       }
     },
     onError: (err: any) => {
-      alert(err.message || "Failed to join group.");
+      toast.error(err.message || "Failed to join group.");
     },
   });
 

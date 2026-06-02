@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FiBarChart2, FiCheck, FiLock, FiPlus } from "react-icons/fi";
 import { pollService } from "../../../../services/pollService";
 import userService from "../../../../services/userService";
+import { toast } from "sonner";
 
 const getVoterId = (voter: any) => {
   if (!voter) return null;
@@ -130,7 +131,7 @@ export const PollMessage = ({
       setPendingOptionIds(null);
       onPollUpdated?.(updatedPoll);
     } catch (error: any) {
-      alert(error?.message || "Could not vote this poll.");
+      toast.error(error?.message || "Could not vote this poll.");
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +153,7 @@ export const PollMessage = ({
       setPoll(updatedPoll);
       onPollUpdated?.(updatedPoll);
     } catch (error: any) {
-      alert(error?.message || "Could not close this poll.");
+      toast.error(error?.message || "Could not close this poll.");
     } finally {
       setIsSubmitting(false);
     }
@@ -169,7 +170,7 @@ export const PollMessage = ({
       setIsAddingOption(false);
       onPollUpdated?.(updatedPoll);
     } catch (error: any) {
-      alert(error?.message || "Could not add this option.");
+      toast.error(error?.message || "Could not add this option.");
     } finally {
       setIsSubmitting(false);
     }

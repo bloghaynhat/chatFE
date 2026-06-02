@@ -59,6 +59,16 @@ const getMessageTimeValue = (message: any) => {
   return Number.isFinite(time) ? time : 0;
 };
 
+const getMessagePreviewValue = (message: any) => {
+  const value =
+    message?.text ||
+    message?.content ||
+    message?.textPreview ||
+    (typeof message?.message === "string" ? message.message : "");
+
+  return String(value || "").trim();
+};
+
 const getChatActivityTimeValue = (chat: any) => {
   const value =
     chat?.lastMessageAt ||
@@ -87,6 +97,83 @@ const getMessageConversationId = (message: any, payload?: any) => {
 
   return conversationId ? String(conversationId) : "";
 };
+
+const isMessageRevoked = (message: any) => {
+  const status = String(
+    message?.status ||
+      message?.messageStatus ||
+      message?.state ||
+      message?.action ||
+      "",
+  ).toLowerCase();
+
+  return Boolean(
+    message?.isRevoked ||
+      message?.revoked ||
+      message?.isRecalled ||
+      message?.recalled ||
+      message?.deletedForEveryone ||
+      message?.isDeletedForEveryone ||
+      message?.revokedAt ||
+      message?.recalledAt ||
+      message?.deletedAt ||
+      status === "revoked" ||
+      status === "recalled" ||
+      status === "deleted_for_everyone",
+  );
+};
+
+const isMessageEdited = (message: any) => {
+  const status = String(
+    message?.status ||
+      message?.messageStatus ||
+      message?.state ||
+      "",
+  ).toLowerCase();
+
+  return Boolean(
+    message?.isEdited ||
+      message?.edited ||
+      message?.isEditted ||
+      message?.editted ||
+      message?.editedAt ||
+      message?.edittedAt ||
+      message?.editHistory?.length ||
+      status === "edited" ||
+      status === "editted",
+  );
+};
+
+const normalizeMessageLifecycle = (message: any) => {
+  if (!message) return message;
+
+  const editedMessage = isMessageEdited(message)
+    ? {
+        ...message,
+        isEdited: true,
+        editedAt:
+          message.editedAt ||
+          message.edittedAt ||
+          message.updatedAt ||
+          new Date().toISOString(),
+      }
+    : message;
+
+  if (!isMessageRevoked(editedMessage)) return editedMessage;
+
+  return {
+    ...editedMessage,
+    isRevoked: true,
+    deletedAt:
+      editedMessage.deletedAt ||
+      editedMessage.revokedAt ||
+      editedMessage.recalledAt ||
+      new Date().toISOString(),
+  };
+};
+
+const normalizeMessagesLifecycle = (items: any[] = []) =>
+  items.map(normalizeMessageLifecycle);
 
 const sortPinnedMessages = (items: any[] = []) =>
   [...items].sort((a, b) => {
@@ -220,6 +307,125 @@ const MainLayout = ({ children }: { children?: any }) => {
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
   const lastInteractionSeenRef = useRef<string>("");
 
+  const removeConversationFromSession = useCallback(
+    (conversationId: string, options: { reason?: string; message?: string } = {}) => {
+      if (!conversationId) return;
+
+      conversationMessageCacheRef.current.delete(String(conversationId));
+      window.dispatchEvent(
+        new CustomEvent("chatList:removeConversation", {
+          detail: {
+            conversationId,
+            reason: options.reason || "unavailable",
+          },
+        }),
+      );
+
+      if (
+        String(conversationId) === String(selectedConversationIdRef.current || "") ||
+        String(conversationId) === String(routeConversationId || "")
+      ) {
+        setSelectedChat(null);
+        setSelectedConversationId(null);
+        setMessages([]);
+        setPinnedMessages([]);
+        setChatError(options.message || "");
+        navigate("/", { replace: true });
+      }
+    },
+    [navigate, routeConversationId],
+  );
+
+  const markCachedMessageRevoked = useCallback(
+    (messageId: string, payload: any = {}) => {
+      if (!messageId) return false;
+
+      let touched = false;
+      const revokedAt =
+        payload?.deletedAt ||
+        payload?.revokedAt ||
+        payload?.recalledAt ||
+        payload?.message?.deletedAt ||
+        payload?.message?.revokedAt ||
+        payload?.message?.recalledAt ||
+        new Date().toISOString();
+
+      conversationMessageCacheRef.current.forEach((entry, conversationId) => {
+        let found = false;
+        const nextMessages = (entry.messages || []).map((message) => {
+          if (String(getMessageId(message)) !== String(messageId)) {
+            return normalizeMessageLifecycle(message);
+          }
+
+          found = true;
+          return normalizeMessageLifecycle({
+            ...message,
+            ...payload?.message,
+            isRevoked: true,
+            deletedAt: revokedAt,
+          });
+        });
+
+        if (found) {
+          touched = true;
+          conversationMessageCacheRef.current.set(conversationId, {
+            ...entry,
+            messages: nextMessages,
+            cachedAt: Date.now(),
+          });
+        }
+      });
+
+      return touched;
+    },
+    [],
+  );
+
+  const markCachedMessageEdited = useCallback(
+    (messageId: string, editedMessage: any = {}) => {
+      if (!messageId) return false;
+
+      let touched = false;
+      const newText =
+        editedMessage?.text ||
+        editedMessage?.content ||
+        editedMessage?.message ||
+        editedMessage?.textPreview;
+
+      conversationMessageCacheRef.current.forEach((entry, conversationId) => {
+        let found = false;
+        const nextMessages = (entry.messages || []).map((message) => {
+          if (String(getMessageId(message)) !== String(messageId)) {
+            return normalizeMessageLifecycle(message);
+          }
+
+          found = true;
+          return normalizeMessageLifecycle({
+            ...message,
+            ...editedMessage,
+            isEdited: true,
+            text: newText ?? message.text,
+            content: newText ?? message.content,
+            textPreview: newText ?? message.textPreview,
+            updatedAt: editedMessage?.updatedAt || new Date().toISOString(),
+          });
+        });
+
+        if (found) {
+          touched = true;
+          conversationMessageCacheRef.current.set(conversationId, {
+            ...entry,
+            messages: nextMessages,
+            cachedAt: Date.now(),
+          });
+        }
+      });
+
+      return touched;
+    },
+    [],
+  );
+
   const shouldSkipDuplicateMemberRemoval = useCallback(
     (conversationId?: string, userId?: string) => {
       if (!conversationId || !userId) return false;
@@ -247,7 +453,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       if (prev.some((item: any) => String(item.id || item._id) === String(messageId))) {
         return prev;
       }
-      return [...prev, message];
+      return [...prev, normalizeMessageLifecycle(message)];
     });
   }, []);
 
@@ -327,7 +533,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     if (!selectedConversationId || isOpeningConversation) return;
 
     conversationMessageCacheRef.current.set(String(selectedConversationId), {
-      messages,
+      messages: normalizeMessagesLifecycle(messages),
       messagePageInfo,
       memberSeenMap,
       pinnedMessages,
@@ -380,13 +586,15 @@ const MainLayout = ({ children }: { children?: any }) => {
     const rawId =
       payload?.conversationId ||
       payload?.groupId ||
+      payload?.block?.conversationId ||
       payload?.note?.conversationId ||
       payload?.note?.groupId ||
       payload?.reminder?.conversationId ||
       payload?.reminder?.groupId ||
       payload?.message?.conversationId ||
       payload?.data?.conversationId ||
-      payload?.data?.groupId;
+      payload?.data?.groupId ||
+      payload?.data?.block?.conversationId;
 
     if (rawId && typeof rawId === "object") {
       return rawId.id || rawId._id || rawId.conversationId || rawId.groupId;
@@ -394,6 +602,83 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     return rawId;
   }, []);
+
+  const getPayloadTargetUserId = useCallback((payload: any) => {
+    const rawId =
+      payload?.targetUserId ||
+      payload?.targetId ||
+      payload?.blockedUserId ||
+      payload?.blockedId ||
+      payload?.userId ||
+      payload?.removedUserId ||
+      payload?.block?.userId ||
+      payload?.data?.targetUserId ||
+      payload?.data?.targetId ||
+      payload?.data?.blockedUserId ||
+      payload?.data?.blockedId ||
+      payload?.data?.userId ||
+      payload?.data?.removedUserId ||
+      payload?.data?.block?.userId;
+
+    if (rawId && typeof rawId === "object") {
+      return rawId.id || rawId._id || rawId.userId;
+    }
+
+    return rawId;
+  }, []);
+
+  const normalizeSearchText = useCallback((value: any) => {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }, []);
+
+  const isCurrentUserRemovedBySystemMessage = useCallback(
+    (message: any, payload: any) => {
+      const targetUserId = getPayloadTargetUserId(payload) || getPayloadTargetUserId(message);
+      if (
+        targetUserId &&
+        (String(targetUserId) === String(user?.id) || String(targetUserId) === String(user?._id))
+      ) {
+        return true;
+      }
+
+      const rawText =
+        message?.textPreview ||
+        message?.text ||
+        message?.content ||
+        message?.message ||
+        payload?.textPreview ||
+        payload?.text ||
+        payload?.content ||
+        "";
+      const text = normalizeSearchText(rawText);
+      if (!text) return false;
+
+      const looksLikeRemoval =
+        text.includes(" da chan ") ||
+        text.includes(" bi chan ") ||
+        text.includes(" da xoa ") ||
+        text.includes(" bi xoa ") ||
+        text.includes(" da roi khoi nhom") ||
+        text.includes(" khoi nhom");
+
+      if (!looksLikeRemoval) return false;
+
+      const currentUserNames = [
+        user?.displayName,
+        (user as any)?.name,
+        user?.username,
+        user?.email,
+      ]
+        .map(normalizeSearchText)
+        .filter((name) => name.length >= 3);
+
+      return currentUserNames.some((name) => text.includes(name));
+    },
+    [getPayloadTargetUserId, normalizeSearchText, user],
+  );
 
   const upsertMessageFromPayload = useCallback(
     (payload: any) => {
@@ -431,7 +716,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           );
         }
 
-        return sortMessagesByCreatedAt([...prev, message]);
+        return sortMessagesByCreatedAt([...prev, normalizeMessageLifecycle(message)]);
       });
     },
     [getPayloadConversationId, selectedConversationId],
@@ -449,6 +734,19 @@ const MainLayout = ({ children }: { children?: any }) => {
           const message = payload?.message || payload;
           const incomingConversationId = getMessageConversationId(message, payload);
           const activeConversationId = selectedConversationIdRef.current;
+
+          if (
+            incomingConversationId &&
+            isCurrentUserRemovedBySystemMessage(message, payload)
+          ) {
+            removeConversationFromSession(incomingConversationId, {
+              reason: "removed_from_group_system_message",
+              message: "Bạn không còn trong nhóm này.",
+            });
+            toast.warning("Bạn không còn trong nhóm này.");
+            return;
+          }
+
           if (
             incomingConversationId &&
             String(incomingConversationId) !== String(activeConversationId)
@@ -491,7 +789,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   })
                   .catch(() => {});
               }
-              return [...prev, message];
+              return [...prev, normalizeMessageLifecycle(message)];
             }
             return prev;
           });
@@ -532,7 +830,7 @@ const MainLayout = ({ children }: { children?: any }) => {
             }
             if (String(msgConvId) === String(selectedConversationId)) {
               console.log("[Socket] Adding quoted message to state:", msgId);
-              return [...prev, message];
+              return [...prev, normalizeMessageLifecycle(message)];
             }
             console.log(
               "[Socket] message:quoted conversationId mismatch. msgConvId:",
@@ -546,21 +844,40 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         socketService.onMessageEdited((payload) => {
           const editedMsg = payload?.message || payload;
-          if (!editedMsg || (!editedMsg._id && !editedMsg.id)) return;
+          if (!editedMsg || (!editedMsg._id && !editedMsg.id && !editedMsg.messageId)) return;
+          const editedMessageId = getMessageId(editedMsg);
+          const newText =
+            editedMsg.text ||
+            editedMsg.content ||
+            editedMsg.message ||
+            editedMsg.textPreview;
+          const touchedCache = markCachedMessageEdited(String(editedMessageId), editedMsg);
+          const editedConversationId = getMessageConversationId(editedMsg, payload);
+          if (editedConversationId && !touchedCache) {
+            conversationMessageCacheRef.current.delete(String(editedConversationId));
+          }
 
           setMessages((prev) =>
             prev.map((m) => {
-              if (String(m._id || m.id) === String(editedMsg._id || editedMsg.id)) {
-                const newText = editedMsg.text || editedMsg.content || editedMsg.message || m.text;
-                return {
+              if (String(getMessageId(m)) === String(editedMessageId)) {
+                return normalizeMessageLifecycle({
                   ...m,
                   ...editedMsg,
                   isEdited: true,
-                  text: newText,
-                  content: newText,
-                };
+                  text: newText ?? m.text,
+                  content: newText ?? m.content,
+                  textPreview: newText ?? m.textPreview,
+                });
               }
               return m;
+            }),
+          );
+          window.dispatchEvent(
+            new CustomEvent("chatList:messageEdited", {
+              detail: {
+                message: editedMsg,
+                conversationId: editedConversationId,
+              },
             }),
           );
         });
@@ -575,14 +892,28 @@ const MainLayout = ({ children }: { children?: any }) => {
             payload?._id;
           if (!revokedId) return;
 
+          const touchedCache = markCachedMessageRevoked(String(revokedId), payload);
+          const revokedConversationId = getMessageConversationId(payload?.message, payload);
+          if (revokedConversationId && !touchedCache) {
+            conversationMessageCacheRef.current.delete(String(revokedConversationId));
+          }
+
           setMessages((prev) =>
             prev.map((m) =>
               String(m._id || m.id) === String(revokedId)
-                ? {
+                ? normalizeMessageLifecycle({
                     ...m,
+                    ...payload?.message,
                     isRevoked: true,
-                    deletedAt: payload.deletedAt || new Date().toISOString(),
-                  }
+                    deletedAt:
+                      payload.deletedAt ||
+                      payload.revokedAt ||
+                      payload.recalledAt ||
+                      payload?.message?.deletedAt ||
+                      payload?.message?.revokedAt ||
+                      payload?.message?.recalledAt ||
+                      new Date().toISOString(),
+                  })
                 : m,
             ),
           );
@@ -907,7 +1238,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   limit: MESSAGE_PAGE_SIZE,
                 })
                 .then((messageResult) => {
-                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
                   setMessagePageInfo({
                     nextCursor: messageResult.nextCursor,
                     hasMore: messageResult.hasMore,
@@ -926,15 +1257,10 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
-            conversationMessageCacheRef.current.delete(String(conversationId));
-            if (String(conversationId) === String(selectedConversationId)) {
-              setSelectedChat(null);
-              setSelectedConversationId(null);
-              setMessages([]);
-              setPinnedMessages([]);
-              setChatError("Bạn đã rời khỏi nhóm này.");
-            }
-            window.dispatchEvent(new Event("chatList:refresh"));
+            removeConversationFromSession(conversationId, {
+              reason: "left_group",
+              message: "Bạn đã rời khỏi nhóm này.",
+            });
             return;
           }
 
@@ -947,7 +1273,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   limit: MESSAGE_PAGE_SIZE,
                 })
                 .then((messageResult) => {
-                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
                   setMessagePageInfo({
                     nextCursor: messageResult.nextCursor,
                     hasMore: messageResult.hasMore,
@@ -966,19 +1292,13 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
-            conversationMessageCacheRef.current.delete(String(conversationId));
-            if (String(conversationId) === String(selectedConversationId)) {
-              setSelectedChat(null);
-              setSelectedConversationId(null);
-              setMessages([]);
-              setPinnedMessages([]);
-              setChatError(
+            removeConversationFromSession(conversationId, {
+              reason: reason === "left" ? "left_group" : "removed_from_group",
+              message:
                 reason === "left"
                   ? "Bạn đã rời khỏi nhóm này."
                   : "Bạn đã bị xoá khỏi nhóm này.",
-              );
-            }
-            window.dispatchEvent(new Event("chatList:refresh"));
+            });
             return;
           }
 
@@ -991,7 +1311,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   limit: MESSAGE_PAGE_SIZE,
                 })
                 .then((messageResult) => {
-                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
                   setMessagePageInfo({
                     nextCursor: messageResult.nextCursor,
                     hasMore: messageResult.hasMore,
@@ -1001,6 +1321,57 @@ const MainLayout = ({ children }: { children?: any }) => {
             }
           }
         });
+
+        const handleGroupMemberBlocked = (payload: any) => {
+          const conversationId = getPayloadConversationId(payload);
+          const blockedUserId = getPayloadTargetUserId(payload);
+          const message =
+            payload?.message ||
+            payload?.systemMessage ||
+            payload?.data?.message ||
+            payload?.data?.systemMessage ||
+            null;
+
+          if (shouldSkipDuplicateMemberRemoval(conversationId, blockedUserId)) {
+            return;
+          }
+
+          if (
+            String(blockedUserId) === String(user?.id) ||
+            String(blockedUserId) === String(user?._id)
+          ) {
+            removeConversationFromSession(conversationId, {
+              reason: "blocked_from_group",
+              message: "Bạn đã bị quản trị viên chặn khỏi nhóm này.",
+            });
+            toast.warning("Bạn đã bị quản trị viên chặn khỏi nhóm này.");
+            return;
+          }
+
+          if (String(conversationId) === String(selectedConversationId)) {
+            if (message) {
+              appendLocalMessage(message);
+            } else {
+              conversationService
+                .getConversationMessages(conversationId, {
+                  limit: MESSAGE_PAGE_SIZE,
+                })
+                .then((messageResult) => {
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
+                  setMessagePageInfo({
+                    nextCursor: messageResult.nextCursor,
+                    hasMore: messageResult.hasMore,
+                  });
+                })
+                .catch(console.error);
+            }
+          }
+
+          window.dispatchEvent(new Event("chatList:refresh"));
+        };
+
+        socketService.on("group:member_blocked", handleGroupMemberBlocked);
+        socketService.on("GROUP_MEMBER_BLOCKED", handleGroupMemberBlocked);
 
         // Handle group dissolution - this group has been deleted by an admin
         socketService.onGroupDissolved((payload: any) => {
@@ -1079,6 +1450,8 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.off("conversation:updated");
       socketService.off("conversation:members_added");
       socketService.off("conversation:member_removed");
+      socketService.off("group:member_blocked");
+      socketService.off("GROUP_MEMBER_BLOCKED");
       socketService.offGroupMemberLeft();
       socketService.offGroupDissolved();
       socketService.offGroupRenamed();
@@ -1091,7 +1464,12 @@ const MainLayout = ({ children }: { children?: any }) => {
     removePollFromMessages,
     updatePollInMessages,
     getPayloadConversationId,
+    getPayloadTargetUserId,
     upsertMessageFromPayload,
+    markCachedMessageRevoked,
+    markCachedMessageEdited,
+    isCurrentUserRemovedBySystemMessage,
+    removeConversationFromSession,
     shouldSkipDuplicateMemberRemoval,
   ]);
 
@@ -1242,6 +1620,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       }
 
       let processedChat = { ...chat };
+      let conversationId = chat.id;
       if (
         !processedChat.targetUserId &&
         processedChat.type !== "group" &&
@@ -1258,8 +1637,6 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       try {
         // Nếu chat.id có dạng temp- (click từ global search), cần tìm conversation thật trước
-        let conversationId = chat.id;
-
         if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
           const conversation =
             await conversationService.createPrivateConversation(
@@ -1306,7 +1683,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         if (cachedConversation) {
           const cachedMessages = mergeSearchTargetMessages(
-            cachedConversation.messages || [],
+            normalizeMessagesLifecycle(cachedConversation.messages || []),
             processedChat,
             conversationId,
           );
@@ -1316,10 +1693,20 @@ const MainLayout = ({ children }: { children?: any }) => {
           const incomingLastMessageId = getMessageId(incomingLastMessage);
           const cachedLastMessageTime = getMessageTimeValue(cachedLastMessage);
           const incomingLastMessageTime = getChatActivityTimeValue(processedChat);
+          const cachedLastMessagePreview = getMessagePreviewValue(cachedLastMessage);
+          const incomingLastMessagePreview = getMessagePreviewValue(incomingLastMessage);
           const cacheIsStale =
             (Boolean(incomingLastMessageId) &&
               (!cachedLastMessageId ||
                 String(incomingLastMessageId) !== String(cachedLastMessageId))) ||
+            (Boolean(incomingLastMessageId) &&
+              String(incomingLastMessageId) === String(cachedLastMessageId) &&
+              isMessageRevoked(incomingLastMessage) &&
+              !isMessageRevoked(cachedLastMessage)) ||
+            (Boolean(incomingLastMessageId) &&
+              String(incomingLastMessageId) === String(cachedLastMessageId) &&
+              Boolean(incomingLastMessagePreview) &&
+              incomingLastMessagePreview !== cachedLastMessagePreview) ||
             (Boolean(incomingLastMessageTime && cachedLastMessageTime) &&
               incomingLastMessageTime > cachedLastMessageTime + 1000) ||
             Boolean(incomingLastMessageTime && !cachedLastMessageTime);
@@ -1386,7 +1773,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Sort messages by createdAt in ascending order (oldest first)
         const sortedMessages = sortMessagesByCreatedAt(
-          messageResult.messages || [],
+          normalizeMessagesLifecycle(messageResult.messages || []),
         );
 
         setMemberSeenMap(messageResult.memberSeenMap || {});
@@ -1406,6 +1793,35 @@ const MainLayout = ({ children }: { children?: any }) => {
       } catch (error) {
         setMessages([]);
         setPinnedMessages([]);
+        const status =
+          error?.status ||
+          error?.response?.status ||
+          error?.payload?.statusCode ||
+          null;
+        const errorCode = String(error?.code || error?.payload?.code || "").toUpperCase();
+        const isGroupChat =
+          processedChat.type === "group" ||
+          processedChat.type === "GROUP" ||
+          processedChat.isGroup === true;
+        const isAccessOrMissingError =
+          status === 400 ||
+          status === 403 ||
+          status === 404 ||
+          errorCode === "VALIDATION_ERROR" ||
+          errorCode === "FORBIDDEN" ||
+          errorCode === "NOT_FOUND";
+
+        if (isGroupChat && isAccessOrMissingError && conversationId) {
+          removeConversationFromSession(conversationId, {
+            reason: status === 403 ? "blocked_from_group" : "group_unavailable",
+            message:
+              status === 403
+                ? "Bạn đã bị quản trị viên chặn khỏi nhóm này."
+                : "",
+          });
+          return;
+        }
+
         if (
           error?.status === 404 ||
           error?.response?.status === 404 ||
@@ -1429,6 +1845,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       navigate,
       openingChatId,
       refreshPinnedMessages,
+      removeConversationFromSession,
       user?.id,
     ],
   );
@@ -1578,7 +1995,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       );
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error: any) {
-      alert(error?.message || "Could not delete this conversation.");
+      toast.error(error?.message || "Could not delete this conversation.");
     } finally {
       setIsDeletingConversation(false);
     }
@@ -1610,7 +2027,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       setMessages((prev) =>
         applyMemberSeenMapToMessages(
-          mergeUniqueMessages(messageResult.messages || [], prev),
+          mergeUniqueMessages(normalizeMessagesLifecycle(messageResult.messages || []), prev),
           {
             ...memberSeenMap,
             ...(messageResult.memberSeenMap || {}),
@@ -1739,13 +2156,36 @@ const MainLayout = ({ children }: { children?: any }) => {
                     ...msg,
                     text: payloadOrText.text,
                     content: payloadOrText.text,
+                    textPreview: payloadOrText.text,
                     isEdited: true,
                   }
                 : msg,
             ),
           );
+          markCachedMessageEdited(String(payloadOrText.id), {
+            id: payloadOrText.id,
+            text: payloadOrText.text,
+            content: payloadOrText.text,
+            textPreview: payloadOrText.text,
+            updatedAt: new Date().toISOString(),
+          });
 
           await socketService.editMessage(payloadOrText.id, payloadOrText.text);
+          window.dispatchEvent(
+            new CustomEvent("chatList:messageEdited", {
+              detail: {
+                conversationId,
+                message: {
+                  id: payloadOrText.id,
+                  messageId: payloadOrText.id,
+                  text: payloadOrText.text,
+                  content: payloadOrText.text,
+                  textPreview: payloadOrText.text,
+                  updatedAt: new Date().toISOString(),
+                },
+              },
+            }),
+          );
         } catch (error: any) {
           console.error("Failed to edit message", error);
           let errorMessage = error?.message || "Chỉnh sửa tin nhắn thất bại";
@@ -2049,7 +2489,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                       String(m._id || m.id) === String(newMsg._id || newMsg.id),
                   )
                 ) {
-                  newMsgs.push(newMsg);
+                  newMsgs.push(normalizeMessageLifecycle(newMsg));
                 }
               });
               return newMsgs;
@@ -2080,10 +2520,14 @@ const MainLayout = ({ children }: { children?: any }) => {
       const res: any = await socketService.revokeMessage(messageId);
 
       if (res && res.success) {
+        markCachedMessageRevoked(String(messageId), {
+          message,
+          deletedAt: new Date().toISOString(),
+        });
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === messageId || msg._id === messageId
-              ? { ...msg, isRevoked: true, deletedAt: new Date().toISOString() }
+              ? normalizeMessageLifecycle({ ...msg, isRevoked: true, deletedAt: new Date().toISOString() })
               : msg,
           ),
         );

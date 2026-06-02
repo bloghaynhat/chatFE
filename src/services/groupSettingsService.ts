@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { groupBlockService } from "./groupBlockService";
 
 export type WhoCanSendMessages = "all" | "admins";
 export type PermissionScope = "all" | "admins";
@@ -31,29 +32,22 @@ export const groupSettingsService = {
   },
 
   async getBlockedUsers(groupId: string): Promise<any[]> {
-    const response: any = await api.get(`/groups/${groupId}/blocks`);
-    const payload = unwrapData(response);
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.items)) return payload.items;
-    if (Array.isArray(payload?.blocks)) return payload.blocks;
-    if (Array.isArray(payload?.users)) return payload.users;
-    return [];
+    return groupBlockService.getBlockedMembers(groupId);
   },
 
   async blockUser(groupId: string, userId: string): Promise<any> {
-    const response: any = await api.post(`/groups/${groupId}/blocks`, { userId });
-    return unwrapData(response);
+    return groupBlockService.blockGroupMember(groupId, userId);
   },
 
   async unblockUser(groupId: string, userId: string): Promise<any> {
-    const response: any = await api.delete(`/groups/${groupId}/blocks/${userId}`);
-    return unwrapData(response);
+    return groupBlockService.unblockGroupMember(groupId, userId);
   },
 
   async getPendingMembers(groupId: string): Promise<any[]> {
     const response: any = await api.get(`/groups/${groupId}/members/pending`);
     const payload = unwrapData(response);
     if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.pendingMembers)) return payload.pendingMembers;
     if (Array.isArray(payload?.items)) return payload.items;
     if (Array.isArray(payload?.members)) return payload.members;
     if (Array.isArray(payload?.users)) return payload.users;

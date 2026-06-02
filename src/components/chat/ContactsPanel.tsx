@@ -16,6 +16,7 @@ import { ContactsHeader } from "../contacts";
 import { FriendRequestsSection } from "./ContactsPanel/FriendRequestsSection";
 import { SearchResultSection } from "./ContactsPanel/SearchResultSection";
 import { FriendsListSection } from "./ContactsPanel/FriendsListSection";
+import { toast } from "sonner";
 
 export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any) => {
   const { user: currentUser } = useAuth();
@@ -202,7 +203,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
     try {
       const userId = getUserId(searchResult);
       if (!userId) {
-        alert("User ID not found");
+        toast.error("User ID not found");
         return;
       }
 
@@ -220,7 +221,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       await fetchFriends();
     } catch (err) {
       console.error("[ContactsPanel] Error processing friend request:", err);
-      alert(err.message || "Failed to process friend request");
+      toast.error(err.message || "Failed to process friend request");
     } finally {
       setProcessingRequestId(null);
     }
@@ -238,7 +239,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err) {
       console.error("[ContactsPanel] Failed to accept search result request:", err);
-      alert(err.message || "Failed to accept friend request");
+      toast.error(err.message || "Failed to accept friend request");
     } finally {
       setProcessingRequestId(null);
     }
@@ -254,7 +255,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       setSearchResultRequestStatus({ status: "NONE" });
     } catch (err) {
       console.error("[ContactsPanel] Failed to reject search result request:", err);
-      alert(err.message || "Failed to reject friend request");
+      toast.error(err.message || "Failed to reject friend request");
     } finally {
       setProcessingRequestId(null);
     }
@@ -270,7 +271,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err) {
       console.error("[ContactsPanel] Failed to accept friend request:", requestId, err);
-      alert(err.message || "Failed to accept friend request");
+      toast.error(err.message || "Failed to accept friend request");
     } finally {
       setProcessingRequestId(null);
     }
@@ -284,7 +285,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       await refreshSearchResultStatus();
     } catch (err) {
       console.error("[ContactsPanel] Failed to reject friend request:", requestId, err);
-      alert(err.message || "Failed to reject friend request");
+      toast.error(err.message || "Failed to reject friend request");
     } finally {
       setProcessingRequestId(null);
     }
@@ -311,7 +312,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
       return () => clearTimeout(fallbackTimer);
     } catch (err) {
       console.error("[ContactsPanel] Failed to unfriend user:", friendUserId, err);
-      alert(err.message || "Failed to unfriend");
+      toast.error(err.message || "Failed to unfriend");
     }
   };
 

@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AiSummaryModal } from "../AiSummaryModal";
 import { aiService } from "../../../services/aiService";
 import { socketService } from "../../../services/socketService";
+import { toast } from "sonner";
 
 const moreActions = [
   { id: "ai-summarize", label: "Tóm tắt cuộc trò chuyện (AI)", icon: FiZap },
@@ -264,18 +265,18 @@ export const ChatHeader = ({
           const tasks = res?.data?.tasks || [];
 
           if (tasks.length > 0) {
-            alert(
+            toast.info(
               `AI Extracted Tasks:\n\n${tasks
                 .map((task: any) => `- ${task}`)
                 .join("\n")}`,
             );
           } else {
-            alert("Không tìm thấy công việc nào.");
+            toast.info("Không tìm thấy công việc nào.");
           }
         })
         .catch((err: any) => {
           console.error(err);
-          alert("Lỗi khi trích xuất công việc.");
+          toast.error("Lỗi khi trích xuất công việc.");
         })
         .finally(() => setIsExtractingTasks(false));
 
@@ -545,19 +546,19 @@ export const ChatHeader = ({
                       );
 
                       if (result?.data?.results) {
-                        alert(
+                        toast.info(
                           `AI Search Results:\n\n${result.data.results
                             .map((item: any) => `- ${item.content}`)
                             .join("\n")}`,
                         );
                       } else {
-                        alert(
+                        toast.info(
                           `AI Found: ${result?.data?.summary || "No results"}`,
                         );
                       }
                     } catch (err) {
                       console.error(err);
-                      alert("Lỗi khi tìm kiếm bằng AI.");
+                      toast.error("Lỗi khi tìm kiếm bằng AI.");
                     } finally {
                       setIsAiSearching(false);
                     }

@@ -282,8 +282,40 @@ export const MessageItem = ({
   const isContextActive =
     activeContextMessageId &&
     String(activeContextMessageId) === String(currentMessageId);
+  const messageStatus = String(
+    message?.status ||
+      message?.messageStatus ||
+      message?.state ||
+      message?.action ||
+      "",
+  ).toLowerCase();
+  const isRevokedMessage = Boolean(
+    message.isRevoked ||
+      message.deletedAt ||
+      message.revoked ||
+      message.isRecalled ||
+      message.recalled ||
+      message.deletedForEveryone ||
+      message.isDeletedForEveryone ||
+      message.revokedAt ||
+      message.recalledAt ||
+      messageStatus === "revoked" ||
+      messageStatus === "recalled" ||
+      messageStatus === "deleted_for_everyone",
+  );
+  const isEditedMessage = Boolean(
+    message.isEdited ||
+      message.edited ||
+      message.isEditted ||
+      message.editted ||
+      message.editedAt ||
+      message.edittedAt ||
+      message.editHistory?.length ||
+      messageStatus === "edited" ||
+      messageStatus === "editted",
+  );
 
-  if (message.isRevoked || message.deletedAt) {
+  if (isRevokedMessage) {
     return (
       <RevokedMessage
         message={message}
@@ -539,7 +571,7 @@ export const MessageItem = ({
                 strokeWidth={2.5}
               />
             )}
-            {message.isEdited && (
+            {isEditedMessage && (
               <span
                 className={`italic font-semibold ${(isJumboEmoji || onlyImagesOrVideos) && (!message.reactions || message.reactions.length === 0) ? "text-[10px]" : "opacity-75 text-[10px]"}`}
               >

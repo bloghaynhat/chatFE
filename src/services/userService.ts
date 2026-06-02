@@ -199,6 +199,14 @@ export const getUserById = async (id: string) => {
   }
 };
 
+export const getPublicProfileById = async (id: string) => {
+  try {
+    return await api.get(`/users/${id}/public`);
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch public profile");
+  }
+};
+
 /**
  * Export tất cả các hàm như một object để dễ sử dụng
  */
@@ -213,6 +221,7 @@ export const userService = {
   updatePrivacy,
   searchUsers,
   getUserById,
+  getPublicProfileById,
 };
 
 export default userService;

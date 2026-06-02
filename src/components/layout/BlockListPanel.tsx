@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FiArrowLeft, FiSlash } from "react-icons/fi";
 import { Avatar } from "../contacts/shared";
 import { getBlockedUsers, socketService, unblockUser, userService } from "../../services";
+import { toast } from "sonner";
 
 const unwrapApiData = (payload: any) => {
   if (!payload || typeof payload !== "object") return payload;
@@ -96,7 +97,7 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err: any) {
       console.error("[BlockListPanel] Failed to unblock user:", err);
-      alert(err?.message || "Failed to unblock user");
+      toast.error(err?.message || "Failed to unblock user");
     } finally {
       setProcessingId(null);
     }
