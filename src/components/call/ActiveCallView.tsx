@@ -21,6 +21,7 @@ import {
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
 import { useAuth } from "../../hooks/useAuth";
 import { userService } from "../../services/userService";
+import { useLanguage } from "../../context";
 
 interface WindowWithCallRoom extends Window {
   __callRoom?: Room;
@@ -183,6 +184,7 @@ function getLocalVideoTrack(room: Room): LocalTrack | undefined {
 }
 
 export default function ActiveCallView() {
+  const { t } = useLanguage();
   const callV2 = useCallV2();
   const state = callV2.state;
   const { user } = useAuth();
@@ -487,7 +489,7 @@ export default function ActiveCallView() {
                     <ParticipantFallback
                       name={tile.participantName}
                       avatarUrl={tile.avatarUrl}
-                      status={tile.connected ? "Camera off" : "Connecting..."}
+                      status={tile.connected ? t("call.cameraOff") : t("call.connecting")}
                     />
                   )}
                   <div className="absolute bottom-3 left-3 max-w-[80%] truncate rounded-full bg-white/85 px-3 py-1 text-xs font-medium text-slate-800 shadow-sm backdrop-blur">
@@ -499,7 +501,7 @@ export default function ActiveCallView() {
           ) : (
             <div className="flex h-full items-center justify-center p-3">
               <div className="h-full w-full overflow-hidden rounded-[22px] border border-white/75 bg-white/55 shadow-[0_14px_34px_rgba(35,95,145,0.16)]">
-                <ParticipantFallback name="Connecting..." />
+                <ParticipantFallback name={t("call.connecting")} />
               </div>
             </div>
           )}
@@ -508,10 +510,10 @@ export default function ActiveCallView() {
             {localVideoTrack && state.localVideoEnabled && !localVideoTrack.isMuted ? (
               <VideoTrackView track={localVideoTrack} muted className="h-full w-full object-cover" />
             ) : (
-              <ParticipantFallback name="You" avatarUrl={user?.avatarUrl || user?.avatar} />
+              <ParticipantFallback name={t("app.you")} avatarUrl={user?.avatarUrl || user?.avatar} />
             )}
             <div className="absolute bottom-2 left-2 rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-medium text-slate-800 shadow-sm">
-              You
+              {t("app.you")}
             </div>
           </div>
         </div>
@@ -526,14 +528,14 @@ export default function ActiveCallView() {
                 <ParticipantFallback
                   name={tile.participantName}
                   avatarUrl={tile.avatarUrl}
-                  status={tile.connected ? "Connected" : "Connecting..."}
+                  status={tile.connected ? t("call.connected") : t("call.connecting")}
                 />
               </div>
             ))}
           </div>
           <div className="mx-auto mt-4 flex items-center gap-2 rounded-full bg-white/65 px-4 py-2 text-slate-600 shadow-sm backdrop-blur">
             <FiUsers className="h-4 w-4" />
-            <span className="text-sm">{participantCount} participants</span>
+            <span className="text-sm">{participantCount} {t("call.participants")}</span>
           </div>
         </div>
       )}
@@ -558,8 +560,8 @@ export default function ActiveCallView() {
             onClick={toggleMaximized}
             onPointerDown={(event) => event.stopPropagation()}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/75 bg-white/75 text-slate-800 shadow-sm backdrop-blur transition hover:bg-white"
-            aria-label={windowBounds.maximized ? "Restore call window" : "Maximize call window"}
-            title={windowBounds.maximized ? "Restore" : "Maximize"}
+            aria-label={windowBounds.maximized ? t("call.restoreWindow") : t("call.maximizeWindow")}
+            title={windowBounds.maximized ? t("call.restore") : t("call.maximize")}
           >
             {windowBounds.maximized ? <FiMinimize2 className="h-4 w-4" /> : <FiMaximize2 className="h-4 w-4" />}
           </button>
@@ -575,8 +577,8 @@ export default function ActiveCallView() {
                 ? "bg-[#edf7ff] text-[#229ed9] hover:bg-[#dff1ff]"
                 : "bg-[#ff4d5e] text-white hover:bg-[#e94352]"
             }`}
-            aria-label={state.localAudioEnabled ? "Mute microphone" : "Unmute microphone"}
-            title={state.localAudioEnabled ? "Mute microphone" : "Unmute microphone"}
+            aria-label={state.localAudioEnabled ? t("call.mute") : t("call.unmute")}
+            title={state.localAudioEnabled ? t("call.mute") : t("call.unmute")}
           >
             {state.localAudioEnabled ? (
               <FiMic className="mx-auto h-6 w-6" />
@@ -592,8 +594,8 @@ export default function ActiveCallView() {
                   ? "bg-[#edf7ff] text-[#229ed9] hover:bg-[#dff1ff]"
                   : "bg-[#ff4d5e] text-white hover:bg-[#e94352]"
               }`}
-              aria-label={state.localVideoEnabled ? "Turn camera off" : "Turn camera on"}
-              title={state.localVideoEnabled ? "Turn camera off" : "Turn camera on"}
+              aria-label={state.localVideoEnabled ? t("call.cameraOff") : t("call.cameraOn")}
+              title={state.localVideoEnabled ? t("call.cameraOff") : t("call.cameraOn")}
             >
               {state.localVideoEnabled ? (
                 <FiVideo className="mx-auto h-6 w-6" />
@@ -605,7 +607,7 @@ export default function ActiveCallView() {
           <button
             onClick={hangUpCall}
             className="h-12 w-12 rounded-full bg-[#ff4d5e] text-white shadow-[0_14px_28px_rgba(255,77,94,0.34)] transition hover:-translate-y-0.5 hover:bg-[#e94352]"
-            aria-label={state.isGroup ? "Leave call" : "End call"}
+            aria-label={state.isGroup ? t("call.leave") : t("call.end")}
           >
             <FiPhoneOff className="mx-auto h-6 w-6" />
           </button>
@@ -615,8 +617,8 @@ export default function ActiveCallView() {
         <div
           className="absolute bottom-1.5 right-1.5 h-5 w-5 cursor-nwse-resize rounded-br-[20px]"
           onPointerDown={handleResizePointerDown}
-          aria-label="Resize call window"
-          title="Drag to resize"
+          aria-label={t("call.resizeWindow")}
+          title={t("call.dragResize")}
         >
           <span className="absolute bottom-1 right-1 h-2.5 w-2.5 rounded-br border-b-2 border-r-2 border-[#229ed9]/70" />
         </div>

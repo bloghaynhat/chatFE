@@ -8,6 +8,7 @@ import {
   FiCheck,
   FiTrash2,
 } from "react-icons/fi";
+import { useLanguage } from "../../../context";
 
 export const RightSidebarEdit = ({
   groupName,
@@ -28,6 +29,8 @@ export const RightSidebarEdit = ({
   onDeleteGroupClick,
   isLoading,
 }: any) => {
+  const { t } = useLanguage();
+
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-gray-50 dark:bg-slate-950">
       {/* Edit Group Header */}
@@ -39,7 +42,7 @@ export const RightSidebarEdit = ({
           <FiArrowLeft className="text-xl" />
         </button>
         <span className="font-semibold text-[18px] text-gray-800 dark:text-gray-100 ml-4">
-          Edit
+          {t("group.edit")}
         </span>
         {currentUserRole === "admin" && (
           <button
@@ -87,12 +90,12 @@ export const RightSidebarEdit = ({
           <div className="w-full px-4 mb-4">
             <div className="relative">
               <div className="absolute -top-2 left-3 bg-white dark:bg-slate-900 px-1 text-[11px] text-gray-500 z-10">
-                Group Name
+                {t("group.name")}
               </div>
               <input
                 type="text"
                 className="w-full px-3 py-3 border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-transparent text-gray-900 dark:text-gray-100"
-                placeholder="Group Name"
+                placeholder={t("group.name")}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 readOnly={currentUserRole === "member" ? true : false}
@@ -110,17 +113,17 @@ export const RightSidebarEdit = ({
             <FiSettings className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Group Settings
+                {t("group.settings")}
               </div>
               <div className="text-[13px] text-gray-500">
-                Info, invite links, permissions
+                {t("group.settingsDescription")}
               </div>
             </div>
           </button>
         </div>
 
         <div className="px-5 py-1 text-[13px] text-gray-500 mb-3">
-          Add a group chat for comments
+          {t("group.addCommentsChat")}
         </div>
 
         <div className="py-2 bg-white dark:bg-slate-900 border-t border-b border-gray-200 dark:border-slate-800 mb-2 shadow-sm">
@@ -131,7 +134,7 @@ export const RightSidebarEdit = ({
             <FiShield className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Administrators
+                {t("group.administrators")}
               </div>
               <div className="text-[13px] text-gray-500">{adminCount || 1}</div>
             </div>
@@ -143,7 +146,7 @@ export const RightSidebarEdit = ({
             <FiUsers className="text-gray-400 group-hover:text-blue-500 text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-gray-900 dark:text-gray-100">
-                Members
+                {t("chat.members")}
               </div>
               <div className="text-[13px] text-gray-500">{membersCount}</div>
             </div>
@@ -162,7 +165,7 @@ export const RightSidebarEdit = ({
             <FiTrash2 className="text-[#ff4b4b] text-2xl mr-4 shrink-0" />
             <div className="flex-1">
               <div className="text-[15px] font-medium text-[#ff4b4b]">
-                {currentUserRole === "admin" ? "Delete Group and Leave" : "Leave Group"}
+                {currentUserRole === "admin" ? t("group.deleteAndLeave") : t("group.leave")}
               </div>
             </div>
           </div>

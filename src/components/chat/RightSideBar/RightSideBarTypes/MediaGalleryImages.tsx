@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { PhotoProvider, PhotoView } from "react-photo-view";
 import "react-photo-view/dist/react-photo-view.css";
+import { useLanguage } from "../../../../context";
 
 interface MediaItem {
   messageId: string;
@@ -25,6 +26,7 @@ export const MediaGalleryImages: React.FC<MediaGalleryImagesProps> = ({
   onShowInChat,
   messages,
 }) => {
+  const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; image: MediaItem } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent, image: MediaItem) => {
@@ -48,7 +50,7 @@ export const MediaGalleryImages: React.FC<MediaGalleryImagesProps> = ({
       <div className="p-2">
         {images.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-40 text-gray-500 dark:text-gray-400">
-            <p className="text-sm">No images</p>
+            <p className="text-sm">{t("chat.noImages")}</p>
           </div>
         ) : (
           <PhotoProvider
@@ -76,7 +78,7 @@ export const MediaGalleryImages: React.FC<MediaGalleryImagesProps> = ({
                   rel="noopener noreferrer"
                   className="flex items-center justify-center p-2 opacity-75 hover:opacity-100 transition-opacity"
                   onClick={(e) => e.stopPropagation()}
-                  title="Download"
+                  title={t("chat.download")}
                 >
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -140,7 +142,7 @@ export const MediaGalleryImages: React.FC<MediaGalleryImagesProps> = ({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Show in chat
+                  {t("chat.showInChat")}
                 </button>
               )}
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiArrowLeft, FiUserPlus, FiSearch } from "react-icons/fi";
 import { MemberItem } from "./RightSideBarTypes/MemberItem";
 import { ContextMenuDropdown } from "./RightSideBarTypes/ContextMenuDropdown";
+import { useLanguage } from "../../../context";
 
 export const RightSidebarMembers = ({
   type, // "members" | "admins"
@@ -16,6 +17,7 @@ export const RightSidebarMembers = ({
   onPromoteAdmin,
   onSendMessage
 }: any) => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
 
@@ -25,7 +27,7 @@ export const RightSidebarMembers = ({
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  const title = type === "admins" ? "Administrators" : "Members";
+  const title = type === "admins" ? t("group.administrators") : t("chat.members");
   const canManageMembers =
     currentUserRole === "admin" ||
     currentUserRole === "ADMIN" ||
@@ -99,7 +101,7 @@ export const RightSidebarMembers = ({
       <div className="px-5 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <input
           type="text"
-          placeholder="Search..."
+          placeholder={t("search.placeholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full bg-transparent border-none outline-none text-[15px] placeholder-gray-400 text-gray-800 dark:text-gray-200"
@@ -110,7 +112,7 @@ export const RightSidebarMembers = ({
       <div className="flex-1 overflow-y-auto">
         {displayMembers.map((member: any) => {
           const participant = member.user || member;
-          const displayRole = (member.role === "owner" || member.role === "OWNER") ? "Owner" : (member.role === "admin" || member.role === "ADMIN" ? "Admin" : "");
+          const displayRole = (member.role === "owner" || member.role === "OWNER") ? t("group.owner") : (member.role === "admin" || member.role === "ADMIN" ? t("group.admin") : "");
           const isMe = participant._id === currentUserId || participant.id === currentUserId || member.userId === currentUserId;
 
           return (

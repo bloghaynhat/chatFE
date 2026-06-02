@@ -26,6 +26,7 @@ import { GlobalUserItem } from "./ChatList/GlobalUserItem";
 import { ForwardModal } from "./ActiveChatPane/ForwardModal";
 import { useAuth } from "../../hooks/useAuth";
 import { useFriendManagement } from "../../hooks";
+import { useLanguage } from "../../context";
 import { getChatMessagePreview } from "../../utils/chatPreview";
 import type { Conversation } from "../../types/conversation";
 import type { GroupRenamedPayload, GroupAvatarChangedPayload } from "../../types/socket";
@@ -481,6 +482,7 @@ const SearchResultContextMenu = ({
   onOpenLink,
   onCopyLink,
 }: any) => {
+  const { t } = useLanguage();
   if (!contextMenu) return null;
   const isLink = contextMenu.kind === "link";
 
@@ -495,7 +497,7 @@ const SearchResultContextMenu = ({
         onClick={onForward}
       >
         <FiCornerUpRight className="text-[17px]" />
-        <span>Forward</span>
+        <span>{t("chat.forward")}</span>
       </button>
       {isLink ? (
         <>
@@ -504,14 +506,14 @@ const SearchResultContextMenu = ({
             onClick={onOpenLink}
           >
             <FiExternalLink className="text-[17px]" />
-            <span>Open link</span>
+            <span>{t("chat.openLink")}</span>
           </button>
           <button
             className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition text-left"
             onClick={onCopyLink}
           >
             <FiCopy className="text-[17px]" />
-            <span>Copy link</span>
+            <span>{t("chat.copyLink")}</span>
           </button>
         </>
       ) : (
@@ -520,7 +522,7 @@ const SearchResultContextMenu = ({
           onClick={onDownload}
         >
           <FiDownload className="text-[17px]" />
-          <span>Download</span>
+          <span>{t("chat.download")}</span>
         </button>
       )}
       <button
@@ -528,7 +530,7 @@ const SearchResultContextMenu = ({
         onClick={onShowInChat}
       >
         <FiMapPin className="text-[17px]" />
-        <span>Show in chat</span>
+        <span>{t("chat.showInChat")}</span>
       </button>
     </div>
   );
@@ -539,6 +541,7 @@ const ConversationContextMenu = ({
   onTogglePin,
   onToggleArchive,
 }: any) => {
+  const { t } = useLanguage();
   if (!contextMenu?.chat) return null;
   const isPinned = isConversationPinned(contextMenu.chat);
   const isArchived = isConversationArchived(contextMenu.chat);
@@ -559,7 +562,7 @@ const ConversationContextMenu = ({
         ) : (
           <BsPinAngle className="text-[16px]" />
         )}
-        <span>{isPinned ? "Unpin from top" : "Pin to top"}</span>
+        <span>{isPinned ? t("chat.unpinTop") : t("chat.pinTop")}</span>
       </button>
       {canArchive && (
         <button
@@ -567,7 +570,7 @@ const ConversationContextMenu = ({
           onClick={() => onToggleArchive(contextMenu.chat)}
         >
           <FiArchive className="text-[17px]" />
-          <span>{isArchived ? "Unarchive" : "Archive"}</span>
+          <span>{isArchived ? t("chat.unarchive") : t("chat.archive")}</span>
         </button>
       )}
     </div>
@@ -674,6 +677,7 @@ export const ChatList = ({
   onForwardMessages,
 }: any) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { friends, fetchFriends } = useFriendManagement();
   const [chats, setChats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -1804,13 +1808,13 @@ export const ChatList = ({
   }, [visibleChats, globalGroups]);
 
   const searchTabs = [
-    { id: "chats", label: "Chats", count: privateChatResults.length + globalUsers.length },
-    { id: "groups", label: "Groups", count: groupResults.length },
-    { id: "messages", label: "Messages", count: globalMessages.length },
-    { id: "media", label: "Media", count: mediaResults.length },
-    { id: "links", label: "Links", count: globalLinks.length },
-    { id: "files", label: "Files", count: fileResults.length },
-    { id: "voice", label: "Voice", count: voiceResults.length },
+    { id: "chats", label: t("chat.chats"), count: privateChatResults.length + globalUsers.length },
+    { id: "groups", label: t("chat.groups"), count: groupResults.length },
+    { id: "messages", label: t("chat.messages"), count: globalMessages.length },
+    { id: "media", label: t("chat.media"), count: mediaResults.length },
+    { id: "links", label: t("chat.links"), count: globalLinks.length },
+    { id: "files", label: t("chat.files"), count: fileResults.length },
+    { id: "voice", label: t("chat.voice"), count: voiceResults.length },
   ];
 
   const hasSearchResults = searchTabs.some((tab) => tab.count > 0);
@@ -1835,8 +1839,8 @@ export const ChatList = ({
             <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6 text-gray-500 dark:text-gray-400">
               {!isCollapsed && (
                 <>
-                  <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">No matching conversations found</p>
-                  <p className="text-sm">Try a different keyword or start a new message from the + button.</p>
+                  <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">{t("chat.noMatchingConversations")}</p>
+                  <p className="text-sm">{t("chat.tryDifferentKeyword")}</p>
                 </>
               )}
               {isCollapsed && <FiSearch className="text-xl text-gray-400" />}
@@ -1889,14 +1893,14 @@ export const ChatList = ({
 
             {!normalizedQuery ? (
               <div className="py-10 px-6 text-center text-sm text-gray-500 dark:text-gray-400 animate-empty-search">
-                Enter a keyword to search
+                {t("chat.enterKeyword")}
               </div>
             ) : isSearchingGlobal ? (
               <div className="flex justify-center py-6">
                 <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
               </div>
             ) : !hasSearchResults ? (
-              <div className="py-8 text-center text-sm text-gray-500">No results found</div>
+              <div className="py-8 text-center text-sm text-gray-500">{t("chat.noResults")}</div>
             ) : (
               <div key={activeSearchTab} className="pt-2 animate-search-panel">
                 {activeSearchTab === "chats" &&
@@ -1933,7 +1937,7 @@ export const ChatList = ({
                       ))}
                     </>
                   ) : (
-                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No chats found</div>
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noChats")}</div>
                   ))}
 
                 {activeSearchTab === "groups" &&
@@ -1955,7 +1959,7 @@ export const ChatList = ({
                       </div>
                     ))
                   ) : (
-                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No groups found</div>
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noGroups")}</div>
                   ))}
 
                 {activeSearchTab === "messages" &&
@@ -1973,7 +1977,7 @@ export const ChatList = ({
                       );
                     })
                   ) : (
-                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No messages found</div>
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noMessages")}</div>
                   ))}
 
                 {activeSearchTab === "media" && (
@@ -1992,7 +1996,7 @@ export const ChatList = ({
                         );
                       })
                     ) : (
-                      <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No media found</div>
+                      <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noMedia")}</div>
                     )}
                   </PhotoProvider>
                 )}
@@ -2012,7 +2016,7 @@ export const ChatList = ({
                       );
                     })
                   ) : (
-                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No links found</div>
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noLinks")}</div>
                   ))}
 
                 {activeSearchTab === "files" &&
@@ -2030,7 +2034,7 @@ export const ChatList = ({
                       );
                     })
                   ) : (
-                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No files found</div>
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noFiles")}</div>
                   ))}
 
                 {activeSearchTab === "voice" &&
@@ -2048,7 +2052,7 @@ export const ChatList = ({
                       );
                     })
                   ) : (
-                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">No voice messages found</div>
+                    <div className="py-4 text-center text-sm text-gray-500 animate-empty-search">{t("chat.noVoice")}</div>
                   ))}
               </div>
             )}

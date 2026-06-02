@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { FiMessageCircle, FiUser } from "react-icons/fi";
 import { PublicProfileModal } from "../../../common/PublicProfileModal";
 import { userService } from "../../../../services/userService";
+import { useLanguage } from "../../../../context";
 
 const unwrapUser = (payload: any) => {
   if (!payload || typeof payload !== "object") return payload;
@@ -33,6 +34,7 @@ export const extractProfileCardUserId = (message: any, text?: string) => {
 };
 
 export const ProfileCardMessage = ({ message, text, mine, onOpenChat }: any) => {
+  const { t } = useLanguage();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const userId = useMemo(() => extractProfileCardUserId(message, text), [message, text]);
 
@@ -45,20 +47,20 @@ export const ProfileCardMessage = ({ message, text, mine, onOpenChat }: any) => 
 
   const user = userQuery.data || message?.profileCard || {};
   const displayName =
-    user?.displayName || user?.name || user?.username || (userQuery.isLoading ? "Đang tải..." : "Người dùng");
+    user?.displayName || user?.name || user?.username || (userQuery.isLoading ? t("app.loading") : t("app.user"));
   const avatarUrl = user?.avatarUrl || user?.avatar || user?.profilePicture;
   const subtitle = user?.createdAt
-    ? `Đã tham gia từ ${new Date(user.createdAt).getFullYear()}`
-    : user?.bio || user?.phone || "Danh thiếp liên hệ";
+    ? t("profileCard.joinedSince").replace("{year}", String(new Date(user.createdAt).getFullYear()))
+    : user?.bio || user?.phone || t("profileCard.contactCard");
 
   const handleOpenChat = () => {
     if (!userId) {
-      toast.error("Không tìm thấy người dùng trong danh thiếp");
+      toast.error(t("profileCard.userNotFound"));
       return;
     }
 
     if (!onOpenChat) {
-      toast.error("Không thể mở cuộc trò chuyện lúc này");
+      toast.error(t("profileCard.openChatFailed"));
       return;
     }
 
@@ -96,7 +98,7 @@ export const ProfileCardMessage = ({ message, text, mine, onOpenChat }: any) => 
               {displayName}
             </p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 truncate">
-              {userQuery.isError ? "Không thể tải hồ sơ" : subtitle}
+              {userQuery.isError ? t("profileCard.loadProfileFailed") : subtitle}
             </p>
           </div>
         </div>
@@ -108,12 +110,12 @@ export const ProfileCardMessage = ({ message, text, mine, onOpenChat }: any) => 
             className="min-h-[44px] flex-1 rounded-xl bg-blue-500 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-60"
           >
             <FiMessageCircle />
-            Nhắn tin
+            {t("profileCard.messageUser")}
           </button>
           <button
             onClick={() => {
               if (!userId) {
-                toast.error("Không tìm thấy người dùng trong danh thiếp");
+                toast.error(t("profileCard.userNotFound"));
                 return;
               }
               setIsProfileOpen(true);
@@ -121,7 +123,7 @@ export const ProfileCardMessage = ({ message, text, mine, onOpenChat }: any) => 
             className="min-h-[44px] flex-1 rounded-xl border border-slate-300 dark:border-slate-600 text-gray-700 dark:text-gray-100 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <FiUser />
-            Xem hồ sơ
+            {t("profileCard.viewProfile")}
           </button>
         </div>
       </div>

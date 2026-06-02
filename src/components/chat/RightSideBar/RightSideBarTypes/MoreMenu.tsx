@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { FiMoreVertical, FiSlash, FiTrash2, FiUnlock } from "react-icons/fi";
+import { useLanguage } from "../../../../context";
 
 interface MoreMenuProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const MoreMenu: React.FC<MoreMenuProps> = ({
   showDelete = false,
   isBlocked = false,
 }) => {
+  const { t } = useLanguage();
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -51,7 +53,7 @@ export const MoreMenu: React.FC<MoreMenuProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-[14px] font-medium text-red-500 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors"
             >
               <FiTrash2 className="text-[17px]" />
-              <span>Delete Contact</span>
+              <span>{t("chat.deleteContact")}</span>
             </button>
           )}
           <button
@@ -62,7 +64,7 @@ export const MoreMenu: React.FC<MoreMenuProps> = ({
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-[14px] font-medium text-red-500 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors"
           >
             {isBlocked ? <FiUnlock className="text-[17px]" /> : <FiSlash className="text-[17px]" />}
-            <span>{isBlocked ? "Unblock User" : "Block User"}</span>
+            <span>{isBlocked ? t("chat.unblockUser") : t("chat.blockUser")}</span>
           </button>
         </div>
       </div>

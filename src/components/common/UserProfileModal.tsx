@@ -3,6 +3,7 @@ import { FiEdit2 } from "react-icons/fi";
 import { useAuth } from "../../hooks";
 import { updateProfile, updateAvatarViaAuth } from "../../services";
 import { AvatarEditor } from "./AvatarEditor";
+import { useLanguage } from "../../context";
 
 /**
  * UserProfileModal - Shared component for viewing and editing user profile
@@ -14,6 +15,7 @@ import { AvatarEditor } from "./AvatarEditor";
  *   - onSuccess: function - Callback after successful profile update
  */
 export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
+  const { t } = useLanguage();
   const { user, updateUserProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -113,7 +115,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
         });
       }
 
-      setSuccess("Profile updated successfully!");
+      setSuccess(t("profile.updated"));
       setIsEditing(false);
 
       // Call onSuccess callback if provided
@@ -122,7 +124,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err.message || "Failed to update profile");
+      setError(err.message || t("profile.updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -170,7 +172,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
       }
     }
 
-    setSuccess("Avatar updated successfully!");
+    setSuccess(t("profile.avatarUpdated"));
     // Clear success message after 3 seconds
     setTimeout(() => setSuccess(""), 3000);
 
@@ -184,7 +186,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleCloseModal = () => {
     if (isEditing && hasUnsavedChanges()) {
-      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to close?");
+      const confirmed = window.confirm(t("profile.unsavedConfirm"));
       if (confirmed) {
         onClose?.();
       }
@@ -203,13 +205,13 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
       >
         {/* Header */}
         <div className="sticky top-0 border-b dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">My Profile</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t("profile.title")}</h2>
           <div className="flex items-center gap-2">
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg text-blue-600 dark:text-blue-400 transition"
-                title="Edit Profile"
+                title={t("profile.edit")}
               >
                 <FiEdit2 className="text-lg" />
               </button>
@@ -248,7 +250,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
                   )}
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {user?.status === "online" ? "🟢 Online" : "🔘 Offline"}
+                  {user?.status === "online" ? `? ${t("app.online")}` : `? ${t("app.offline")}`}
                 </p>
               </>
             )}
@@ -271,7 +273,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="space-y-4">
             {/* Display Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.displayName")}</label>
               {isEditing ? (
                 <input
                   type="text"
@@ -290,7 +292,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.email")}</label>
               {isEditing ? (
                 <input
                   type="email"
@@ -309,7 +311,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.phoneNumber")}</label>
               {isEditing ? (
                 <input
                   type="tel"
@@ -328,7 +330,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
             {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("profile.bio")}</label>
               {isEditing ? (
                 <textarea
                   name="bio"
@@ -336,7 +338,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleInputChange}
                   disabled={loading}
                   rows={3}
-                  placeholder="Tell us about yourself..."
+                  placeholder={t("profile.bioPlaceholder")}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               ) : (
@@ -355,14 +357,14 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
                 disabled={loading}
                 className="px-6 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition"
               >
-                Cancel
+                {t("app.cancel")}
               </button>
               <button
                 onClick={handleSave}
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition"
               >
-                {loading ? "Saving..." : "Save Changes"}
+                {loading ? t("app.saving") : t("profile.saveChanges")}
               </button>
             </div>
           )}

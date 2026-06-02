@@ -19,6 +19,7 @@ import { AiSmartReply } from "../AiSmartReply";
 import { AiToneAdjustMenu } from "../AiToneAdjustMenu";
 import TextareaAutosize from "react-textarea-autosize";
 import { toast } from "sonner";
+import { useLanguage } from "../../../context";
 
 // frequentEmojis removed
 
@@ -52,6 +53,7 @@ export const ChatInput = ({
   disabledTone = "danger",
   onChatInteractionRead,
 }) => {
+  const { t } = useLanguage();
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
   const [isSmartReplyOpen, setIsSmartReplyOpen] = useState(false);
   const [manualSmartReplyKey, setManualSmartReplyKey] = useState("");
@@ -264,16 +266,16 @@ export const ChatInput = ({
               )}
               <span className="truncate">
                 {editingMessage
-                  ? "Editing"
+                  ? t("chat.editing")
                   : replyingMessage
-                    ? `Reply to ${replyingMessage?.senderId === currentUserId ? "You" : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || "Unknown"}`
-                    : "Forward Message"}
+                    ? `${t("chat.replyTo")} ${replyingMessage?.senderId === currentUserId ? t("app.you") : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || t("app.unknown")}`
+                    : t("chat.forwardMessage")}
               </span>
             </span>
             <p className="flex items-center gap-1 truncate text-[13px] leading-tight text-gray-500/90 dark:text-slate-400">
               {editingMessage || replyingMessage ? null : (
                 <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {forwardingMessage?.senderId === currentUserId ? "You" : forwardingMessage?.sender?.name || "Someone"}
+                  {forwardingMessage?.senderId === currentUserId ? t("app.you") : forwardingMessage?.sender?.name || t("chat.someone")}
                   :
                 </span>
               )}
@@ -300,7 +302,7 @@ export const ChatInput = ({
               }
             }}
             className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-white/70 hover:text-[#2ea6f3] dark:hover:bg-slate-800"
-            title="Cancel"
+            title={t("app.cancel")}
           >
             <FiX className="text-current" strokeWidth={1} style={{ fontSize: "21px" }} />
           </button>
@@ -380,7 +382,7 @@ export const ChatInput = ({
                   <FiEdit2 className="text-[20px]" strokeWidth={2} />
                 </div>
                 <div className="mx-12 rounded-[5px] bg-[#fae9ed] px-3 py-1.5 dark:bg-rose-950/35">
-                  <div className="text-[13px] font-semibold leading-tight text-[#ef5b7d]">Edit Message</div>
+                  <div className="text-[13px] font-semibold leading-tight text-[#ef5b7d]">{t("chat.editMessage")}</div>
                   <div className="truncate text-[13px] leading-tight text-gray-700 dark:text-slate-200">
                     {getPreviewText(editingMessage)}
                   </div>
@@ -392,7 +394,7 @@ export const ChatInput = ({
                     setDraftMessage("");
                   }}
                   className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-[#ef5b7d] transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                  title="Cancel editing"
+                  title={t("app.cancel")}
                 >
                   <FiX className="text-[24px]" strokeWidth={1.6} />
                 </button>
@@ -445,7 +447,7 @@ export const ChatInput = ({
               className={`absolute left-2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${
                 editingMessage ? "bottom-2" : "top-1/2 -translate-y-1/2"
               }`}
-              title="Open emoji picker"
+              title={t("chat.openEmoji")}
             >
               <FiSmile className="text-[20px] lg:text-[22px]" />
             </button>
@@ -462,7 +464,7 @@ export const ChatInput = ({
                 }
               }}
               disabled={Boolean(disabledReason)}
-              placeholder={disabledReason || "Message"}
+              placeholder={disabledReason || t("chat.messagePlaceholder")}
               className={`w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${
                 editingMessage ? "pt-2 pb-1.5" : "py-[12px] lg:py-[14px]"
               }`}
@@ -484,7 +486,7 @@ export const ChatInput = ({
               className={`absolute right-1.5 flex w-8 lg:w-9 items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition ${
                 editingMessage ? "bottom-1.5 h-10" : "bottom-0 top-0 h-full"
               }`}
-              title="Open attachment actions"
+              title={t("chat.openAttachments")}
             >
               <FiPaperclip className="text-[20px] lg:text-[22px]" />
             </button>
@@ -506,7 +508,7 @@ export const ChatInput = ({
                     ? "bg-blue-50 text-blue-600"
                     : "animate-pulse bg-white/80 text-gray-600 ring-2 ring-blue-400/25 hover:bg-white hover:text-blue-600"
                 } dark:border-slate-700/70 dark:bg-slate-800/85 dark:text-slate-200 dark:hover:text-blue-300`}
-                title="Gợi ý trả lời AI"
+                title={t("chat.aiSmartReply")}
               >
                 <FiZap className="text-[20px] lg:text-[22px]" />
               </button>
@@ -531,9 +533,9 @@ export const ChatInput = ({
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col">
                     <span className="text-[14px] font-semibold text-gray-800 dark:text-gray-100 leading-tight">
-                      {isListeningText ? "Dừng thuyết minh" : "Speech to Text"}
+                      {isListeningText ? t("chat.stopSpeechToText") : t("chat.speechToText")}
                     </span>
-                    <span className="text-[12px] text-gray-500 truncate">Text will be typed automatically</span>
+                    <span className="text-[12px] text-gray-500 truncate">{t("chat.textWillBeTyped")}</span>
                   </div>
                 </button>
                 <button
@@ -548,9 +550,9 @@ export const ChatInput = ({
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col">
                     <span className="text-[14px] font-semibold text-gray-800 dark:text-gray-100 leading-tight">
-                      Record Audio
+                      {t("chat.recordAudio")}
                     </span>
-                    <span className="text-[12px] text-gray-500 truncate">Send as an audio file</span>
+                    <span className="text-[12px] text-gray-500 truncate">{t("chat.sendAudioFile")}</span>
                   </div>
                 </button>
               </div>

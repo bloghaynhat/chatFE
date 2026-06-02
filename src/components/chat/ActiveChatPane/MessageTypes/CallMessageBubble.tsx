@@ -1,4 +1,5 @@
 import { FiPhone, FiPhoneIncoming, FiPhoneMissed, FiVideo } from "react-icons/fi";
+import { useLanguage } from "../../../../context";
 
 type CallStatus = "completed" | "missed" | "rejected" | "cancelled";
 type CallType = "audio" | "video";
@@ -63,6 +64,7 @@ export const parseCallMessage = (message: any, text?: string): ParsedCallMessage
 };
 
 export function CallMessageBubble({ message, text, mine }: { message: any; text?: string; mine: boolean }) {
+  const { t } = useLanguage();
   const call = parseCallMessage(message, text);
   if (!call) return null;
 
@@ -72,16 +74,16 @@ export function CallMessageBubble({ message, text, mine }: { message: any; text?
   const duration = formatDuration(call.durationSeconds);
 
   const Icon = isMissed ? FiPhoneMissed : isVideo ? FiVideo : isCompleted ? FiPhoneIncoming : FiPhone;
-  const title = isVideo ? "Video call" : "Voice call";
+  const title = isVideo ? t("call.video") : t("call.voice");
   const subtitle = isCompleted
     ? duration
-      ? `Duration ${duration}`
-      : "Completed"
+      ? `${t("chat.duration")} ${duration}`
+      : t("chat.completed")
     : call.status === "missed"
-      ? "Missed"
+      ? t("chat.missed")
       : call.status === "rejected"
-        ? "Declined"
-        : "Cancelled";
+        ? t("chat.declined")
+        : t("chat.cancelled");
 
   return (
     <div className="px-3 pb-4 pt-2">

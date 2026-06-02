@@ -3,10 +3,13 @@ import { MdTranslate } from "react-icons/md";
 import { useAuth } from "../../hooks";
 import { useCallback, useEffect, useState } from "react";
 import { authService } from "../../services/authService";
+import { useLanguage, LanguageCode } from "../../context";
 
 export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
   const { user } = useAuth();
+  const { language, languageLabel, setLanguage, t } = useLanguage();
   const [deviceCount, setDeviceCount] = useState<number | null>(null);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
 
   const refreshDeviceCount = useCallback(async () => {
     try {
@@ -36,6 +39,11 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
   const initials = nameParts.length > 1 
     ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase() 
     : displayName.substring(0, 2).toUpperCase();
+
+  const handleLanguageChange = (nextLanguage: LanguageCode) => {
+    setLanguage(nextLanguage);
+    setIsLanguageOpen(false);
+  };
   
   if (isCollapsed) {
     return (
@@ -56,7 +64,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
           <button onClick={onBack} className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 p-2 rounded-full transition -ml-2">
              <FiArrowLeft className="text-xl" />
           </button>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Settings</h2>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">{t("settings.title")}</h2>
         </div>
         <div className="flex items-center gap-1">
           <button className="text-gray-500 hover:bg-gray-100 p-2 rounded-full transition dark:text-gray-400 dark:hover:bg-slate-800">
@@ -75,7 +83,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
             {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" /> : initials}
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">{displayName}</h1>
-          <p className="text-[14px] text-blue-500 dark:text-blue-400 font-medium tracking-wide">online</p>
+          <p className="text-[14px] text-blue-500 dark:text-blue-400 font-medium tracking-wide">{t("app.online")}</p>
         </div>
 
         {/* Info list */}
@@ -84,7 +92,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
               <FiPhone className="text-gray-500 dark:text-gray-400 text-[22px]" />
               <div className="flex-1">
                  <p className="text-[15px] font-normal text-gray-900 dark:text-white leading-tight mb-0.5">{displayPhone}</p>
-                 <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">Phone</p>
+                 <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">{t("settings.phone")}</p>
               </div>
            </div>
            
@@ -92,7 +100,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
               <FiAtSign className="text-gray-500 dark:text-gray-400 text-[22px]" />
               <div className="flex-1">
                  <p className="text-[15px] font-normal text-gray-900 dark:text-white leading-tight mb-0.5">{displayUsername}</p>
-                 <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">Username</p>
+                 <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">{t("settings.username")}</p>
               </div>
            </div>
 
@@ -100,7 +108,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
               <FiGift className="text-gray-500 dark:text-gray-400 text-[22px]" />
               <div className="flex-1">
                  <p className="text-[15px] font-normal text-gray-900 dark:text-white leading-tight mb-0.5">January 6, 2004 (22 years old)</p>
-                 <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">Birthday</p>
+                 <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-tight">{t("settings.birthday")}</p>
               </div>
            </div>
         </div>
@@ -109,14 +117,36 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
 
         {/* Menu list */}
         <div className="flex flex-col py-2 border-b border-gray-100/60 dark:border-slate-800">
-           <SettingsMenuItem icon={<FiBell />} label="Notifications and Sounds" />
-           <SettingsMenuItem icon={<FiDatabase />} label="Data and Storage" />
-           <SettingsMenuItem icon={<FiLock />} label="Privacy and Security" onClick={() => onNavigate("privacy-security")} />
-           <SettingsMenuItem icon={<FiSettings />} label="General Settings" />
-           <SettingsMenuItem icon={<FiFolder />} label="Chat Folders" />
-           <SettingsMenuItem icon={<FiSmile />} label="Stickers and Emoji" />
-           <SettingsMenuItem icon={<FiMonitor />} label="Devices" rightText={deviceCount ?? ""} onClick={() => onNavigate("devices")} />
-           <SettingsMenuItem icon={<MdTranslate />} label="Language" rightText="English" />
+           <SettingsMenuItem icon={<FiBell />} label={t("settings.notifications")} />
+           <SettingsMenuItem icon={<FiDatabase />} label={t("settings.dataStorage")} />
+           <SettingsMenuItem icon={<FiLock />} label={t("settings.privacySecurity")} onClick={() => onNavigate("privacy-security")} />
+           <SettingsMenuItem icon={<FiSettings />} label={t("settings.general")} />
+           <SettingsMenuItem icon={<FiFolder />} label={t("settings.chatFolders")} />
+           <SettingsMenuItem icon={<FiSmile />} label={t("settings.stickersEmoji")} />
+           <SettingsMenuItem icon={<FiMonitor />} label={t("settings.devices")} rightText={deviceCount ?? ""} onClick={() => onNavigate("devices")} />
+           <SettingsMenuItem
+             icon={<MdTranslate />}
+             label={t("settings.language")}
+             rightText={languageLabel}
+             onClick={() => setIsLanguageOpen((isOpen) => !isOpen)}
+           />
+           {isLanguageOpen && (
+             <div className="mx-4 mb-2 overflow-hidden rounded-lg border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
+               <p className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                 {t("settings.chooseLanguage")}
+               </p>
+               <LanguageOption
+                 label={t("settings.english")}
+                 isActive={language === "en"}
+                 onClick={() => handleLanguageChange("en")}
+               />
+               <LanguageOption
+                 label={t("settings.vietnamese")}
+                 isActive={language === "vi"}
+                 onClick={() => handleLanguageChange("vi")}
+               />
+             </div>
+           )}
         </div>
 
         <div className="h-2 bg-gray-100/50 dark:bg-slate-950 w-full" />
@@ -126,7 +156,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
              <div className="w-9 flex justify-center text-blue-500 text-[22px] mr-2">
                <FiStar className="fill-blue-500" />
              </div>
-             <span className="text-[15px] text-gray-900 dark:text-white font-medium flex-1">Telegram Premium</span>
+             <span className="text-[15px] text-gray-900 dark:text-white font-medium flex-1">{t("settings.premium")}</span>
            </div>
         </div>
       </div>
@@ -148,3 +178,23 @@ const SettingsMenuItem = ({ icon, label, rightText, onClick }: any) => {
     </div>
   )
 }
+
+const LanguageOption = ({ label, isActive, onClick }: any) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between px-4 py-3 text-left text-[15px] text-gray-900 transition hover:bg-white dark:text-white dark:hover:bg-slate-700"
+    >
+      <span>{label}</span>
+      <span
+        className={`h-5 w-5 rounded-full border ${
+          isActive
+            ? "border-blue-500 bg-blue-500 shadow-[inset_0_0_0_4px_white] dark:shadow-[inset_0_0_0_4px_rgb(30,41,59)]"
+            : "border-gray-300 dark:border-slate-500"
+        }`}
+        aria-hidden="true"
+      />
+    </button>
+  );
+};

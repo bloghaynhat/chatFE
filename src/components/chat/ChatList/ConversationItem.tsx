@@ -6,6 +6,7 @@ import { useAuth } from "../../../hooks";
 import { getChatMessagePreview } from "../../../utils/chatPreview";
 import { useDraft } from "../../../context/DraftContext";
 import { FiEdit2 } from "react-icons/fi";
+import { useLanguage } from "../../../context";
 
 interface ConversationItemProps {
   chat: Conversation;
@@ -24,6 +25,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   onSelectChat,
   onContextMenu,
 }) => {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { drafts } = useDraft();
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
@@ -81,7 +83,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             className={`absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ${
               isActive ? "ring-blue-500" : "ring-white dark:ring-slate-900"
             }`}
-            title="Online"
+            title={t("app.online")}
           />
         )}
       </div>
@@ -116,13 +118,13 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
               {drafts[chat.id] && !isActive ? (
                 <span className="flex items-center gap-1">
                   <span className="text-red-500 font-medium flex items-center gap-1">
-                    <FiEdit2 className="text-[12px]" /> [Nháp]:
+                    <FiEdit2 className="text-[12px]" /> [Draft]:
                   </span>
                   <span className="truncate">{drafts[chat.id]}</span>
                 </span>
               ) : (
                 <>
-                  {isMine && !isSavedMessages && <span>Bạn: </span>}
+                  {isMine && !isSavedMessages && <span>{t("app.you")}: </span>}
                   {getChatMessagePreview(chat.lastMessage)}
                 </>
               )}
@@ -131,7 +133,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
               {isPinned && (
                 <BsPinAngleFill
                   className={`text-[12px] ${isActive ? "text-blue-100" : "text-gray-400 dark:text-gray-500"}`}
-                  title="Pinned"
+                  title={t("chat.pin")}
                 />
               )}
               {chat.unreadCount && chat.unreadCount > 0 ? (

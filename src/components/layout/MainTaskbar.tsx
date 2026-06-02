@@ -1,4 +1,5 @@
 import { FiArrowLeft, FiMenu, FiSearch, FiX } from "react-icons/fi";
+import { useLanguage } from "../../context";
 
 export const MainTaskbar = ({
   searchValue,
@@ -13,6 +14,8 @@ export const MainTaskbar = ({
   isCollapsed = false,
   placeholder = "Search",
 }) => {
+  const { t } = useLanguage();
+
   return (
     <div
       className={`flex items-center gap-2 px-3 py-3 border-b dark:border-slate-700 bg-white dark:bg-slate-900 ${isCollapsed ? "justify-center" : ""}`}
@@ -20,7 +23,7 @@ export const MainTaskbar = ({
       <button
         onClick={isSearchMode ? onExitSearch : onOpenMenu}
         className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition flex-shrink-0 relative overflow-visible"
-        title={isSearchMode ? "Back" : "Open navigation menu"}
+        title={isSearchMode ? t("app.back") : t("nav.openMenu")}
       >
         <span
           className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${
@@ -64,7 +67,7 @@ export const MainTaskbar = ({
               onMouseDown={(event) => event.preventDefault()}
               onClick={onClearSearch}
               className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-300"
-              title="Clear search"
+              title={t("search.clear")}
             >
               <FiX className="text-lg opacity-80" />
             </button>

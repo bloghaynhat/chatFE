@@ -5,6 +5,7 @@ import { useFriendManagement } from "../../hooks";
 import { conversationService } from "../../services/conversationService";
 import { mediaService } from "../../services/mediaService";
 import { socketService } from "../../services/socketService";
+import { useLanguage } from "../../context";
 
 // Helper to get consistent background colors based on name string
 const getAvatarBgColor = (name: string) => {
@@ -46,6 +47,7 @@ export const CreateGroupModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -189,7 +191,7 @@ export const CreateGroupModal = ({
               </button>
             )}
             <h2 className="text-[19px] font-semibold text-gray-900 tracking-tight">
-              {step === "select" ? "Add Members" : "Group Name"}
+              {step === "select" ? t("group.addMembers") : t("group.name")}
             </h2>
           </div>
           <button
@@ -250,7 +252,7 @@ export const CreateGroupModal = ({
 
                 <input
                   type="text"
-                  placeholder="Add people..."
+                  placeholder={t("group.addPeople")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-transparent border-none outline-none text-[16px] placeholder-gray-400 text-gray-800"
@@ -265,7 +267,7 @@ export const CreateGroupModal = ({
                   </div>
                 ) : filteredContacts.length === 0 ? (
                   <div className="flex justify-center items-center h-40 text-gray-500 text-[15px]">
-                    No contacts found
+                    {t("contacts.notFound")}
                   </div>
                 ) : (
                   filteredContacts.map((contact: any) => {
@@ -403,7 +405,7 @@ export const CreateGroupModal = ({
                   htmlFor="groupName"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Group Name
+                  {t("group.name")}
                 </label>
                 <input
                   type="text"
@@ -419,7 +421,7 @@ export const CreateGroupModal = ({
               {/* Selected members summary */}
               <div className="mt-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  Members ({selectedIds.size})
+                  {t("chat.members")} ({selectedIds.size})
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {friends

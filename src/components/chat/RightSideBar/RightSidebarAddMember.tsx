@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { useFriendManagement } from "../../../hooks";
+import { useLanguage } from "../../../context";
 
 const getAvatarBgColor = (name: string) => {
   const colors = [
@@ -31,6 +32,7 @@ export const RightSidebarAddMember = ({
   onClose,
   onAddMembers
 }: any) => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +87,7 @@ export const RightSidebarAddMember = ({
           <FiArrowLeft className="text-xl" />
         </button>
         <span className="font-semibold text-[18px] text-gray-800 dark:text-gray-100 ml-4">
-          Add Members
+          {t("group.addMembers")}
         </span>
       </div>
 
@@ -122,7 +124,7 @@ export const RightSidebarAddMember = ({
 
           <input
             type="text"
-            placeholder="Add people..."
+            placeholder={t("group.addPeople")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-transparent border-none outline-none text-[16px] placeholder-gray-400 text-gray-800 dark:text-gray-200"
@@ -141,7 +143,7 @@ export const RightSidebarAddMember = ({
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="flex justify-center items-center h-40 text-gray-500 text-[15px]">
-              No contacts found
+              {t("contacts.notFound")}
             </div>
           ) : (
             filteredContacts.map((contact: any) => {

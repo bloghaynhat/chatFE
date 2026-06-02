@@ -22,6 +22,7 @@ import { AiSummaryModal } from "../AiSummaryModal";
 import { aiService } from "../../../services/aiService";
 import { socketService } from "../../../services/socketService";
 import { toast } from "sonner";
+import { useLanguage } from "../../../context";
 
 const moreActions = [
   { id: "ai-summarize", label: "Tóm tắt cuộc trò chuyện (AI)", icon: FiZap },
@@ -70,6 +71,7 @@ export const ChatHeader = ({
   callV2Status,
   onJoinActiveCallV2,
 }: any) => {
+  const { t } = useLanguage();
   const [isAiSummaryModalOpen, setIsAiSummaryModalOpen] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
@@ -214,33 +216,48 @@ export const ChatHeader = ({
   ]);
 
   const formatLastSeen = (value: any) => {
-    if (!value) return "Offline";
+    if (!value) return t("app.offline");
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Offline";
+    if (Number.isNaN(date.getTime())) return t("app.offline");
 
     const diffMs = Date.now() - date.getTime();
     const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `last seen ${diffMinutes}m ago`;
+    if (diffMinutes < 1) return t("chat.justNow");
+    if (diffMinutes < 60) return t("chat.lastSeenMinutes").replace("{count}", String(diffMinutes));
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `last seen ${diffHours}h ago`;
+    if (diffHours < 24) return t("chat.lastSeenHours").replace("{count}", String(diffHours));
 
-    return `last seen ${date.toLocaleDateString("vi-VN", {
+    return t("chat.lastSeenDate").replace("{date}", date.toLocaleDateString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
-    })}`;
+    }));
   };
 
   const presenceLabel = isSavedMessages
-    ? "Saved messages"
+    ? t("chat.savedMessagesLower")
     : isLoading
-      ? "Opening conversation..."
+      ? t("chat.openingConversation")
       : isGroup
-        ? `${selectedChat?.membersCount || selectedChat?.memberCount || ""} members`.trim()
+        ? `${selectedChat?.membersCount || selectedChat?.memberCount || ""} ${t("chat.members")}`.trim()
         : presence?.isOnline
-          ? "Online"
+          ? t("app.online")
           : formatLastSeen(presence?.lastSeen);
+
+  const getMoreActionLabel = (actionId: string, fallback: string) => {
+    const labels: Record<string, string> = {
+      "ai-summarize": t("chat.aiSummarize"),
+      "ai-smart-search": t("chat.aiSmartSearch"),
+      "ai-extract-tasks": t("chat.aiExtractTasks"),
+      mute: t("chat.mute"),
+      call: t("chat.call"),
+      "video-call": t("chat.videoCall"),
+      "share-contact": t("chat.shareContact"),
+      "block-user": t("chat.blockUser"),
+      "delete-chat": t("chat.deleteChat"),
+    };
+    return labels[actionId] || fallback;
+  };
 
   const handleToggleInfo = () => {
     setIsRightSidebarOpen(!isRightSidebarOpen);
@@ -427,7 +444,7 @@ export const ChatHeader = ({
                   setIsEmojiPickerOpen(false);
                 }}
                 className="h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition text-gray-500 hover:text-blue-500"
-                title="Search in conversation"
+                title={t("chat.searchConversation")}
               >
                 <FiSearch className="text-base lg:text-lg" />
               </button>
@@ -444,7 +461,7 @@ export const ChatHeader = ({
                       ? "bg-gray-100 dark:bg-slate-800"
                       : "hover:bg-gray-100 dark:hover:bg-slate-800"
                   }`}
-                  title="Open conversation actions"
+                  title={t("chat.openConversationActions")}
                 >
                   <FiMoreVertical className="text-base lg:text-lg" />
                 </button>
@@ -483,8 +500,8 @@ export const ChatHeader = ({
 
                         <span className="font-semibold tracking-tight flex-1">
                           {isExtractingTasks && action.id === "ai-extract-tasks"
-                            ? "Đang trích xuất..."
-                            : action.label}
+                            ? t("chat.extracting")
+                            : getMoreActionLabel(action.id, action.label)}
                         </span>
                       </button>
                     );
@@ -564,7 +581,7 @@ export const ChatHeader = ({
                     }
                   }
                 }}
-                placeholder="Search... (Type '/ai ' for Smart Search)"
+                placeholder={t("chat.searchSmartPlaceholder")}
                 className="flex-1 bg-transparent text-[14px] lg:text-[15px] leading-normal text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none"
               />
 
@@ -579,7 +596,7 @@ export const ChatHeader = ({
                   setIsCalendarModalOpen(false);
                 }}
                 className="h-7 w-7 inline-flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition"
-                title="Close search"
+                title={t("chat.closeSearch")}
               >
                 <FiX className="text-[20px]" />
               </button>

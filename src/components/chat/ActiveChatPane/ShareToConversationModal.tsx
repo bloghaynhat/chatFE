@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { FiCheck, FiSearch, FiSend, FiX } from "react-icons/fi";
 import { conversationService } from "../../../services/conversationService";
 import { sendProfileCard } from "../../../services/messageService";
+import { useLanguage } from "../../../context";
 
 const getConversationName = (conversation: any) =>
   conversation?.name || conversation?.displayName || "Conversation";
@@ -15,6 +16,7 @@ export const ShareToConversationModal = ({
   onClose,
   profileUserId,
 }: any) => {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
 
@@ -45,10 +47,10 @@ export const ShareToConversationModal = ({
       sendProfileCard(conversationId, { userId: profileUserId }),
     onSuccess: (_data, conversationId) => {
       setSentIds((prev) => new Set(prev).add(conversationId));
-      toast.success("Đã chia sẻ danh thiếp");
+      toast.success(t("profileCard.sharedToast"));
     },
     onError: (error: any) =>
-      toast.error(error?.status === 403 ? "Không thể chia sẻ danh thiếp này" : error?.message || "Không thể gửi"),
+      toast.error(error?.status === 403 ? t("profileCard.shareFailed") : error?.message || t("profileCard.sendFailed")),
   });
 
   const sendingId = mutation.variables as string | undefined;
@@ -64,7 +66,7 @@ export const ShareToConversationModal = ({
             className="w-full sm:max-w-[420px] max-h-[70dvh] sm:max-h-[80vh] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-white/70 dark:border-slate-700 overflow-hidden flex flex-col"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-800">
-              <h2 className="text-[17px] font-semibold text-gray-900 dark:text-gray-100">Chia sẻ đến...</h2>
+              <h2 className="text-[17px] font-semibold text-gray-900 dark:text-gray-100">{t("profileCard.shareTo")}</h2>
               <button onClick={onClose} className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800">
                 <FiX className="text-xl" />
               </button>
@@ -76,7 +78,7 @@ export const ShareToConversationModal = ({
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Tìm cuộc trò chuyện"
+                  placeholder={t("profileCard.searchConversations")}
                   className="flex-1 bg-transparent outline-none text-sm text-gray-800 dark:text-gray-100"
                 />
               </div>
@@ -88,7 +90,7 @@ export const ShareToConversationModal = ({
                   <div className="h-5 w-5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
                 </div>
               ) : conversations.length === 0 ? (
-                <div className="py-10 px-6 text-center text-sm text-gray-500">Không có cuộc trò chuyện phù hợp</div>
+                <div className="py-10 px-6 text-center text-sm text-gray-500">{t("profileCard.noMatchingConversations")}</div>
               ) : (
                 conversations.map((conversation: any) => {
                   const conversationId = conversation.id || conversation.conversationId || conversation._id;
@@ -103,7 +105,7 @@ export const ShareToConversationModal = ({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[15px] font-semibold text-gray-900 dark:text-gray-100">{name}</p>
-                        <p className="truncate text-[12px] text-gray-500 dark:text-gray-400">{conversation.type === "group" || conversation.type === "GROUP" ? "Nhóm" : "Tin nhắn"}</p>
+                        <p className="truncate text-[12px] text-gray-500 dark:text-gray-400">{conversation.type === "group" || conversation.type === "GROUP" ? t("profileCard.group") : t("profileCard.message")}</p>
                       </div>
                       <button
                         disabled={isSent || isSending}
@@ -111,7 +113,7 @@ export const ShareToConversationModal = ({
                         className={`min-h-[44px] px-4 rounded-xl text-sm font-semibold inline-flex items-center gap-2 transition ${isSent ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-70"}`}
                       >
                         {isSending ? <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : isSent ? <FiCheck /> : <FiSend />}
-                        {isSent ? "Đã gửi" : "Gửi"}
+                        {isSent ? t("profileCard.sent") : t("app.send")}
                       </button>
                     </div>
                   );

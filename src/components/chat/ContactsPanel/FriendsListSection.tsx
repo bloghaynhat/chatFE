@@ -1,6 +1,9 @@
 import { FriendCard } from "../../contacts";
+import { useLanguage } from "../../../context";
 
 export const FriendsListSection = ({ error, loading, filteredFriends, searchQuery, handleOpenChat }: any) => {
+  const { t } = useLanguage();
+
   return (
     <div className="px-3 pt-3">
       {error && <div className="text-xs text-red-600 dark:text-red-400 mb-2">{error}</div>}
@@ -12,15 +15,15 @@ export const FriendsListSection = ({ error, loading, filteredFriends, searchQuer
       ) : filteredFriends.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {searchQuery ? "No contacts found" : "No contacts yet"}
+            {searchQuery ? t("contacts.notFound") : t("contacts.noneYet")}
           </p>
-          {!searchQuery && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Search to add friends</p>}
+          {!searchQuery && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t("contacts.searchToAdd")}</p>}
         </div>
       ) : (
         <>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-              Contacts
+              {t("nav.contacts")}
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400">({filteredFriends.length})</span>
           </div>

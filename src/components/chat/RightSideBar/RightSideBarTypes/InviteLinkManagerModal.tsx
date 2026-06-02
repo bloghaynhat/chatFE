@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { inviteService } from "../../../../services/inviteService";
+import { useLanguage } from "../../../../context";
 
 interface InviteLinkManagerModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
   groupName,
   groupAvatar,
 }) => {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -91,8 +93,8 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
     if (!inviteUrl) return;
     try {
       await navigator.share({
-        title: `Join ${groupName} on Chat`,
-        text: `You have been invited to join ${groupName}`,
+        title: t("invite.shareTitle").replace("{groupName}", groupName),
+        text: t("invite.shareText").replace("{groupName}", groupName),
         url: inviteUrl,
       });
     } catch (err) {
@@ -134,7 +136,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Group Invite Link
+              {t("invite.groupLink")}
             </h2>
             <div className="flex items-center gap-2">
               {isAdmin && (
@@ -159,7 +161,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                           className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-3 transition-colors disabled:opacity-50"
                         >
                           <FiRefreshCw className={regenerateMutation.isPending ? "animate-spin" : ""} />
-                          Regenerate Link
+                          {t("invite.regenerate")}
                         </button>
                         <button
                           onClick={() => revokeMutation.mutate()}
@@ -167,7 +169,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                           className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-3 transition-colors disabled:opacity-50"
                         >
                           <FiTrash2 />
-                          Revoke Link
+                          {t("invite.revoke")}
                         </button>
                       </motion.div>
                     )}
@@ -188,13 +190,13 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
             {!canUseInviteLink ? (
               <div className="text-center py-8">
                 <p className="text-gray-500 dark:text-gray-400">
-                  You do not have permission to view this invite link.
+                  {t("invite.noPermission")}
                 </p>
               </div>
             ) : inviteError ? (
               <div className="text-center py-8">
                 <p className="text-gray-500 dark:text-gray-400">
-                  Could not load the invite link. Please check your group permissions.
+                  {t("invite.loadError")}
                 </p>
               </div>
             ) : isLoading ? (
@@ -204,13 +206,13 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
               </div>
             ) : !inviteUrl ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400 mb-4">No active invite link found.</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">{t("invite.noActiveLink")}</p>
                 {isAdmin && (
                   <button
                     onClick={() => regenerateMutation.mutate()}
                     className="px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
                   >
-                    Generate Link
+                    {t("invite.generate")}
                   </button>
                 )}
               </div>
@@ -219,7 +221,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                 {/* Link Box */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Invite URL
+                    {t("invite.url")}
                   </label>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 overflow-hidden">
@@ -230,7 +232,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                     <button
                       onClick={handleCopy}
                       className="p-3 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors relative"
-                      title="Copy link"
+                      title={t("invite.copy")}
                     >
                       <AnimatePresence mode="wait">
                         {copied ? (
@@ -258,7 +260,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                       <button
                         onClick={handleShare}
                         className="p-3 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-                        title="Share link"
+                        title={t("invite.share")}
                       >
                         <FiShare2 className="w-5 h-5" />
                       </button>
@@ -271,7 +273,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                   onClick={() => setShowQR(!showQR)}
                   className="text-blue-500 font-medium text-sm hover:underline self-start"
                 >
-                  {showQR ? "Hide QR Code" : "Show QR Code"}
+                  {showQR ? t("invite.hideQr") : t("invite.showQr")}
                 </button>
 
                 <AnimatePresence>
@@ -318,7 +320,7 @@ export const InviteLinkManagerModal: React.FC<InviteLinkManagerModalProps> = ({
                           onClick={handleDownloadQR}
                           className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
                         >
-                          <FiDownload /> Download QR
+                          <FiDownload /> {t("invite.downloadQr")}
                         </button>
                       </div>
                     </motion.div>
