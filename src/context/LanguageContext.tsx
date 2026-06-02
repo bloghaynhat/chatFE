@@ -56,8 +56,30 @@ type TranslationKey =
   | "settings.vietnamese"
   | "settings.premium"
   | "privacy.title"
+  | "privacy.changePassword"
   | "privacy.blockList"
   | "privacy.blockListDescription"
+  | "changePassword.title"
+  | "changePassword.currentPassword"
+  | "changePassword.newPassword"
+  | "changePassword.confirmPassword"
+  | "changePassword.currentRequired"
+  | "changePassword.newRequired"
+  | "changePassword.confirmRequired"
+  | "changePassword.confirmMismatch"
+  | "changePassword.newWeak"
+  | "changePassword.ruleLength"
+  | "changePassword.ruleUppercase"
+  | "changePassword.ruleNumberSpecial"
+  | "changePassword.strength"
+  | "changePassword.weak"
+  | "changePassword.medium"
+  | "changePassword.strong"
+  | "changePassword.submit"
+  | "changePassword.saving"
+  | "changePassword.success"
+  | "changePassword.error"
+  | "changePassword.description"
   | "devices.title"
   | "devices.thisDevice"
   | "devices.current"
@@ -385,11 +407,34 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "settings.languageSaved": "Language preference saved",
     "settings.english": "English",
     "settings.vietnamese": "Tiếng Việt",
-    "settings.premium": "Telegram Premium",
+    "settings.premium": "ChatChit Premium",
     "privacy.title": "Privacy and Security",
+    "privacy.changePassword": "Change Password",
     "privacy.blockList": "Block List",
     "privacy.blockListDescription":
       "Manage people you have blocked. Blocked users cannot message or call you.",
+    "changePassword.title": "Change Password",
+    "changePassword.currentPassword": "Current password",
+    "changePassword.newPassword": "New password",
+    "changePassword.confirmPassword": "Confirm new password",
+    "changePassword.currentRequired": "Current password is required.",
+    "changePassword.newRequired": "New password is required.",
+    "changePassword.confirmRequired": "Please confirm your new password.",
+    "changePassword.confirmMismatch": "New password and confirmation do not match.",
+    "changePassword.newWeak": "New password must satisfy all requirements.",
+    "changePassword.ruleLength": "At least 8 characters",
+    "changePassword.ruleUppercase": "Contains an uppercase letter",
+    "changePassword.ruleNumberSpecial": "Contains a number or special character",
+    "changePassword.strength": "Password strength",
+    "changePassword.weak": "Weak",
+    "changePassword.medium": "Medium",
+    "changePassword.strong": "Strong",
+    "changePassword.submit": "Update password",
+    "changePassword.saving": "Updating...",
+    "changePassword.success": "Password updated successfully.",
+    "changePassword.error": "Could not update password.",
+    "changePassword.description":
+      "Use a strong password that you do not use elsewhere. Other active sessions remain signed in unless you terminate them from Devices.",
     "devices.title": "Active Sessions",
     "devices.thisDevice": "This device",
     "devices.current": "Current",
@@ -717,11 +762,34 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "settings.languageSaved": "Đã lưu tùy chọn ngôn ngữ",
     "settings.english": "English",
     "settings.vietnamese": "Tiếng Việt",
-    "settings.premium": "Telegram Premium",
+    "settings.premium": "ChatChit Premium",
     "privacy.title": "Quyền riêng tư và bảo mật",
+    "privacy.changePassword": "Đổi mật khẩu",
     "privacy.blockList": "Danh sách chặn",
     "privacy.blockListDescription":
       "Quản lý những người bạn đã chặn. Người bị chặn không thể nhắn tin hoặc gọi cho bạn.",
+    "changePassword.title": "Đổi mật khẩu",
+    "changePassword.currentPassword": "Mật khẩu hiện tại",
+    "changePassword.newPassword": "Mật khẩu mới",
+    "changePassword.confirmPassword": "Xác nhận mật khẩu mới",
+    "changePassword.currentRequired": "Vui lòng nhập mật khẩu hiện tại.",
+    "changePassword.newRequired": "Vui lòng nhập mật khẩu mới.",
+    "changePassword.confirmRequired": "Vui lòng xác nhận mật khẩu mới.",
+    "changePassword.confirmMismatch": "Mật khẩu mới và xác nhận mật khẩu không khớp.",
+    "changePassword.newWeak": "Mật khẩu mới cần đạt đầy đủ yêu cầu.",
+    "changePassword.ruleLength": "Ít nhất 8 ký tự",
+    "changePassword.ruleUppercase": "Có chữ in hoa",
+    "changePassword.ruleNumberSpecial": "Có số hoặc ký tự đặc biệt",
+    "changePassword.strength": "Độ mạnh mật khẩu",
+    "changePassword.weak": "Yếu",
+    "changePassword.medium": "Trung bình",
+    "changePassword.strong": "Mạnh",
+    "changePassword.submit": "Cập nhật mật khẩu",
+    "changePassword.saving": "Đang cập nhật...",
+    "changePassword.success": "Đổi mật khẩu thành công.",
+    "changePassword.error": "Không thể đổi mật khẩu.",
+    "changePassword.description":
+      "Hãy dùng mật khẩu mạnh và không dùng lại ở nơi khác. Các phiên đăng nhập khác vẫn được giữ trừ khi bạn đăng xuất từ mục Thiết bị.",
     "devices.title": "Phiên đăng nhập",
     "devices.thisDevice": "Thiết bị này",
     "devices.current": "Hiện tại",
