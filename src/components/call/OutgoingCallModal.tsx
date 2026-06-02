@@ -1,7 +1,9 @@
 import { FiPhoneCall, FiPhoneOff, FiUsers, FiVideo } from "react-icons/fi";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
+import { useLanguage } from "../../context";
 
 export default function OutgoingCallModal() {
+  const { t } = useLanguage();
   const callV2 = useCallV2();
   const state = callV2.state;
 
@@ -19,18 +21,18 @@ export default function OutgoingCallModal() {
         participant.status === "missed" ||
         participant.status === "busy",
     ).length + busyCount;
-  const peerName = state.remotePeer?.name || "Recipient";
+  const peerName = state.remotePeer?.name || t("call.recipient");
   const peerInitial = peerName.trim().charAt(0).toUpperCase() || "?";
   const groupName = typeof state.groupName === "string" ? state.groupName.trim() : "";
   const isGroupCall = groupName.length > 0;
   const callLabel = isGroupCall
     ? state.type === "video"
-      ? "Group video call"
-      : "Group voice call"
+      ? t("call.groupVideo")
+      : t("call.groupVoice")
     : state.type === "video"
-      ? "Video call"
-      : "Voice call";
-  const statusText = isGroupCall ? "Waiting for members to answer..." : "Waiting for answer...";
+      ? t("call.video")
+      : t("call.voice");
+  const statusText = isGroupCall ? t("call.waitingMembers") : t("call.waitingAnswer");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-md">
@@ -55,7 +57,7 @@ export default function OutgoingCallModal() {
             <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-900">
               {state.type === "video" ? <FiVideo className="h-3.5 w-3.5" /> : <FiPhoneCall className="h-3.5 w-3.5" />}
               {callLabel}
-              {busyCount > 0 ? ` Â· ${busyCount} busy` : ""}
+              {busyCount > 0 ? ` · ${busyCount} ${t("call.busy")}` : ""}
             </div>
 
             <p className="mx-auto max-w-[19rem] truncate text-[22px] font-semibold leading-tight text-slate-950 dark:text-white">
@@ -73,8 +75,8 @@ export default function OutgoingCallModal() {
 
             {participants.length > 0 && (
               <p className="mt-3 text-xs font-medium text-slate-500 dark:text-slate-400">
-                {ringingCount} ringing
-                {declinedCount > 0 ? ` - ${declinedCount} unavailable` : ""}
+                {ringingCount} {t("call.ringing")}
+                {declinedCount > 0 ? ` - ${declinedCount} ${t("call.unavailable")}` : ""}
               </p>
             )}
           </div>
@@ -83,13 +85,13 @@ export default function OutgoingCallModal() {
         <div className="flex items-center justify-center border-t border-slate-100 bg-slate-50/80 px-6 py-5 dark:border-slate-800 dark:bg-slate-950/35">
           <button
             onClick={callV2.leaveCallV2}
-            aria-label="Cancel call"
+            aria-label={t("call.cancel")}
             className="group flex flex-col items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-red-500"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_14px_30px_rgba(239,68,68,0.34)] transition group-hover:-translate-y-0.5 group-hover:bg-red-600">
               <FiPhoneOff className="h-6 w-6" />
             </span>
-            Cancel
+            {t("call.cancel")}
           </button>
         </div>
       </div>

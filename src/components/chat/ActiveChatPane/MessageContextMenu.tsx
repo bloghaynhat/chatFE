@@ -18,6 +18,7 @@ import {
   getMessageTime,
   getMessageText,
 } from "../../../utils/chatUtils";
+import { useLanguage } from "../../../context";
 
 interface MessageContextMenuProps {
   contextMenu: {
@@ -54,6 +55,7 @@ export const MessageContextMenu = ({
   onDeleteMessageForMe,
   onDeleteMessageForEveryone,
 }: MessageContextMenuProps) => {
+  const { t } = useLanguage();
   const isMyMessage =
     contextMenu.message.senderId === currentUserId ||
     contextMenu.message.sender?.id === currentUserId ||
@@ -257,7 +259,7 @@ export const MessageContextMenu = ({
           }}
         >
           <FiCornerUpLeft className="text-[18px]" strokeWidth={2} />{" "}
-          <span className="font-medium">Reply</span>
+          <span className="font-medium">{t("chat.reply")}</span>
         </button>
         {isMyMessage && (
           <button
@@ -268,7 +270,7 @@ export const MessageContextMenu = ({
             }}
           >
             <FiEdit2 className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Edit</span>
+            <span className="font-medium">{t("app.edit")}</span>
           </button>
         )}
         <button
@@ -276,14 +278,14 @@ export const MessageContextMenu = ({
           onClick={handleCopy}
         >
           <FiCopy className="text-[18px]" strokeWidth={2} />{" "}
-          <span className="font-medium">Copy</span>
+          <span className="font-medium">{t("chat.copy")}</span>
         </button>
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
           onClick={handlePinToggle}
         >
           <FiMapPin className="text-[18px]" strokeWidth={2} />
-          <span className="font-medium">{isPinned ? "Unpin" : "Pin"}</span>
+          <span className="font-medium">{isPinned ? t("chat.unpin") : t("chat.pin")}</span>
         </button>
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
@@ -293,14 +295,14 @@ export const MessageContextMenu = ({
           }}
         >
           <FiCornerUpRight className="text-[18px]" strokeWidth={2} />{" "}
-          <span className="font-medium">Forward</span>
+          <span className="font-medium">{t("chat.forward")}</span>
         </button>
         <button
           className="w-full text-left px-4 py-[9px] hover:bg-gray-100/70 dark:hover:bg-slate-700/50 flex items-center gap-3.5 transition-colors"
           onClick={onClose}
         >
           <FiCheckCircle className="text-[18px]" strokeWidth={2} />{" "}
-          <span className="font-medium">Select</span>
+          <span className="font-medium">{t("chat.select")}</span>
         </button>
 
         {isMyMessage && (
@@ -314,7 +316,7 @@ export const MessageContextMenu = ({
             }}
           >
             <FiRotateCcw className="text-[18px]" strokeWidth={2} />{" "}
-            <span className="font-medium">Recall</span>
+            <span className="font-medium">{t("chat.recall")}</span>
           </button>
         )}
         {/* 
@@ -343,7 +345,7 @@ export const MessageContextMenu = ({
           }}
         >
           <FiTrash2 className="text-[18px]" strokeWidth={2} />{" "}
-          <span className="font-medium">Delete for me only</span>
+          <span className="font-medium">{t("chat.deleteForMe")}</span>
         </button>
       </div>
     </div>

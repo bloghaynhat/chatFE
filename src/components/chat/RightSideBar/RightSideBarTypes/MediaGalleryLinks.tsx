@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import { useLanguage } from "../../../../context";
 
 interface MediaItem {
   messageId: string;
@@ -32,6 +33,7 @@ const truncateUrl = (url: string, maxLength: number = 45): string => {
 };
 
 export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isLoading, onShowInChat, messages }) => {
+  const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; link: MediaItem } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent, link: MediaItem) => {
@@ -53,7 +55,7 @@ export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isL
     <div className="flex flex-col h-full">
       {links.length === 0 && !isLoading ? (
         <div className="flex items-center justify-center h-40 text-gray-500 dark:text-gray-400">
-          <p className="text-sm">No links</p>
+          <p className="text-sm">{t("chat.noLinks")}</p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
@@ -133,7 +135,7 @@ export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isL
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Show in chat
+                  {t("chat.showInChat")}
                 </button>
               )}
             </div>

@@ -8,6 +8,7 @@ import {
   FiXCircle,
 } from "react-icons/fi";
 import { authService } from "../../services/authService";
+import { useLanguage } from "../../context";
 
 type SessionDevice = {
   deviceId: string;
@@ -21,10 +22,10 @@ type SessionDevice = {
   isCurrent?: boolean;
 };
 
-const formatDateTime = (value?: string) => {
-  if (!value) return "Unknown";
+const formatDateTime = (value?: string, unknownLabel = "Unknown") => {
+  if (!value) return unknownLabel;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
+  if (Number.isNaN(date.getTime())) return unknownLabel;
 
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
@@ -38,15 +39,15 @@ const formatDateTime = (value?: string) => {
   });
 };
 
-const getDeviceTitle = (session: SessionDevice) =>
+const getDeviceTitle = (session: SessionDevice, unknownLabel = "Unknown") =>
   session.displayLabel ||
-  `${session.platform || "Unknown"} ${session.deviceType || "device"}`;
+  `${session.platform || unknownLabel} ${session.deviceType || "device"}`;
 
-const getDeviceSubtitle = (session: SessionDevice) => {
+const getDeviceSubtitle = (session: SessionDevice, unknownDeviceLabel = "Unknown device") => {
   const parts = [session.platform, session.deviceType]
     .filter(Boolean)
     .map((part) => String(part));
-  return parts.length > 0 ? parts.join(", ") : "Unknown device";
+  return parts.length > 0 ? parts.join(", ") : unknownDeviceLabel;
 };
 
 const DeviceIcon = ({ session }: { session: SessionDevice }) => {
@@ -66,10 +67,18 @@ const SessionRow = ({
   session,
   onRevoke,
   isRevoking,
+  labels,
 }: {
   session: SessionDevice;
   onRevoke: (deviceId: string) => void;
   isRevoking: boolean;
+  labels: {
+    current: string;
+    logoutDevice: string;
+    unknown: string;
+    unknownDevice: string;
+    unknownLocation: string;
+  };
 }) => (
   <div className="py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition -mx-5 px-5 flex justify-between gap-4">
     <div className="flex gap-3 min-w-0">
@@ -77,33 +86,33 @@ const SessionRow = ({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-[15px] font-medium text-gray-900 dark:text-white leading-tight truncate">
-            {getDeviceTitle(session)}
+            {getDeviceTitle(session, labels.unknown)}
           </p>
           {session.isCurrent && (
             <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full">
-              Current
+              {labels.current}
             </span>
           )}
         </div>
         <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-snug truncate">
-          {getDeviceSubtitle(session)}
+          {getDeviceSubtitle(session, labels.unknownDevice)}
         </p>
         <p className="text-[14px] text-gray-400 dark:text-gray-500 leading-snug truncate">
-          {session.location || session.ip || "Unknown location"}
+          {session.location || session.ip || labels.unknownLocation}
         </p>
       </div>
     </div>
 
     <div className="flex items-start gap-2 shrink-0">
       <span className="text-[13px] text-gray-400 mt-0.5">
-        {formatDateTime(session.lastActive || session.createdAt)}
+        {formatDateTime(session.lastActive || session.createdAt, labels.unknown)}
       </span>
       {!session.isCurrent && (
         <button
           onClick={() => onRevoke(session.deviceId)}
           disabled={isRevoking}
           className="h-8 w-8 inline-flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition"
-          title="Log out this device"
+          title={labels.logoutDevice}
         >
           {isRevoking ? (
             <FiRefreshCw className="text-[16px] animate-spin" />
@@ -117,6 +126,7 @@ const SessionRow = ({
 );
 
 export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
+  const { t } = useLanguage();
   const [sessions, setSessions] = useState<SessionDevice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -130,7 +140,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
       const data = await authService.getSessions();
       setSessions(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError(err?.message || "Could not load active sessions.");
+      setError(err?.message || t("devices.loadError"));
       setSessions([]);
     } finally {
       setIsLoading(false);
@@ -151,7 +161,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
   );
 
   const revokeSession = async (deviceId: string) => {
-    const confirmed = window.confirm("Log out this device?");
+    const confirmed = window.confirm(t("devices.confirmLogoutDevice"));
     if (!confirmed) return;
 
     setRevokingDeviceId(deviceId);
@@ -161,7 +171,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
       setSessions((prev) => prev.filter((session) => session.deviceId !== deviceId));
       window.dispatchEvent(new Event("auth:sessions-changed"));
     } catch (err: any) {
-      setError(err?.message || "Could not log out this device.");
+      setError(err?.message || t("devices.logoutDeviceError"));
     } finally {
       setRevokingDeviceId(null);
     }
@@ -169,7 +179,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
 
   const revokeOtherSessions = async () => {
     if (otherSessions.length === 0) return;
-    const confirmed = window.confirm("Log out all other devices?");
+    const confirmed = window.confirm(t("devices.confirmLogoutOthers"));
     if (!confirmed) return;
 
     setIsRevokingOthers(true);
@@ -179,7 +189,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
       await loadSessions();
       window.dispatchEvent(new Event("auth:sessions-changed"));
     } catch (err: any) {
-      setError(err?.message || "Could not log out other devices.");
+      setError(err?.message || t("devices.logoutOthersError"));
     } finally {
       setIsRevokingOthers(false);
     }
@@ -201,12 +211,12 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
         <button onClick={onBack} className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 p-2 rounded-full transition -ml-2">
           <FiArrowLeft className="text-xl" />
         </button>
-        <h2 className="text-[19px] font-medium text-gray-900 dark:text-white flex-1">Active Sessions</h2>
+        <h2 className="text-[19px] font-medium text-gray-900 dark:text-white flex-1">{t("devices.title")}</h2>
         <button
           onClick={loadSessions}
           disabled={isLoading}
           className="h-9 w-9 inline-flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-50 transition"
-          title="Refresh"
+          title={t("devices.refresh")}
         >
           <FiRefreshCw className={isLoading ? "animate-spin" : ""} />
         </button>
@@ -221,20 +231,27 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
         )}
 
         <div className="px-5 pt-4 pb-2">
-          <h3 className="text-[15px] font-medium text-blue-500 mb-3 tracking-wide">This device</h3>
+          <h3 className="text-[15px] font-medium text-blue-500 mb-3 tracking-wide">{t("devices.thisDevice")}</h3>
 
           {isLoading && !currentSession ? (
-            <div className="py-4 text-sm text-gray-500 dark:text-gray-400">Loading sessions...</div>
+            <div className="py-4 text-sm text-gray-500 dark:text-gray-400">{t("devices.loadingSessions")}</div>
           ) : currentSession ? (
             <div className="mb-4">
               <SessionRow
                 session={currentSession}
                 onRevoke={revokeSession}
                 isRevoking={false}
+                labels={{
+                  current: t("devices.current"),
+                  logoutDevice: t("devices.logoutDevice"),
+                  unknown: t("app.unknown"),
+                  unknownDevice: t("app.unknownDevice"),
+                  unknownLocation: t("app.unknownLocation"),
+                }}
               />
             </div>
           ) : (
-            <div className="py-4 text-sm text-gray-500 dark:text-gray-400">Current device not found.</div>
+            <div className="py-4 text-sm text-gray-500 dark:text-gray-400">{t("devices.currentNotFound")}</div>
           )}
 
           <button
@@ -247,23 +264,23 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
             ) : (
               <FiTrash2 className="text-2xl shrink-0 stroke-[1.5]" />
             )}
-            <span className="text-[15px] font-normal">Terminate All Other Sessions</span>
+            <span className="text-[15px] font-normal">{t("devices.terminateOthers")}</span>
           </button>
         </div>
 
         <div className="bg-[#f4f4f5] dark:bg-slate-800/80 px-4 py-3 border-y border-gray-200/50 dark:border-slate-700/50">
           <p className="text-[13.5px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Logs out all devices except for this one.
+            {t("devices.terminateOthersDescription")}
           </p>
         </div>
 
         <div className="px-5 pt-4 pb-2">
-          <h3 className="text-[15px] font-medium text-blue-500 mb-2 tracking-wide">Active sessions</h3>
+          <h3 className="text-[15px] font-medium text-blue-500 mb-2 tracking-wide">{t("devices.activeSessions")}</h3>
 
           {isLoading && sessions.length === 0 ? (
-            <div className="py-6 text-sm text-gray-500 dark:text-gray-400">Loading active sessions...</div>
+            <div className="py-6 text-sm text-gray-500 dark:text-gray-400">{t("devices.loadingActiveSessions")}</div>
           ) : otherSessions.length === 0 ? (
-            <div className="py-6 text-sm text-gray-500 dark:text-gray-400">No other active sessions.</div>
+            <div className="py-6 text-sm text-gray-500 dark:text-gray-400">{t("devices.noOtherSessions")}</div>
           ) : (
             otherSessions.map((session) => (
               <SessionRow
@@ -271,6 +288,13 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
                 session={session}
                 onRevoke={revokeSession}
                 isRevoking={revokingDeviceId === session.deviceId}
+                labels={{
+                  current: t("devices.current"),
+                  logoutDevice: t("devices.logoutDevice"),
+                  unknown: t("app.unknown"),
+                  unknownDevice: t("app.unknownDevice"),
+                  unknownLocation: t("app.unknownLocation"),
+                }}
               />
             ))
           )}
@@ -278,7 +302,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
 
         <div className="bg-[#f4f4f5] dark:bg-slate-800/80 px-4 py-3 border-t border-gray-200/50 dark:border-slate-700/50 pb-8 min-h-[50vh]">
           <p className="text-[13.5px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            You can review all logged-in devices and remotely log out sessions you no longer use.
+            {t("devices.reviewDescription")}
           </p>
         </div>
       </div>

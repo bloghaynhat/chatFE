@@ -3,6 +3,7 @@ import { FiArrowLeft, FiSlash } from "react-icons/fi";
 import { Avatar } from "../contacts/shared";
 import { getBlockedUsers, socketService, unblockUser, userService } from "../../services";
 import { toast } from "sonner";
+import { useLanguage } from "../../context";
 
 const unwrapApiData = (payload: any) => {
   if (!payload || typeof payload !== "object") return payload;
@@ -20,6 +21,7 @@ const getBlockedUserId = (item: any) =>
 const getDisplayUser = (item: any) => item?.profile || item?.blockedUser || item?.user || {};
 
 export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
+  const { t } = useLanguage();
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
       setBlockedUsers(enriched);
     } catch (err: any) {
       console.error("[BlockListPanel] Failed to load blocked users:", err);
-      setError(err?.message || "Failed to load blocked users");
+      setError(err?.message || t("blockList.loadError"));
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,7 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err: any) {
       console.error("[BlockListPanel] Failed to unblock user:", err);
-      toast.error(err?.message || "Failed to unblock user");
+      toast.error(err?.message || t("blockList.unblockError"));
     } finally {
       setProcessingId(null);
     }
@@ -120,13 +122,13 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
         <button onClick={onBack} className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 p-2 rounded-full transition -ml-2">
           <FiArrowLeft className="text-xl" />
         </button>
-        <h2 className="text-[19px] font-medium text-gray-900 dark:text-white">Block List</h2>
+        <h2 className="text-[19px] font-medium text-gray-900 dark:text-white">{t("blockList.title")}</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900">
         {loading && (
           <div className="px-5 py-4 text-[14px] text-gray-500 dark:text-gray-400">
-            Loading blocked users...
+            {t("blockList.loading")}
           </div>
         )}
 
@@ -139,9 +141,9 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
         {!loading && !error && blockedUsers.length === 0 && (
           <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
             <FiSlash className="mb-3 text-4xl text-gray-300 dark:text-slate-600" />
-            <p className="text-[15px] font-medium text-gray-900 dark:text-white">No blocked users</p>
+            <p className="text-[15px] font-medium text-gray-900 dark:text-white">{t("blockList.emptyTitle")}</p>
             <p className="mt-1 text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400">
-              People you block will appear here.
+              {t("blockList.emptyDescription")}
             </p>
           </div>
         )}
@@ -151,7 +153,7 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
             {blockedUsers.map((item) => {
               const blockedUserId = getBlockedUserId(item);
               const user = getDisplayUser(item);
-              const name = user?.displayName || user?.name || user?.username || blockedUserId || "Unknown";
+              const name = user?.displayName || user?.name || user?.username || blockedUserId || t("app.unknown");
               const phone = user?.phone || "";
               const avatarUrl = user?.avatarUrl || user?.avatar || null;
               const isProcessing = processingId === blockedUserId;
@@ -173,7 +175,7 @@ export const BlockListPanel = ({ isCollapsed, onBack }: any) => {
                     disabled={isProcessing}
                     className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-gray-300"
                   >
-                    {isProcessing ? "..." : "Unblock"}
+                    {isProcessing ? "..." : t("blockList.unblock")}
                   </button>
                 </div>
               );

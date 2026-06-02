@@ -11,7 +11,7 @@ import { MainTaskbar } from "./MainTaskbar";
 import { QuickActionFab } from "./QuickActionFab";
 import { QuickActionSheet } from "./QuickActionSheet";
 import { useAuth, useFriendManagement } from "../../hooks";
-import { useFriendRequestsContext } from "../../context/FriendContext";
+import { useFriendRequestsContext, useLanguage } from "../../context";
 import {
   FiPlus,
   FiBookmark,
@@ -54,6 +54,7 @@ export const ResizableChatPanel = ({
   const navigationMenuRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const { friendRequests, fetchFriendRequests } = useFriendRequestsContext();
 
   // Fetch friend requests on mount
@@ -231,18 +232,18 @@ export const ResizableChatPanel = ({
               <button
                 onClick={backToAllChats}
                 className="h-10 w-10 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                title="Back to chats"
-                aria-label="Back to chats"
+                title={t("app.back")}
+                aria-label={t("app.back")}
               >
                 <FiArrowLeft className="text-xl" />
               </button>
               {!isCollapsed && (
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-gray-950 dark:text-white truncate">
-                    Archived Chats
+                    {t("nav.archivedChats")}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {archiveStats.count} conversation{archiveStats.count === 1 ? "" : "s"}
+                    {archiveStats.count} {archiveStats.count === 1 ? t("archive.conversation") : t("archive.conversations")}
                   </p>
                 </div>
               )}
@@ -275,6 +276,7 @@ export const ResizableChatPanel = ({
               isSearchMode={isSearchMode}
               friendRequestCount={friendRequests.length}
               isCollapsed={isCollapsed}
+              placeholder={t("search.placeholder")}
             />
           )
         )}
@@ -294,20 +296,20 @@ export const ResizableChatPanel = ({
                   {user?.avatarUrl ? (
                     <img
                       src={user.avatarUrl}
-                      alt={user?.displayName || "User"}
+                      alt={user?.displayName || t("app.user")}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    user?.displayName?.charAt(0) || "U"
+                    user?.displayName?.charAt(0) || t("app.user").charAt(0)
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 dark:text-white truncate">
-                    {user?.displayName || "User"}
+                    {user?.displayName || t("app.user")}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Online
+                    {t("app.online")}
                   </p>
                 </div>
               </button>
@@ -320,7 +322,7 @@ export const ResizableChatPanel = ({
               >
                 <div className="flex items-center gap-3">
                   <FiBookmark className="text-lg opacity-70" />
-                  <span>Saved Messages</span>
+                  <span>{t("nav.savedMessages")}</span>
                 </div>
               </button>
 
@@ -330,7 +332,7 @@ export const ResizableChatPanel = ({
               >
                 <div className="flex items-center gap-3">
                   <FiArchive className="text-lg opacity-70" />
-                  <span>Archived Chats</span>
+                  <span>{t("nav.archivedChats")}</span>
                 </div>
                 {archiveStats.unreadCount > 0 && (
                   <span className="text-xs font-semibold bg-gray-500 text-white px-2 py-0.5 rounded-full">
@@ -345,7 +347,7 @@ export const ResizableChatPanel = ({
               >
                 <div className="flex items-center gap-3">
                   <FiUsers className="text-lg opacity-70" />
-                  <span>Contacts</span>
+                  <span>{t("nav.contacts")}</span>
                 </div>
                 {friendRequests.length > 0 && (
                   <span className="text-xs font-semibold bg-red-500 text-white px-2 py-0.5 rounded-full">
@@ -361,7 +363,7 @@ export const ResizableChatPanel = ({
                 className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center gap-3"
               >
                 <FiSettings className="text-lg opacity-70" />
-                <span>Settings</span>
+                <span>{t("nav.settings")}</span>
               </button>
 
               <button
@@ -369,7 +371,7 @@ export const ResizableChatPanel = ({
                 className="w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-200/70 dark:hover:bg-slate-700 transition flex items-center gap-3"
               >
                 <MdOutlineGroups className="text-xl opacity-70" />
-                <span>New Group</span>
+                <span>{t("nav.newGroup")}</span>
               </button>
 
               <div className="h-px bg-gray-200 dark:bg-slate-700 my-1" />
@@ -379,7 +381,7 @@ export const ResizableChatPanel = ({
                 className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex items-center gap-3 font-medium"
               >
                 <FiLogOut className="text-lg" />
-                <span>Logout</span>
+                <span>{t("nav.logout")}</span>
               </button>
             </div>
           </div>
@@ -411,10 +413,10 @@ export const ResizableChatPanel = ({
                     <>
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-semibold text-gray-950 dark:text-white truncate">
-                          Archived Chats
+                          {t("nav.archivedChats")}
                         </p>
                         <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400 truncate">
-                          {archiveStats.preview || `${archiveStats.count} archived conversation${archiveStats.count === 1 ? "" : "s"}`}
+                          {archiveStats.preview || `${archiveStats.count} ${t("archive.previewFallback")} ${archiveStats.count === 1 ? t("archive.conversation") : t("archive.conversations")}`}
                         </p>
                       </div>
                       {archiveStats.unreadCount > 0 && (

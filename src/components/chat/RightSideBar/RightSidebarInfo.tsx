@@ -24,6 +24,7 @@ import {
 } from "../../../services";
 import { userService } from "../../../services";
 import { toast } from "sonner";
+import { useLanguage } from "../../../context";
 
 interface RightSidebarInfoProps {
   isGroup: boolean;
@@ -86,6 +87,7 @@ export const RightSidebarInfo = ({
   onRemoveWallpaper,
   onSelectWallpaperPreset,
 }: RightSidebarInfoProps) => {
+  const { t } = useLanguage();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; member: any } | null>(null);
   const [friendStatus, setFriendStatus] = useState<"LOADING" | "PENDING" | "ACCEPTED" | "NONE">("LOADING");
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null);
@@ -293,10 +295,10 @@ export const RightSidebarInfo = ({
 
   // Determine display name
   const displayName = isSavedMessages
-    ? "Saved Messages"
+    ? t("nav.savedMessages")
     : isGroup
     ? groupName || "Group"
-    : targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || "User";
+    : targetUserDetails?.displayName || targetUserDetails?.name || targetUserDetails?.username || t("app.user");
 
   return (
     <div className="w-1/4 flex flex-col h-full shrink-0 relative bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800">
@@ -331,7 +333,7 @@ export const RightSidebarInfo = ({
                 className="min-h-[44px] w-full rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
               >
                 <FiShare2 className="text-[17px]" />
-                Chia sẻ danh thiếp
+                {t("profileCard.shareContact")}
               </button>
             </div>
           )}
@@ -368,7 +370,7 @@ export const RightSidebarInfo = ({
                   <FiUsers className="text-lg" />
                 </div>
                 <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                  Members
+                  {t("chat.members")}
                 </span>
                 {membersCount !== undefined && (
                   <span className="text-[13px] font-medium text-gray-400">
@@ -394,7 +396,7 @@ export const RightSidebarInfo = ({
                     <FiImage className="text-lg" />
                   </div>
                   <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                    Media
+                    {t("chat.media")}
                   </span>
                 </div>
                 <FiChevronRight className="text-gray-400 text-lg" />
@@ -412,7 +414,7 @@ export const RightSidebarInfo = ({
                     <FiFile className="text-lg" />
                   </div>
                   <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                    Files
+                    {t("chat.files")}
                   </span>
                 </div>
                 <FiChevronRight className="text-gray-400 text-lg" />
@@ -430,7 +432,7 @@ export const RightSidebarInfo = ({
                     <FiLink className="text-lg" />
                   </div>
                   <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                    Links
+                    {t("chat.links")}
                   </span>
                 </div>
                 <FiChevronRight className="text-gray-400 text-lg" />
@@ -448,7 +450,7 @@ export const RightSidebarInfo = ({
                     <FiMic className="text-lg" />
                   </div>
                   <span className="text-[15px] font-medium text-gray-800 dark:text-gray-200">
-                    Voice
+                    {t("chat.voice")}
                   </span>
                 </div>
                 <FiChevronRight className="text-gray-400 text-lg" />

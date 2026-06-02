@@ -1,5 +1,6 @@
 import React from "react";
 import { Avatar, UserInfo } from "./shared";
+import { useLanguage } from "../../context";
 
 interface RequestStatus {
   status: "NONE" | "PENDING" | "REJECTED" | "ACCEPTED" | string;
@@ -47,7 +48,8 @@ export const SearchResultCard = ({
   onClick,
   style,
 }: SearchResultCardProps) => {
-  const displayName = user?.displayName || user?.name || "Unknown";
+  const { t } = useLanguage();
+  const displayName = user?.displayName || user?.name || t("app.unknown");
   const phone = user?.phone || "";
   const avatarUrl = user?.avatarUrl || null;
 
@@ -80,7 +82,7 @@ export const SearchResultCard = ({
               disabled={isProcessing}
               className="px-2 py-1 text-white text-xs font-medium rounded-lg bg-green-500 hover:bg-green-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              {isProcessing ? "..." : "Accept"}
+              {isProcessing ? "..." : t("contacts.accept")}
             </button>
             <button
               onClick={(e) => {
@@ -90,12 +92,12 @@ export const SearchResultCard = ({
               disabled={isProcessing}
               className="px-2 py-1 text-white text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              {isProcessing ? "..." : "Reject"}
+              {isProcessing ? "..." : t("contacts.reject")}
             </button>
           </div>
         ) : isAccepted ? (
           <span className="px-3 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-200 flex-shrink-0">
-            Friends
+            {t("nav.contacts")}
           </span>
         ) : (
           // Send Request / Cancel Request button (OUTGOING or NONE/REJECTED)
@@ -109,7 +111,7 @@ export const SearchResultCard = ({
               isRequestSent ? "bg-gray-500 hover:bg-gray-600" : "bg-blue-500 hover:bg-blue-600"
             }`}
           >
-            {isProcessing ? "..." : isRequestSent ? "Cancel Request" : "Send Request"}
+            {isProcessing ? "..." : isRequestSent ? t("contacts.cancelRequest") : t("contacts.sendRequest")}
           </button>
         )}
       </div>

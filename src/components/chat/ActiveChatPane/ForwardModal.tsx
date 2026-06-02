@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { FiX, FiBookmark, FiSearch, FiCheck, FiSend } from "react-icons/fi";
 import { toast } from "sonner";
+import { useLanguage } from "../../../context";
 
 const SAVED_MESSAGES_TARGET = {
   id: "__saved_messages__",
@@ -21,6 +22,7 @@ export const ForwardModal = ({
   onForwardToTarget,
   onForwardMessages = null,
 }) => {
+  const { t } = useLanguage();
   const [searchValue, setSearchValue] = useState("");
   const [selectedTargets, setSelectedTargets] = useState([]);
   const [isSending, setIsSending] = useState(false);
@@ -148,7 +150,7 @@ export const ForwardModal = ({
             <FiX className="text-xl" />
           </button>
           <span className="font-semibold text-[17px] text-gray-800 dark:text-gray-100">
-            Forward to...
+            {t("chat.forwardTo")}
           </span>
         </div>
 
@@ -158,7 +160,7 @@ export const ForwardModal = ({
             <input
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Search"
+              placeholder={t("search.placeholder")}
               className="w-full bg-transparent text-[14px] text-gray-900 dark:text-gray-100 outline-none placeholder:text-gray-400"
             />
           </div>
@@ -184,10 +186,10 @@ export const ForwardModal = ({
               </div>
               <div className="flex flex-col max-w-full overflow-hidden">
                 <span className="font-medium text-[15px] truncate text-gray-900 dark:text-gray-100">
-                  Saved Messages
+                  {t("nav.savedMessages")}
                 </span>
                 <span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium truncate">
-                  forward here to save
+                  {t("chat.forwardHereToSave")}
                 </span>
               </div>
               <div
@@ -243,7 +245,7 @@ export const ForwardModal = ({
                   {friend.displayName || friend.name || friend.phone}
                 </span>
                 <span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium truncate">
-                  online
+                  {t("app.online")}
                 </span>
               </div>
               <div
@@ -262,7 +264,7 @@ export const ForwardModal = ({
 
         <div className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-700/50 px-4 py-3">
           <span className="text-[13px] text-gray-500 dark:text-gray-400">
-            {selectedTargets.length} selected
+            {selectedTargets.length} {t("chat.selected")}
           </span>
           <button
             onClick={handleSend}
@@ -274,7 +276,7 @@ export const ForwardModal = ({
             ) : (
               <FiSend />
             )}
-            Send
+            {t("app.send")}
           </button>
         </div>
       </div>

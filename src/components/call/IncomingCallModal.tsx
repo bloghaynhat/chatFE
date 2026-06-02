@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { FiPhone, FiPhoneCall, FiPhoneOff, FiUsers, FiVideo } from "react-icons/fi";
 import { useCallV2 } from "../../providers/CallV2SocketProvider";
+import { useLanguage } from "../../context";
 
 export default function IncomingCallModal() {
+  const { t } = useLanguage();
   const callV2 = useCallV2();
   const state = callV2.state;
 
@@ -25,17 +27,17 @@ export default function IncomingCallModal() {
   };
 
   const busyCount = state.busyUserIds?.length || 0;
-  const peerName = state.remotePeer?.name || "Caller";
+  const peerName = state.remotePeer?.name || t("call.caller");
   const peerInitial = peerName.trim().charAt(0).toUpperCase() || "?";
   const groupName = typeof state.groupName === "string" ? state.groupName.trim() : "";
   const isGroupCall = groupName.length > 0;
   const callLabel = isGroupCall
     ? state.type === "video"
-      ? "Group video call"
-      : "Group voice call"
+      ? t("call.groupVideo")
+      : t("call.groupVoice")
     : state.type === "video"
-      ? "Video call"
-      : "Voice call";
+      ? t("call.video")
+      : t("call.voice");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-md">
@@ -60,7 +62,7 @@ export default function IncomingCallModal() {
             <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-900">
               {state.type === "video" ? <FiVideo className="h-3.5 w-3.5" /> : <FiPhoneCall className="h-3.5 w-3.5" />}
               {callLabel}
-              {busyCount > 0 ? ` Â· ${busyCount} busy` : ""}
+              {busyCount > 0 ? ` · ${busyCount} ${t("call.busy")}` : ""}
             </div>
 
             <p className="mx-auto max-w-[19rem] truncate text-[22px] font-semibold leading-tight text-slate-950 dark:text-white">
@@ -68,7 +70,7 @@ export default function IncomingCallModal() {
             </p>
 
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-              {isGroupCall ? "is calling from" : "is calling you"}
+              {isGroupCall ? t("call.isCallingFrom") : t("call.isCallingYou")}
             </p>
 
             {isGroupCall && (
@@ -83,24 +85,24 @@ export default function IncomingCallModal() {
         <div className="flex items-center justify-center gap-10 border-t border-slate-100 bg-slate-50/80 px-6 py-5 dark:border-slate-800 dark:bg-slate-950/35">
           <button
             onClick={handleReject}
-            aria-label="Reject call"
+            aria-label={t("call.decline")}
             className="group flex flex-col items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-red-500"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_14px_30px_rgba(239,68,68,0.34)] transition group-hover:-translate-y-0.5 group-hover:bg-red-600">
               <FiPhoneOff className="h-6 w-6" />
             </span>
-            Decline
+            {t("call.decline")}
           </button>
           <button
             onClick={handleAccept}
             disabled={isAccepting}
-            aria-label="Accept call"
+            aria-label={t("call.accept")}
             className="group flex flex-col items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_14px_30px_rgba(16,185,129,0.34)] transition group-hover:-translate-y-0.5 group-hover:bg-emerald-600">
               <FiPhone className="h-6 w-6" />
             </span>
-            Answer
+            {t("call.accept")}
           </button>
         </div>
       </div>

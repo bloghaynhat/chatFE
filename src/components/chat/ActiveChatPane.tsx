@@ -11,6 +11,7 @@ import { useDropzone } from "react-dropzone";
 import { useFriendManagement } from "../../hooks";
 import "react-photo-view/dist/react-photo-view.css";
 import { useDraft } from "../../context/DraftContext";
+import { useLanguage } from "../../context";
 
 import { ChatHeader } from "./ActiveChatPane/ChatHeader";
 import { MessageList } from "./ActiveChatPane/MessageList";
@@ -88,6 +89,7 @@ export const ActiveChatPane = ({
   onChatInteractionRead,
   onCloseChat,
 }: any) => {
+  const { t } = useLanguage();
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -868,19 +870,19 @@ export const ActiveChatPane = ({
   const attachActions = [
     {
       id: "photo-video",
-      label: "Photo or Video",
+      label: t("attach.photoVideo"),
       icon: FiImage,
       onClick: () => photoVideoInputRef.current?.click(),
     },
     {
       id: "document",
-      label: "Document",
+      label: t("attach.document"),
       icon: FiFile,
       onClick: () => documentInputRef.current?.click(),
     },
     {
       id: "poll",
-      label: "Poll",
+      label: t("attach.poll"),
       icon: FiBarChart2,
       onClick: () => setIsCreatePollOpen(true),
       groupOnly: true,

@@ -1,5 +1,6 @@
 import React from "react";
 import { FiX, FiMoreVertical, FiFile } from "react-icons/fi";
+import { useLanguage } from "../../../context";
 
 interface FilePreview {
   preview: string;
@@ -24,6 +25,8 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   onCancel,
   onSend,
 }) => {
+  const { t } = useLanguage();
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       onSend();
@@ -42,7 +45,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               <FiX className="text-xl text-gray-500 dark:text-gray-400" />
             </button>
             <h3 className="font-medium text-lg text-gray-800 dark:text-white">
-              Send {files.length} {files.length === 1 ? "Photo" : "Photos"}
+              {t("app.send")} {files.length} {files.length === 1 ? t("chat.photo") : t("chat.photos")}
             </h3>
           </div>
           <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-500 dark:text-gray-400">
@@ -84,7 +87,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         <div className="flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-slate-700">
           <input
             type="text"
-            placeholder="Add a caption..."
+            placeholder={t("chat.addCaption")}
             value={draftMessage}
             onChange={(e) => onDraftMessageChange(e.target.value)}
             onKeyDown={handleKeyDown}

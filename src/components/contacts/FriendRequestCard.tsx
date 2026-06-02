@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FiX, FiCheck } from "react-icons/fi";
 import { Avatar, UserInfo } from "./shared";
 import { searchUserById } from "../../services";
+import { useLanguage } from "../../context";
 
 const unwrapApiData = (payload) => {
   if (!payload || typeof payload !== "object") return payload;
@@ -39,6 +40,7 @@ const getSenderId = (request) =>
  * - onClick: Callback click vào item
  */
 export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onReject, onClick, style }) => {
+  const { t } = useLanguage();
   const [senderInfo, setSenderInfo] = useState(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
   const senderId = getSenderId(request);
@@ -76,7 +78,7 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
     embeddedSender?.displayName ||
     embeddedSender?.name ||
     embeddedSender?.username ||
-    "Unknown";
+    t("app.unknown");
   const senderPhone = senderInfo?.phone || embeddedSender?.phone || request?.phone || "";
   const senderAvatar =
     senderInfo?.avatarUrl ||
@@ -106,7 +108,7 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
           }}
           disabled={isProcessing}
           className="p-1.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
-          title="Accept"
+          title={t("contacts.accept")}
         >
           <FiCheck className="w-4 h-4" />
         </button>
@@ -117,7 +119,7 @@ export const FriendRequestCard = ({ request, isProcessing = false, onAccept, onR
           }}
           disabled={isProcessing}
           className="p-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
-          title="Reject"
+          title={t("contacts.reject")}
         >
           <FiX className="w-4 h-4" />
         </button>

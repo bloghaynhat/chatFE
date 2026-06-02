@@ -1,5 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
+import { useLanguage } from "../../../../context";
 
 interface MediaItem {
   messageId: string;
@@ -24,6 +25,7 @@ const formatDuration = (seconds: number): string => {
 };
 
 export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, isLoading, onShowInChat, messages }) => {
+  const { t } = useLanguage();
   const [playing, setPlaying] = React.useState<string | null>(null);
   const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; voice: MediaItem } | null>(null);
   const audioRef = React.useRef<HTMLAudioElement>(null);
@@ -61,7 +63,7 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
       <div className="flex flex-col h-full">
         {voices.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-40 text-gray-500 dark:text-gray-400">
-            <p className="text-sm">No voice messages</p>
+            <p className="text-sm">{t("chat.noVoice")}</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
@@ -92,7 +94,7 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
                 {/* Voice Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {voice.name || "Voice Message"}
+                    {voice.name || t("chat.voiceMessage")}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {new Date(voice.createdAt).toLocaleDateString()}
@@ -149,7 +151,7 @@ export const MediaGalleryVoice: React.FC<MediaGalleryVoiceProps> = ({ voices, is
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Show in chat
+                  {t("chat.showInChat")}
                 </button>
               )}
             </div>

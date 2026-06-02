@@ -1,5 +1,6 @@
 import React from "react";
 import { FiAlertTriangle, FiX } from "react-icons/fi";
+import { useLanguage } from "../../../context";
 
 interface DeleteGroupModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
   isLoading = false,
   isAdmin = false,
 }) => {
+  const { t } = useLanguage();
   const [deleteForAll, setDeleteForAll] = React.useState(false);
 
   // Reset state when modal closes
@@ -28,8 +30,9 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
-  const confirmLabel = isAdmin && deleteForAll ? "Delete Group" : "Leave Group";
-  const loadingLabel = isAdmin && deleteForAll ? "Deleting..." : "Leaving...";
+  const resolvedGroupName = groupName === "this group" ? t("group.thisGroup") : groupName;
+  const confirmLabel = isAdmin && deleteForAll ? t("group.delete") : t("group.leave");
+  const loadingLabel = isAdmin && deleteForAll ? t("group.deleting") : t("group.leaving");
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget && !isLoading) {
@@ -58,7 +61,7 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
               <FiAlertTriangle className="text-[18px] text-red-500" />
             </div>
             <h2 className="text-[16px] font-semibold text-gray-900 dark:text-gray-100">
-              {isAdmin ? "Delete Group" : "Leave Group"}
+              {isAdmin ? t("group.delete") : t("group.leave")}
             </h2>
           </div>
           <button
@@ -82,10 +85,10 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
               {isAdmin ? (
                 <>
                   <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100 mb-1.5">
-                    Are you sure you want to delete &quot;{groupName}&quot;?
+                    {t("group.deleteConfirm").replace("{groupName}", resolvedGroupName)}
                   </p>
                   <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                    This will permanently remove the group and all its messages for every member. This action cannot be undone.
+                    {t("group.deleteWarning")}
                   </p>
 
                   {/* Checkbox: Delete for all members */}
@@ -105,10 +108,10 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
                     </div>
                     <div className="flex-1">
                       <p className="text-[14px] font-medium text-gray-900 dark:text-gray-100">
-                        Delete for all members
+                        {t("group.deleteForAll")}
                       </p>
                       <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        Remove this group for everyone and delete all messages
+                        {t("group.deleteForAllDescription")}
                       </p>
                     </div>
                   </div>
@@ -116,10 +119,10 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
               ) : (
                 <>
                   <p className="text-[15px] font-medium text-gray-900 dark:text-gray-100 mb-1.5">
-                    Are you sure you want to leave this group?
+                    {t("group.leaveConfirm")}
                   </p>
                   <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                    You will lose access to messages and media. This action cannot be undone.
+                    {t("group.leaveWarning")}
                   </p>
                 </>
               )}
@@ -134,7 +137,7 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
             disabled={isLoading}
             className="px-4 py-2 text-[14px] font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cancel
+            {t("app.cancel")}
           </button>
           <button
             onClick={handleConfirm}

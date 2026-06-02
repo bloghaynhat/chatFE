@@ -7,6 +7,7 @@ import {
   getWallpaperPresetByValue,
   getWallpaperPresetTheme,
 } from "../../../constants/wallpaperPresets";
+import { useLanguage } from "../../../context";
 
 const getProfileId = (profile: any) =>
   profile?.userId ||
@@ -91,6 +92,7 @@ export const MessageList = ({
   onOpenChat,
   onChatInteractionRead,
 }: any) => {
+  const { t } = useLanguage();
   const wallpaperPreset = getWallpaperPresetByValue(wallpaperUrl);
   const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
   const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
@@ -152,7 +154,7 @@ export const MessageList = ({
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition"
           >
             <FiRefreshCw className="text-sm" />
-            Try again
+            {t("chat.tryAgain")}
           </button>
         </div>
       </div>
@@ -165,10 +167,10 @@ export const MessageList = ({
         <div className={`h-full flex flex-col items-center justify-center ${overlayClassName}`}>
           <div className="bg-black/15 dark:bg-black/30 rounded-[20px] p-6 px-8 flex flex-col items-center justify-center text-center max-w-[300px] backdrop-blur-md border border-white/10 shadow-sm">
             <span className="text-white dark:text-white/90 font-semibold text-[15px] mb-1">
-              No messages here yet...
+              {t("chat.noMessagesYet")}
             </span>
             <span className="text-white/90 dark:text-white/70 text-[14px] mb-5">
-              Send a message or tap the greeting below.
+              {t("chat.sendGreeting")}
             </span>
             <div className="text-[70px] drop-shadow-md hover:scale-110 transition-transform cursor-pointer">👋</div>
           </div>
@@ -193,10 +195,10 @@ export const MessageList = ({
               {isLoadingOlderMessages ? (
                 <div className="flex items-center gap-2">
                   <FiRefreshCw className="animate-spin" />
-                  Loading older messages...
+                  {t("chat.loadingOlder")}
                 </div>
               ) : hasMoreMessages ? (
-                "Kéo lên để tải thêm tin nhắn"
+                t("chat.loadMoreHint")
               ) : (
                 getDateLabel(visibleMessages[0]?.createdAt) || "Today"
               )}

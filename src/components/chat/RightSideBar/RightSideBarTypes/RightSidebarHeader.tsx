@@ -1,5 +1,6 @@
 import React from "react";
 import { FiX, FiEdit2 } from "react-icons/fi";
+import { useLanguage } from "../../../../context";
 
 interface RightSidebarHeaderProps {
   isGroup: boolean;
@@ -9,6 +10,8 @@ interface RightSidebarHeaderProps {
 }
 
 export const RightSidebarHeader: React.FC<RightSidebarHeaderProps> = ({ isGroup, onClose, onEditClick, children }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="flex items-center justify-between px-4 h-[60px] border-b border-gray-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
       <div className="flex items-center gap-3">
@@ -19,7 +22,7 @@ export const RightSidebarHeader: React.FC<RightSidebarHeaderProps> = ({ isGroup,
           <FiX className="text-xl" />
         </button>
         <span className="font-semibold text-[16px] text-gray-800 dark:text-gray-100">
-          {isGroup ? "Group Info" : "User Info"}
+          {isGroup ? t("sidebar.groupInfo") : t("sidebar.userInfo")}
         </span>
       </div>
       <div className="flex items-center gap-2">

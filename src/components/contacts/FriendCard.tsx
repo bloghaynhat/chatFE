@@ -1,5 +1,5 @@
-import { FiX } from "react-icons/fi";
 import { Avatar, UserInfo } from "./shared";
+import { useLanguage } from "../../context";
 
 /**
  * FriendCard Component
@@ -12,7 +12,8 @@ import { Avatar, UserInfo } from "./shared";
  * - onClick: Callback click vào item (để mở chat)
  */
 export const FriendCard = ({ friend, onRemove, onClick, style }: any) => {
-  const displayName = friend?.displayName || friend?.name || "Unknown";
+  const { t } = useLanguage();
+  const displayName = friend?.displayName || friend?.name || t("app.unknown");
   const phone = friend?.phone || "";
   const avatarUrl = friend?.avatarUrl || null;
 

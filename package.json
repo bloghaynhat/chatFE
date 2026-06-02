@@ -25,6 +25,7 @@
     "react-photo-view": "^1.2.7",
     "react-player": "^3.4.0",
     "react-router-dom": "^6.20.0",
+    "react-textarea-autosize": "^8.5.9",
     "socket.io-client": "^4.8.3",
     "sonner": "^1.7.4",
     "uuid": "^14.0.0"

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { FiCheck, FiSearch, FiSend, FiUserPlus, FiX } from "react-icons/fi";
 import { userService } from "../../../services/userService";
 import { sendProfileCard } from "../../../services/messageService";
+import { useLanguage } from "../../../context";
 
 const unwrapList = (payload: any) => {
   const data = payload?.data || payload || {};
@@ -27,6 +28,7 @@ export const ContactPickerModal = ({
   conversationId,
   friends = [],
 }: any) => {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"friends" | "search">("friends");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -77,14 +79,14 @@ export const ContactPickerModal = ({
     mutationFn: (userId: string) => sendProfileCard(conversationId, { userId }),
     onSuccess: (_data, userId) => {
       setSentIds((prev) => new Set(prev).add(userId));
-      toast.success("Đã gửi danh thiếp");
+      toast.success(t("profileCard.sentToast"));
     },
     onError: (error: any) => {
       const status = error?.status || error?.response?.status;
       toast.error(
         status === 403
-          ? "Không thể chia sẻ danh thiếp do cài đặt quyền riêng tư"
-          : error?.message || "Không thể gửi danh thiếp",
+          ? t("profileCard.shareFailedPrivacy")
+          : error?.message || t("profileCard.sendFailed"),
       );
     },
   });
@@ -103,8 +105,8 @@ export const ContactPickerModal = ({
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-800">
               <div>
-                <h2 className="text-[17px] font-semibold text-gray-900 dark:text-gray-100">Chia sẻ liên hệ</h2>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400">Gửi danh thiếp vào cuộc trò chuyện này</p>
+                <h2 className="text-[17px] font-semibold text-gray-900 dark:text-gray-100">{t("profileCard.shareContact")}</h2>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">{t("profileCard.sendToCurrentChat")}</p>
               </div>
               <button onClick={onClose} className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800">
                 <FiX className="text-xl" />
@@ -114,8 +116,8 @@ export const ContactPickerModal = ({
             <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-4 pt-3 pb-2 border-b border-gray-100 dark:border-slate-800">
               <div className="grid grid-cols-2 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 mb-3">
                 {[
-                  ["friends", "Bạn bè"],
-                  ["search", "Tìm kiếm"],
+                  ["friends", t("profileCard.friends")],
+                  ["search", t("profileCard.search")],
                 ].map(([id, label]) => (
                   <button
                     key={id}
@@ -131,7 +133,7 @@ export const ContactPickerModal = ({
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder={activeTab === "friends" ? "Tìm trong bạn bè" : "Tìm người dùng"}
+                  placeholder={activeTab === "friends" ? t("profileCard.searchFriends") : t("profileCard.searchUsers")}
                   className="flex-1 bg-transparent outline-none text-sm text-gray-800 dark:text-gray-100"
                 />
               </div>
@@ -144,7 +146,7 @@ export const ContactPickerModal = ({
                 </div>
               ) : contacts.length === 0 ? (
                 <div className="py-10 px-6 text-center text-sm text-gray-500">
-                  {activeTab === "search" && query.trim().length < 2 ? "Nhập ít nhất 2 ký tự để tìm kiếm" : "Không có liên hệ phù hợp"}
+                  {activeTab === "search" && query.trim().length < 2 ? t("profileCard.enterMinChars") : t("profileCard.noMatchingContacts")}
                 </div>
               ) : (
                 contacts.map((contact: any) => {
@@ -161,7 +163,7 @@ export const ContactPickerModal = ({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[15px] font-semibold text-gray-900 dark:text-gray-100">{name}</p>
-                        <p className="truncate text-[12px] text-gray-500 dark:text-gray-400">{contact?.phone || contact?.email || "Danh thiếp người dùng"}</p>
+                        <p className="truncate text-[12px] text-gray-500 dark:text-gray-400">{contact?.phone || contact?.email || t("profileCard.userCard")}</p>
                       </div>
                       <button
                         disabled={!userId || isSent || isSending}
@@ -175,7 +177,7 @@ export const ContactPickerModal = ({
                         ) : (
                           <FiSend />
                         )}
-                        {isSent ? "Đã gửi" : "Gửi"}
+                        {isSent ? t("profileCard.sent") : t("app.send")}
                       </button>
                     </div>
                   );

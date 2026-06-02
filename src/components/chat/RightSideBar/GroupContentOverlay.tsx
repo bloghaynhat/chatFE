@@ -3,6 +3,7 @@ import { FiArrowLeft } from "react-icons/fi";
 import { RightSidebarMemberList } from "./RightSideBarTypes/RightSidebarMemberList";
 import { MediaGallery } from "./MediaGallery";
 import { GroupNotesPanel, GroupRemindersPanel } from "./GroupUtilities/GroupUtilitiesPanel";
+import { useLanguage } from "../../../context";
 
 export type ContentTabType = "members" | "images" | "files" | "links" | "voice" | "notes" | "reminders";
 
@@ -35,6 +36,7 @@ export const GroupContentOverlay = ({
   onShowInChat,
   messages,
 }: GroupContentOverlayProps) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ContentTabType>(initialTab);
   const [isRendered, setIsRendered] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -60,24 +62,24 @@ export const GroupContentOverlay = ({
   const tabList = useMemo(() => {
     const list = [];
     if (isGroup) {
-      list.push({ id: "members", label: "Members" });
+      list.push({ id: "members", label: t("chat.members") });
     }
     if (conversationId) {
       list.push(
-        { id: "images", label: "Media" },
-        { id: "files", label: "Files" },
-        { id: "links", label: "Links" },
-        { id: "voice", label: "Voice" }
+        { id: "images", label: t("chat.media") },
+        { id: "files", label: t("chat.files") },
+        { id: "links", label: t("chat.links") },
+        { id: "voice", label: t("chat.voice") }
       );
     }
     if (isGroup && conversationId) {
       list.push(
-        { id: "notes", label: "Notes" },
-        { id: "reminders", label: "Reminders" }
+        { id: "notes", label: t("group.notes") },
+        { id: "reminders", label: t("group.reminders") }
       );
     }
     return list;
-  }, [isGroup, conversationId]);
+  }, [isGroup, conversationId, t]);
 
   const MULTIPLIER = 30; // Creates an effectively infinite list
   const multipliedTabs = useMemo(() => {
@@ -117,13 +119,13 @@ export const GroupContentOverlay = ({
   const getOverlayTitle = () => {
     switch (activeTab) {
       case "members":
-        return "Members";
+        return t("chat.members");
       case "notes":
-        return "Notes";
+        return t("group.notes");
       case "reminders":
-        return "Reminders";
+        return t("group.reminders");
       default:
-        return "Shared Media";
+        return t("media.shared");
     }
   };
 
