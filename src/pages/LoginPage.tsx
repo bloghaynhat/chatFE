@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { LoginForm } from "../components/auth/LoginForm";
 import { User } from "../types/user";
+import { useLanguage } from "../context";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   const getRedirectUrl = () => {
     const params = new URLSearchParams(location.search);
@@ -46,7 +48,7 @@ export const LoginPage = () => {
           ChatChit
         </h1>
         <p className="text-gray-600 text-center mb-8">
-          Đăng nhập vào tài khoản của bạn
+          {t("loginPage.subtitle")}
         </p>
 
         <LoginForm
@@ -59,17 +61,17 @@ export const LoginPage = () => {
             to="/forgot-password"
             className="text-sm text-blue-600 hover:underline font-medium"
           >
-            Quên mật khẩu?
+            {t("loginPage.forgotPassword")}
           </Link>
         </div>
 
         <p className="text-center text-gray-600 mt-6">
-          Chưa có tài khoản?{" "}
+          {t("loginPage.noAccount")}{" "}
           <Link
             to="/register"
             className="text-blue-600 hover:underline font-medium"
           >
-            Đăng ký ngay
+            {t("loginPage.registerNow")}
           </Link>
         </p>
       </div>

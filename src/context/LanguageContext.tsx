@@ -39,6 +39,25 @@ type TranslationKey =
   | "auth.passwordRuleUppercase"
   | "auth.passwordRuleNumberSpecial"
   | "auth.requiredAll"
+  | "auth.phone"
+  | "auth.email"
+  | "auth.otp"
+  | "auth.password"
+  | "auth.displayName"
+  | "auth.confirmPassword"
+  | "auth.newPassword"
+  | "auth.phonePlaceholder"
+  | "auth.emailPlaceholder"
+  | "auth.displayNamePlaceholder"
+  | "auth.passwordPlaceholder"
+  | "auth.confirmPasswordPlaceholder"
+  | "auth.newPasswordPlaceholder"
+  | "auth.confirmNewPasswordPlaceholder"
+  | "auth.otpPlaceholder"
+  | "loginPage.subtitle"
+  | "loginPage.forgotPassword"
+  | "loginPage.noAccount"
+  | "loginPage.registerNow"
   | "login.success"
   | "login.emailVerifyRequired"
   | "login.emailUnverified"
@@ -54,6 +73,16 @@ type TranslationKey =
   | "register.mustAgreeTerms"
   | "register.loading"
   | "register.submit"
+  | "registerPage.title"
+  | "registerPage.subtitle"
+  | "registerPage.haveAccount"
+  | "registerPage.backToLogin"
+  | "register.agreePrefix"
+  | "register.termsLink"
+  | "forgotPasswordPage.title"
+  | "forgotPasswordPage.subtitle"
+  | "forgotPasswordPage.rememberPassword"
+  | "forgotPasswordPage.backToLogin"
   | "forgotPassword.requestFailed"
   | "forgotPassword.emailRequired"
   | "forgotPassword.emailInvalid"
@@ -77,6 +106,11 @@ type TranslationKey =
   | "forgotPassword.resendOtp"
   | "forgotPassword.loginNow"
   | "forgotPassword.expiresIn"
+  | "forgotPassword.emailLabel"
+  | "verifyEmailPage.title"
+  | "verifyEmailPage.subtitle"
+  | "verifyEmailPage.donePrompt"
+  | "verifyEmailPage.loginNow"
   | "emailVerification.resolveEmailNotFound"
   | "emailVerification.resolveEmailFailed"
   | "emailVerification.registerOtpSent"
@@ -456,6 +490,25 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "auth.passwordRuleUppercase": "Contains an uppercase letter",
     "auth.passwordRuleNumberSpecial": "Contains a number or special character",
     "auth.requiredAll": "Please fill in all required information.",
+    "auth.phone": "Phone number",
+    "auth.email": "Email",
+    "auth.otp": "OTP code",
+    "auth.password": "Password",
+    "auth.displayName": "Display name",
+    "auth.confirmPassword": "Confirm password",
+    "auth.newPassword": "New password",
+    "auth.phonePlaceholder": "0912345678",
+    "auth.emailPlaceholder": "your@email.com",
+    "auth.displayNamePlaceholder": "Your name",
+    "auth.passwordPlaceholder": "Enter password",
+    "auth.confirmPasswordPlaceholder": "Re-enter password",
+    "auth.newPasswordPlaceholder": "Enter new password",
+    "auth.confirmNewPasswordPlaceholder": "Re-enter new password",
+    "auth.otpPlaceholder": "Enter OTP code",
+    "loginPage.subtitle": "Log in to your account",
+    "loginPage.forgotPassword": "Forgot password?",
+    "loginPage.noAccount": "Don't have an account?",
+    "loginPage.registerNow": "Register now",
     "login.success": "Login successful",
     "login.emailVerifyRequired": "Please verify your email to continue.",
     "login.emailUnverified": "Email is not verified. Please enter the OTP to continue.",
@@ -471,6 +524,16 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "register.mustAgreeTerms": "You need to agree to the policies and terms.",
     "register.loading": "Registering...",
     "register.submit": "Register",
+    "registerPage.title": "Create a new account",
+    "registerPage.subtitle": "Join ChatChit and start connecting with friends.",
+    "registerPage.haveAccount": "Already have an account?",
+    "registerPage.backToLogin": "Back to login",
+    "register.agreePrefix": "I agree to the",
+    "register.termsLink": "policies and terms",
+    "forgotPasswordPage.title": "Forgot password?",
+    "forgotPasswordPage.subtitle": "Enter your email to receive password reset instructions.",
+    "forgotPasswordPage.rememberPassword": "Remember your password?",
+    "forgotPasswordPage.backToLogin": "Back to login",
     "forgotPassword.requestFailed": "Request failed",
     "forgotPassword.emailRequired": "Please enter your email.",
     "forgotPassword.emailInvalid": "Email is invalid.",
@@ -494,6 +557,11 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "forgotPassword.resendOtp": "Resend OTP",
     "forgotPassword.loginNow": "Log in now",
     "forgotPassword.expiresIn": "Code expires in {time}.",
+    "forgotPassword.emailLabel": "Your email:",
+    "verifyEmailPage.title": "Verify email",
+    "verifyEmailPage.subtitle": "Enter the OTP sent to your email to complete account registration.",
+    "verifyEmailPage.donePrompt": "Finished verifying?",
+    "verifyEmailPage.loginNow": "Log in now",
     "emailVerification.resolveEmailNotFound": "Could not find the email for this account. Please enter your email to receive the OTP.",
     "emailVerification.resolveEmailFailed": "Could not get the account email. Please enter your email to receive the OTP.",
     "emailVerification.registerOtpSent": "The OTP was sent during registration. Please check your email and enter the code to verify.",
@@ -875,6 +943,25 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "auth.passwordRuleUppercase": "Có chữ in hoa",
     "auth.passwordRuleNumberSpecial": "Có số hoặc ký tự đặc biệt",
     "auth.requiredAll": "Vui lòng nhập đầy đủ thông tin.",
+    "auth.phone": "Số điện thoại",
+    "auth.email": "Email",
+    "auth.otp": "Mã OTP",
+    "auth.password": "Mật khẩu",
+    "auth.displayName": "Tên hiển thị",
+    "auth.confirmPassword": "Xác nhận mật khẩu",
+    "auth.newPassword": "Mật khẩu mới",
+    "auth.phonePlaceholder": "0912345678",
+    "auth.emailPlaceholder": "your@email.com",
+    "auth.displayNamePlaceholder": "Tên của bạn",
+    "auth.passwordPlaceholder": "Nhập mật khẩu",
+    "auth.confirmPasswordPlaceholder": "Nhập lại mật khẩu",
+    "auth.newPasswordPlaceholder": "Nhập mật khẩu mới",
+    "auth.confirmNewPasswordPlaceholder": "Nhập lại mật khẩu mới",
+    "auth.otpPlaceholder": "Nhập mã OTP",
+    "loginPage.subtitle": "Đăng nhập vào tài khoản của bạn",
+    "loginPage.forgotPassword": "Quên mật khẩu?",
+    "loginPage.noAccount": "Chưa có tài khoản?",
+    "loginPage.registerNow": "Đăng ký ngay",
     "login.success": "Đăng nhập thành công",
     "login.emailVerifyRequired": "Vui lòng xác thực email để tiếp tục.",
     "login.emailUnverified": "Email chưa được xác thực. Vui lòng nhập OTP để tiếp tục.",
@@ -890,6 +977,16 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "register.mustAgreeTerms": "Bạn cần đồng ý với chính sách và điều khoản.",
     "register.loading": "Đang đăng ký...",
     "register.submit": "Đăng ký",
+    "registerPage.title": "Tạo tài khoản mới",
+    "registerPage.subtitle": "Tham gia ChatChit và bắt đầu kết nối với bạn bè.",
+    "registerPage.haveAccount": "Đã có tài khoản?",
+    "registerPage.backToLogin": "Quay lại đăng nhập",
+    "register.agreePrefix": "Tôi đồng ý với các",
+    "register.termsLink": "chính sách và điều khoản",
+    "forgotPasswordPage.title": "Quên mật khẩu?",
+    "forgotPasswordPage.subtitle": "Nhập email để nhận hướng dẫn đặt lại mật khẩu.",
+    "forgotPasswordPage.rememberPassword": "Nhớ mật khẩu?",
+    "forgotPasswordPage.backToLogin": "Quay lại đăng nhập",
     "forgotPassword.requestFailed": "Yêu cầu thất bại",
     "forgotPassword.emailRequired": "Vui lòng nhập email.",
     "forgotPassword.emailInvalid": "Email không hợp lệ.",
@@ -913,6 +1010,11 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "forgotPassword.resendOtp": "Gửi lại OTP",
     "forgotPassword.loginNow": "Đăng nhập ngay",
     "forgotPassword.expiresIn": "Mã hết hạn sau {time}.",
+    "forgotPassword.emailLabel": "Email của bạn:",
+    "verifyEmailPage.title": "Xác thực email",
+    "verifyEmailPage.subtitle": "Nhập mã OTP đã gửi về email để hoàn tất đăng ký tài khoản.",
+    "verifyEmailPage.donePrompt": "Đã xác thực xong?",
+    "verifyEmailPage.loginNow": "Đăng nhập ngay",
     "emailVerification.resolveEmailNotFound": "Không tìm thấy email của tài khoản này. Vui lòng nhập email để nhận OTP.",
     "emailVerification.resolveEmailFailed": "Không thể lấy email tài khoản. Vui lòng nhập email để nhận OTP.",
     "emailVerification.registerOtpSent": "Mã OTP đã được gửi từ bước đăng ký. Vui lòng kiểm tra email và nhập mã để xác thực.",

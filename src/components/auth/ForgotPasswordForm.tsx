@@ -225,12 +225,12 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email của bạn:</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t("forgotPassword.emailLabel")}</label>
         <input
           type="text"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
-          placeholder="VD: tenban@email.com"
+          placeholder={t("auth.emailPlaceholder")}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={loading || step !== "request"}
         />
@@ -238,12 +238,12 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
       {(step === "verify" || step === "reset") && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Mã OTP</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.otp")}</label>
           <input
             type="text"
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="Nhập mã OTP"
+            placeholder={t("auth.otpPlaceholder")}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={6}
@@ -261,13 +261,13 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
       {step === "reset" && (
         <>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.newPassword")}</label>
             <div className="relative">
               <input
                 type={showNewPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nhập mật khẩu mới"
+                placeholder={t("auth.newPasswordPlaceholder")}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-11 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
                 disabled={loading || isDone}
                 autoComplete="new-password"
@@ -285,13 +285,13 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.confirmPassword")}</label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu mới"
+                placeholder={t("auth.confirmNewPasswordPlaceholder")}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-11 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
                 disabled={loading || isDone}
                 autoComplete="new-password"

@@ -190,13 +190,13 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
     <div className="w-full mx-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tên hiển thị</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.displayName")}</label>
           <input
             type="text"
             name="displayName"
             value={formData.displayName}
             onChange={handleChange}
-            placeholder="Tên của bạn"
+            placeholder={t("auth.displayNamePlaceholder")}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
@@ -204,13 +204,13 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.email")}</label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="your@email.com"
+            placeholder={t("auth.emailPlaceholder")}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
@@ -218,13 +218,13 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.phone")}</label>
           <input
             type="tel"
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            placeholder="0912345678"
+            placeholder={t("auth.phonePlaceholder")}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
@@ -232,12 +232,12 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.password")}</label>
           <PasswordInput
             name="password"
             value={formData.password}
             visible={showPassword}
-            placeholder="Nhập mật khẩu"
+            placeholder={t("auth.passwordPlaceholder")}
             disabled={loading}
             onChange={handleChange}
             onToggleVisibility={() => setShowPassword((visible) => !visible)}
@@ -281,12 +281,12 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("auth.confirmPassword")}</label>
           <PasswordInput
             name="confirmPassword"
             value={formData.confirmPassword}
             visible={showConfirmPassword}
-            placeholder="Nhập lại mật khẩu"
+            placeholder={t("auth.confirmPasswordPlaceholder")}
             disabled={loading}
             onChange={handleChange}
             onToggleVisibility={() => setShowConfirmPassword((visible) => !visible)}
@@ -308,9 +308,9 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
             />
           </div>
           <label htmlFor="agreeToTerms" className="ml-2 text-sm font-medium text-gray-900 cursor-pointer">
-            Tôi đồng ý với các{" "}
+            {t("register.agreePrefix")}{" "}
             <Link to="/terms" className="text-blue-600 hover:underline">
-              chính sách và điều khoản
+              {t("register.termsLink")}
             </Link>
           </label>
         </div>
