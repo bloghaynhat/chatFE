@@ -12,6 +12,7 @@ export const RightSidebarMembers = ({
   currentUserId,
   canInviteMembers,
   onRemoveMember,
+  onBlockMember,
   onPromoteAdmin,
   onSendMessage
 }: any) => {
@@ -72,6 +73,9 @@ export const RightSidebarMembers = ({
         break;
       case "remove":
         if (onRemoveMember) onRemoveMember(memberId);
+        break;
+      case "block":
+        if (onBlockMember) onBlockMember(memberId);
         break;
     }
     setContextMenu(null);

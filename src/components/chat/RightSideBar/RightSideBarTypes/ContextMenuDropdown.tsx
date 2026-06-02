@@ -1,6 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
-import { FiMessageSquare, FiShield, FiKey, FiTrash2 } from "react-icons/fi";
+import { FiMessageSquare, FiShield, FiKey, FiTrash2, FiUserX } from "react-icons/fi";
 
 interface ContextMenuDropdownProps {
   contextMenu: { x: number; y: number; member: any } | null;
@@ -26,13 +26,19 @@ export const ContextMenuDropdown: React.FC<ContextMenuDropdownProps> = ({
   const isTargetOwner =
     contextMenu.member.role === "owner" ||
     contextMenu.member.role === "OWNER";
+  const isTargetAdmin =
+    contextMenu.member.role === "admin" ||
+    contextMenu.member.role === "ADMIN";
 
   const isCurrentUser =
     contextMenu.member.user?._id === currentUserId ||
+    contextMenu.member.user?.id === currentUserId ||
     contextMenu.member.userId === currentUserId;
 
   const canShowAdminActions =
     isAdminOrOwner && !isTargetOwner && !isCurrentUser;
+  const canBlockTarget =
+    canShowAdminActions && !isTargetAdmin;
 
   return createPortal(
     <div
@@ -92,6 +98,19 @@ export const ContextMenuDropdown: React.FC<ContextMenuDropdownProps> = ({
             <FiTrash2 className="mr-3 text-[18px] text-gray-900 dark:text-gray-300" strokeWidth={2} />
             Remove from group
           </button>
+
+          {canBlockTarget && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAction("block");
+              }}
+              className="w-full text-left px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center text-[15px] font-semibold text-red-600 dark:text-red-300 transition-colors"
+            >
+              <FiUserX className="mr-3 text-[18px]" strokeWidth={2} />
+              Chặn khỏi nhóm
+            </button>
+          )}
         </>
       )}
     </div>,

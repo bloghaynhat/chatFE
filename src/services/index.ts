@@ -47,3 +47,9 @@ export {
   onReceiveMessage,
 } from "./socketService";
 export { inviteService } from "./inviteService";
+export {
+  groupBlockService,
+  getBlockedMembers,
+  blockGroupMember,
+  unblockGroupMember,
+} from "./groupBlockService";
