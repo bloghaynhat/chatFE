@@ -23,6 +23,7 @@ import {
   unblockUser,
 } from "../../../services";
 import { userService } from "../../../services";
+import { toast } from "sonner";
 
 interface RightSidebarInfoProps {
   isGroup: boolean;
@@ -227,7 +228,7 @@ export const RightSidebarInfo = ({
       if (onClose) onClose();
     } catch (err: any) {
       console.error("Failed to delete contact:", err);
-      alert(err.message || "Failed to delete contact");
+      toast.error(err.message || "Failed to delete contact");
     } finally {
       setIsDeleting(false);
     }
@@ -254,7 +255,7 @@ export const RightSidebarInfo = ({
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (err: any) {
       console.error("Failed to update block status:", err);
-      alert(err.message || "Failed to update block status");
+      toast.error(err.message || "Failed to update block status");
     } finally {
       setIsBlocking(false);
     }

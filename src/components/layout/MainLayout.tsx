@@ -1800,7 +1800,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       );
       window.dispatchEvent(new Event("chatList:refresh"));
     } catch (error: any) {
-      alert(error?.message || "Could not delete this conversation.");
+      toast.error(error?.message || "Could not delete this conversation.");
     } finally {
       setIsDeletingConversation(false);
     }
