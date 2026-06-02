@@ -8,6 +8,10 @@ class SocketService {
   blocksSocket: Socket | null = null;
   listeners: Map<string, Function[]> = new Map();
   heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  rootSocketPromise: Promise<Socket | null> | null = null;
+  messagesSocketPromise: Promise<Socket | null> | null = null;
+  friendsSocketPromise: Promise<Socket | null> | null = null;
+  blocksSocketPromise: Promise<Socket | null> | null = null;
 
   constructor() {
     this.rootSocket = null;
@@ -16,6 +20,19 @@ class SocketService {
     this.blocksSocket = null;
     this.listeners = new Map();
     this.heartbeatTimer = null;
+    this.rootSocketPromise = null;
+    this.messagesSocketPromise = null;
+    this.friendsSocketPromise = null;
+    this.blocksSocketPromise = null;
+  }
+
+  getSocketServerUrl() {
+    return (
+      import.meta.env.VITE_SOCKET_URL ||
+      import.meta.env.VITE_API_BASE_URL ||
+      import.meta.env.VITE_API_URL?.replace(/\/v1\/?$/, "") ||
+      "http://localhost:3000"
+    );
   }
 
   // ================= INIT =================
@@ -23,21 +40,23 @@ class SocketService {
     if (this.rootSocket?.connected) {
       return this.rootSocket;
     }
+    if (this.rootSocketPromise) {
+      return this.rootSocketPromise;
+    }
 
-    const token = await authStorage.getItem("token");
-    if (!token) return null;
+    this.rootSocketPromise = (async () => {
+      const token = await authStorage.getItem("token");
+      if (!token) return null;
 
-    const serverUrl =
-      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
-      "http://localhost:3000";
+      const serverUrl = this.getSocketServerUrl();
 
-    this.rootSocket = io(serverUrl, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+      this.rootSocket = io(serverUrl, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
     this.rootSocket.on("connect", () => {
       console.log("[Root] connected:", this.rootSocket?.id);
@@ -57,30 +76,37 @@ class SocketService {
       console.error("[Root] error:", err.message);
     });
 
-    this.setupRootListeners();
+      this.setupRootListeners();
 
-    return this.rootSocket;
+      return this.rootSocket;
+    })().finally(() => {
+      this.rootSocketPromise = null;
+    });
+
+    return this.rootSocketPromise;
   }
 
   async initMessagesSocket() {
     if (this.messagesSocket?.connected) {
       return this.messagesSocket;
     }
+    if (this.messagesSocketPromise) {
+      return this.messagesSocketPromise;
+    }
 
-    const token = await authStorage.getItem("token");
-    if (!token) return null;
+    this.messagesSocketPromise = (async () => {
+      const token = await authStorage.getItem("token");
+      if (!token) return null;
 
-    const serverUrl =
-      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
-      "http://localhost:3000";
+      const serverUrl = this.getSocketServerUrl();
 
-    this.messagesSocket = io(`${serverUrl}/messages`, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+      this.messagesSocket = io(`${serverUrl}/messages`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
     this.messagesSocket.on("connect", () => {
       console.log("[Messages] connected:", this.messagesSocket.id);
@@ -100,30 +126,37 @@ class SocketService {
       console.error("[Messages] error:", err.message);
     });
 
-    this.setupMessageListeners();
+      this.setupMessageListeners();
 
-    return this.messagesSocket;
+      return this.messagesSocket;
+    })().finally(() => {
+      this.messagesSocketPromise = null;
+    });
+
+    return this.messagesSocketPromise;
   }
 
   async initFriendsSocket() {
     if (this.friendsSocket?.connected) {
       return this.friendsSocket;
     }
+    if (this.friendsSocketPromise) {
+      return this.friendsSocketPromise;
+    }
 
-    const token = await authStorage.getItem("token");
-    if (!token) return null;
+    this.friendsSocketPromise = (async () => {
+      const token = await authStorage.getItem("token");
+      if (!token) return null;
 
-    const serverUrl =
-      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
-      "http://localhost:3000";
+      const serverUrl = this.getSocketServerUrl();
 
-    this.friendsSocket = io(`${serverUrl}/friends`, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+      this.friendsSocket = io(`${serverUrl}/friends`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
     this.friendsSocket.on("connect", () => {
       console.log("[Friends] connected:", this.friendsSocket.id);
@@ -133,30 +166,37 @@ class SocketService {
       console.log("[Friends] disconnected:", reason);
     });
 
-    this.setupFriendListeners();
+      this.setupFriendListeners();
 
-    return this.friendsSocket;
+      return this.friendsSocket;
+    })().finally(() => {
+      this.friendsSocketPromise = null;
+    });
+
+    return this.friendsSocketPromise;
   }
 
   async initBlocksSocket() {
     if (this.blocksSocket?.connected) {
       return this.blocksSocket;
     }
+    if (this.blocksSocketPromise) {
+      return this.blocksSocketPromise;
+    }
 
-    const token = await authStorage.getItem("token");
-    if (!token) return null;
+    this.blocksSocketPromise = (async () => {
+      const token = await authStorage.getItem("token");
+      if (!token) return null;
 
-    const serverUrl =
-      import.meta.env.VITE_API_URL?.replace("/v1", "") ||
-      "http://localhost:3000";
+      const serverUrl = this.getSocketServerUrl();
 
-    this.blocksSocket = io(`${serverUrl}/blocks`, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+      this.blocksSocket = io(`${serverUrl}/blocks`, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
     this.blocksSocket.on("connect", () => {
       console.log("[Blocks] connected:", this.blocksSocket.id);
@@ -170,9 +210,14 @@ class SocketService {
       console.error("[Blocks] error:", err.message);
     });
 
-    this.setupBlockListeners();
+      this.setupBlockListeners();
 
-    return this.blocksSocket;
+      return this.blocksSocket;
+    })().finally(() => {
+      this.blocksSocketPromise = null;
+    });
+
+    return this.blocksSocketPromise;
   }
 
   // ================= LISTENERS =================
