@@ -288,6 +288,22 @@ class SocketService {
       this.emit("conversation:member_removed", data);
     });
 
+    const forwardGroupMemberBlocked = (data) => {
+      this.emit("group:member_blocked", data);
+      this.emit("GROUP_MEMBER_BLOCKED", data);
+    };
+
+    [
+      "group:member_blocked",
+      "group:member:blocked",
+      "group_member_blocked",
+      "GROUP_MEMBER_BLOCKED",
+      "conversation:member_blocked",
+      "conversation:member_blocked_from_group",
+    ].forEach((eventName) => {
+      this.messagesSocket.on(eventName, forwardGroupMemberBlocked);
+    });
+
     this.messagesSocket.on("message:reaction", (data) => {
       this.emit("message:reaction", data);
     });
@@ -502,6 +518,17 @@ class SocketService {
     this.blocksSocket.on("block:blocked", (payload) => {
       const blockerId = payload?.data?.blockedBy || payload?.blockedBy || payload?.userId;
       this.emit("block:blocked", payload);
+      const conversationId =
+        payload?.data?.conversationId ||
+        payload?.data?.groupId ||
+        payload?.data?.block?.conversationId ||
+        payload?.conversationId ||
+        payload?.groupId ||
+        payload?.block?.conversationId;
+      if (conversationId) {
+        this.emit("group:member_blocked", payload);
+        this.emit("GROUP_MEMBER_BLOCKED", payload);
+      }
       this.emit("blockStatus:changed", {
         ...payload,
         isBlockedByOther: true,

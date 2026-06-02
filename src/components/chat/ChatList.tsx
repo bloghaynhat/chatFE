@@ -681,6 +681,7 @@ export const ChatList = ({
   const [conversationCursor, setConversationCursor] = useState<string | null>(null);
   const [hasMoreConversations, setHasMoreConversations] = useState(false);
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
+  const locallyRemovedConversationIds = useRef<Set<string>>(new Set());
   const chatsRef = useRef<any[]>([]);
   const loadMoreConversationsRef = useRef<HTMLDivElement | null>(null);
   const fetchChatsRequestId = useRef(0);
@@ -983,7 +984,8 @@ export const ChatList = ({
       });
       if (!isLoadingMore && requestId !== fetchChatsRequestId.current) return;
 
-      const fetchedChats = Array.isArray(response?.conversations) ? response.conversations : [];
+      const fetchedChats = (Array.isArray(response?.conversations) ? response.conversations : [])
+        .filter((chat: any) => !locallyRemovedConversationIds.current.has(String(chat?.id)));
       setConversationCursor(response?.nextCursor || null);
       setHasMoreConversations(Boolean(response?.hasMore && response?.nextCursor));
       setChats((previousChats) =>
@@ -1060,6 +1062,7 @@ export const ChatList = ({
     const handleCurrentUserLeftGroup = (event: any) => {
       const conversationId = event?.detail?.conversationId;
       if (conversationId) {
+        locallyRemovedConversationIds.current.add(String(conversationId));
         setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
       }
       fetchChats(false);
@@ -1067,13 +1070,22 @@ export const ChatList = ({
     const handleConversationDeletedForMe = (event: any) => {
       const conversationId = event?.detail?.conversationId;
       if (conversationId) {
+        locallyRemovedConversationIds.current.add(String(conversationId));
         setChats((prev) => prev.filter((chat) => String(chat.id) !== String(conversationId)));
       }
       fetchChats(false);
     };
+    const handleRemoveConversation = (event: any) => {
+      const conversationId = event?.detail?.conversationId;
+      if (!conversationId) return;
+
+      locallyRemovedConversationIds.current.add(String(conversationId));
+      setChats((prev) => prev.filter((chat) => String(chat.id) !== String(conversationId)));
+    };
     window.addEventListener("chatList:refresh", handleRefresh);
     window.addEventListener("group:currentUserLeft", handleCurrentUserLeftGroup);
     window.addEventListener("conversation:deletedForMe", handleConversationDeletedForMe);
+    window.addEventListener("chatList:removeConversation", handleRemoveConversation);
 
     // Also listen to socket event if the other party accepted our request
     const unsubFriendAccepted = socketService.on("friend_request:accepted", () => {
@@ -1090,6 +1102,7 @@ export const ChatList = ({
         "conversation:deletedForMe",
         handleConversationDeletedForMe,
       );
+      window.removeEventListener("chatList:removeConversation", handleRemoveConversation);
       if (unsubFriendAccepted) unsubFriendAccepted();
     };
   }, [fetchChats]);
@@ -1104,6 +1117,7 @@ export const ChatList = ({
 
       // If current user was removed, remove the conversation from local state
       if (removedUserId === user?.id) {
+        locallyRemovedConversationIds.current.add(String(conversationId));
         setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
       } else {
         touchConversationActivity(conversationId, message, {
@@ -1580,6 +1594,7 @@ export const ChatList = ({
 
       // If current user was removed/kicked, remove conversation from list
       if (leftUserId === user?.id) {
+        locallyRemovedConversationIds.current.add(String(conversationId));
         setChats((prev) => prev.filter((chat) => chat.id !== conversationId));
       } else {
         touchConversationActivity(conversationId, message, {

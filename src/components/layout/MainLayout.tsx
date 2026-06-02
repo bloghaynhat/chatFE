@@ -307,6 +307,35 @@ const MainLayout = ({ children }: { children?: any }) => {
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
   const lastInteractionSeenRef = useRef<string>("");
 
+  const removeConversationFromSession = useCallback(
+    (conversationId: string, options: { reason?: string; message?: string } = {}) => {
+      if (!conversationId) return;
+
+      conversationMessageCacheRef.current.delete(String(conversationId));
+      window.dispatchEvent(
+        new CustomEvent("chatList:removeConversation", {
+          detail: {
+            conversationId,
+            reason: options.reason || "unavailable",
+          },
+        }),
+      );
+
+      if (
+        String(conversationId) === String(selectedConversationIdRef.current || "") ||
+        String(conversationId) === String(routeConversationId || "")
+      ) {
+        setSelectedChat(null);
+        setSelectedConversationId(null);
+        setMessages([]);
+        setPinnedMessages([]);
+        setChatError(options.message || "");
+        navigate("/", { replace: true });
+      }
+    },
+    [navigate, routeConversationId],
+  );
+
   const markCachedMessageRevoked = useCallback(
     (messageId: string, payload: any = {}) => {
       if (!messageId) return false;
@@ -557,13 +586,15 @@ const MainLayout = ({ children }: { children?: any }) => {
     const rawId =
       payload?.conversationId ||
       payload?.groupId ||
+      payload?.block?.conversationId ||
       payload?.note?.conversationId ||
       payload?.note?.groupId ||
       payload?.reminder?.conversationId ||
       payload?.reminder?.groupId ||
       payload?.message?.conversationId ||
       payload?.data?.conversationId ||
-      payload?.data?.groupId;
+      payload?.data?.groupId ||
+      payload?.data?.block?.conversationId;
 
     if (rawId && typeof rawId === "object") {
       return rawId.id || rawId._id || rawId.conversationId || rawId.groupId;
@@ -571,6 +602,83 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     return rawId;
   }, []);
+
+  const getPayloadTargetUserId = useCallback((payload: any) => {
+    const rawId =
+      payload?.targetUserId ||
+      payload?.targetId ||
+      payload?.blockedUserId ||
+      payload?.blockedId ||
+      payload?.userId ||
+      payload?.removedUserId ||
+      payload?.block?.userId ||
+      payload?.data?.targetUserId ||
+      payload?.data?.targetId ||
+      payload?.data?.blockedUserId ||
+      payload?.data?.blockedId ||
+      payload?.data?.userId ||
+      payload?.data?.removedUserId ||
+      payload?.data?.block?.userId;
+
+    if (rawId && typeof rawId === "object") {
+      return rawId.id || rawId._id || rawId.userId;
+    }
+
+    return rawId;
+  }, []);
+
+  const normalizeSearchText = useCallback((value: any) => {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  }, []);
+
+  const isCurrentUserRemovedBySystemMessage = useCallback(
+    (message: any, payload: any) => {
+      const targetUserId = getPayloadTargetUserId(payload) || getPayloadTargetUserId(message);
+      if (
+        targetUserId &&
+        (String(targetUserId) === String(user?.id) || String(targetUserId) === String(user?._id))
+      ) {
+        return true;
+      }
+
+      const rawText =
+        message?.textPreview ||
+        message?.text ||
+        message?.content ||
+        message?.message ||
+        payload?.textPreview ||
+        payload?.text ||
+        payload?.content ||
+        "";
+      const text = normalizeSearchText(rawText);
+      if (!text) return false;
+
+      const looksLikeRemoval =
+        text.includes(" da chan ") ||
+        text.includes(" bi chan ") ||
+        text.includes(" da xoa ") ||
+        text.includes(" bi xoa ") ||
+        text.includes(" da roi khoi nhom") ||
+        text.includes(" khoi nhom");
+
+      if (!looksLikeRemoval) return false;
+
+      const currentUserNames = [
+        user?.displayName,
+        (user as any)?.name,
+        user?.username,
+        user?.email,
+      ]
+        .map(normalizeSearchText)
+        .filter((name) => name.length >= 3);
+
+      return currentUserNames.some((name) => text.includes(name));
+    },
+    [getPayloadTargetUserId, normalizeSearchText, user],
+  );
 
   const upsertMessageFromPayload = useCallback(
     (payload: any) => {
@@ -626,6 +734,19 @@ const MainLayout = ({ children }: { children?: any }) => {
           const message = payload?.message || payload;
           const incomingConversationId = getMessageConversationId(message, payload);
           const activeConversationId = selectedConversationIdRef.current;
+
+          if (
+            incomingConversationId &&
+            isCurrentUserRemovedBySystemMessage(message, payload)
+          ) {
+            removeConversationFromSession(incomingConversationId, {
+              reason: "removed_from_group_system_message",
+              message: "Bạn không còn trong nhóm này.",
+            });
+            toast.warning("Bạn không còn trong nhóm này.");
+            return;
+          }
+
           if (
             incomingConversationId &&
             String(incomingConversationId) !== String(activeConversationId)
@@ -1136,15 +1257,10 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
-            conversationMessageCacheRef.current.delete(String(conversationId));
-            if (String(conversationId) === String(selectedConversationId)) {
-              setSelectedChat(null);
-              setSelectedConversationId(null);
-              setMessages([]);
-              setPinnedMessages([]);
-              setChatError("Bạn đã rời khỏi nhóm này.");
-            }
-            window.dispatchEvent(new Event("chatList:refresh"));
+            removeConversationFromSession(conversationId, {
+              reason: "left_group",
+              message: "Bạn đã rời khỏi nhóm này.",
+            });
             return;
           }
 
@@ -1176,19 +1292,13 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           if (String(leftUserId) === String(user?.id) || String(leftUserId) === String(user?._id)) {
-            conversationMessageCacheRef.current.delete(String(conversationId));
-            if (String(conversationId) === String(selectedConversationId)) {
-              setSelectedChat(null);
-              setSelectedConversationId(null);
-              setMessages([]);
-              setPinnedMessages([]);
-              setChatError(
+            removeConversationFromSession(conversationId, {
+              reason: reason === "left" ? "left_group" : "removed_from_group",
+              message:
                 reason === "left"
                   ? "Bạn đã rời khỏi nhóm này."
                   : "Bạn đã bị xoá khỏi nhóm này.",
-              );
-            }
-            window.dispatchEvent(new Event("chatList:refresh"));
+            });
             return;
           }
 
@@ -1211,6 +1321,57 @@ const MainLayout = ({ children }: { children?: any }) => {
             }
           }
         });
+
+        const handleGroupMemberBlocked = (payload: any) => {
+          const conversationId = getPayloadConversationId(payload);
+          const blockedUserId = getPayloadTargetUserId(payload);
+          const message =
+            payload?.message ||
+            payload?.systemMessage ||
+            payload?.data?.message ||
+            payload?.data?.systemMessage ||
+            null;
+
+          if (shouldSkipDuplicateMemberRemoval(conversationId, blockedUserId)) {
+            return;
+          }
+
+          if (
+            String(blockedUserId) === String(user?.id) ||
+            String(blockedUserId) === String(user?._id)
+          ) {
+            removeConversationFromSession(conversationId, {
+              reason: "blocked_from_group",
+              message: "Bạn đã bị quản trị viên chặn khỏi nhóm này.",
+            });
+            toast.warning("Bạn đã bị quản trị viên chặn khỏi nhóm này.");
+            return;
+          }
+
+          if (String(conversationId) === String(selectedConversationId)) {
+            if (message) {
+              appendLocalMessage(message);
+            } else {
+              conversationService
+                .getConversationMessages(conversationId, {
+                  limit: MESSAGE_PAGE_SIZE,
+                })
+                .then((messageResult) => {
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
+                  setMessagePageInfo({
+                    nextCursor: messageResult.nextCursor,
+                    hasMore: messageResult.hasMore,
+                  });
+                })
+                .catch(console.error);
+            }
+          }
+
+          window.dispatchEvent(new Event("chatList:refresh"));
+        };
+
+        socketService.on("group:member_blocked", handleGroupMemberBlocked);
+        socketService.on("GROUP_MEMBER_BLOCKED", handleGroupMemberBlocked);
 
         // Handle group dissolution - this group has been deleted by an admin
         socketService.onGroupDissolved((payload: any) => {
@@ -1289,6 +1450,8 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.off("conversation:updated");
       socketService.off("conversation:members_added");
       socketService.off("conversation:member_removed");
+      socketService.off("group:member_blocked");
+      socketService.off("GROUP_MEMBER_BLOCKED");
       socketService.offGroupMemberLeft();
       socketService.offGroupDissolved();
       socketService.offGroupRenamed();
@@ -1301,9 +1464,12 @@ const MainLayout = ({ children }: { children?: any }) => {
     removePollFromMessages,
     updatePollInMessages,
     getPayloadConversationId,
+    getPayloadTargetUserId,
     upsertMessageFromPayload,
     markCachedMessageRevoked,
     markCachedMessageEdited,
+    isCurrentUserRemovedBySystemMessage,
+    removeConversationFromSession,
     shouldSkipDuplicateMemberRemoval,
   ]);
 
@@ -1454,6 +1620,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       }
 
       let processedChat = { ...chat };
+      let conversationId = chat.id;
       if (
         !processedChat.targetUserId &&
         processedChat.type !== "group" &&
@@ -1470,8 +1637,6 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       try {
         // Nếu chat.id có dạng temp- (click từ global search), cần tìm conversation thật trước
-        let conversationId = chat.id;
-
         if (String(conversationId).startsWith("temp-") && chat.targetUserId) {
           const conversation =
             await conversationService.createPrivateConversation(
@@ -1628,6 +1793,35 @@ const MainLayout = ({ children }: { children?: any }) => {
       } catch (error) {
         setMessages([]);
         setPinnedMessages([]);
+        const status =
+          error?.status ||
+          error?.response?.status ||
+          error?.payload?.statusCode ||
+          null;
+        const errorCode = String(error?.code || error?.payload?.code || "").toUpperCase();
+        const isGroupChat =
+          processedChat.type === "group" ||
+          processedChat.type === "GROUP" ||
+          processedChat.isGroup === true;
+        const isAccessOrMissingError =
+          status === 400 ||
+          status === 403 ||
+          status === 404 ||
+          errorCode === "VALIDATION_ERROR" ||
+          errorCode === "FORBIDDEN" ||
+          errorCode === "NOT_FOUND";
+
+        if (isGroupChat && isAccessOrMissingError && conversationId) {
+          removeConversationFromSession(conversationId, {
+            reason: status === 403 ? "blocked_from_group" : "group_unavailable",
+            message:
+              status === 403
+                ? "Bạn đã bị quản trị viên chặn khỏi nhóm này."
+                : "",
+          });
+          return;
+        }
+
         if (
           error?.status === 404 ||
           error?.response?.status === 404 ||
@@ -1651,6 +1845,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       navigate,
       openingChatId,
       refreshPinnedMessages,
+      removeConversationFromSession,
       user?.id,
     ],
   );
