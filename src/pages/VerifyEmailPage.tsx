@@ -18,6 +18,8 @@ export const VerifyEmailPage = () => {
 
         <EmailVerificationForm
           initialEmail={registrationContext?.email || ""}
+          initialPhone={registrationContext?.phone || ""}
+          redirectTo={registrationContext?.redirectTo || "/"}
           fromRegister={
             Boolean(registrationContext?.fromRegister) ||
             Boolean(

@@ -72,7 +72,7 @@ export const authService = {
     const response = await api.post(
       "/auth/send-verification",
       payload,
-      options,
+      { skipAuth: true, ...options },
     );
     return unwrapData(response);
   },
@@ -92,9 +92,23 @@ export const authService = {
     const response = await api.post(
       "/auth/resend-verification",
       payload,
-      options,
+      { skipAuth: true, ...options },
     );
     return unwrapData(response);
+  },
+
+  getVerificationEmailByPhone: async (phone: string) => {
+    const response = await api.get("/auth/unverified-email", {
+      params: { phone },
+      skipAuth: true,
+    });
+    const payload = unwrapData(response);
+
+    return (
+      payload?.email ||
+      payload?.data?.email ||
+      ""
+    );
   },
 
   login: async (payload) => {

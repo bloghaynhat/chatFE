@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../../hooks";
 
 const resolveFieldErrors = (error) => {
@@ -117,8 +118,12 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
       }
 
       const { confirmPassword, agreeToTerms, ...dataToSend } = formData;
-      const result = await register(dataToSend);
+      const result = await register({
+        ...dataToSend,
+        sendVerificationEmail: true,
+      });
 
+      toast.success("Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.");
       onSuccess?.({
         email: formData.email.trim(),
         phone: formData.phone.trim(),
@@ -130,7 +135,9 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
       if (Object.keys(nextFieldErrors).length > 0) {
         setFieldErrors(nextFieldErrors);
       }
-      setError(err.message || "Đăng ký thất bại");
+      const message = err.message || "Đăng ký thất bại";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

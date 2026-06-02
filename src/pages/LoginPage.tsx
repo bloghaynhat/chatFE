@@ -7,6 +7,11 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const getRedirectUrl = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get("redirect") || "/";
+  };
+
   const handleLoginSuccess = (userProfile: User) => {
     // eslint-disable-next-line no-console
     console.debug("[LoginPage] handleLoginSuccess", {
@@ -15,14 +20,23 @@ export const LoginPage = () => {
     });
     if (userProfile?.verified?.email === false && userProfile?.email) {
       navigate("/verify-email", {
-        state: { email: userProfile.email, fromLogin: true },
+        state: { email: userProfile.email, fromLogin: true, redirectTo: getRedirectUrl() },
       });
       return;
     }
     
-    const params = new URLSearchParams(location.search);
-    const redirectUrl = params.get("redirect");
-    navigate(redirectUrl || "/");
+    navigate(getRedirectUrl());
+  };
+
+  const handleEmailUnverified = ({ email, phone }: { email: string; phone: string }) => {
+    navigate("/verify-email", {
+      state: {
+        email,
+        phone,
+        fromLogin: true,
+        redirectTo: getRedirectUrl(),
+      },
+    });
   };
 
   return (
@@ -35,7 +49,10 @@ export const LoginPage = () => {
           Đăng nhập vào tài khoản của bạn
         </p>
 
-        <LoginForm onSuccess={handleLoginSuccess} />
+        <LoginForm
+          onSuccess={handleLoginSuccess}
+          onEmailUnverified={handleEmailUnverified}
+        />
 
         <div className="text-right mt-3">
           <Link

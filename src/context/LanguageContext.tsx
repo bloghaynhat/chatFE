@@ -388,7 +388,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "settings.premium": "Telegram Premium",
     "privacy.title": "Privacy and Security",
     "privacy.blockList": "Block List",
-    "privacy.blockListDescription": "Manage people you have blocked. Blocked users cannot message or call you.",
+    "privacy.blockListDescription":
+      "Manage people you have blocked. Blocked users cannot message or call you.",
     "devices.title": "Active Sessions",
     "devices.thisDevice": "This device",
     "devices.current": "Current",
@@ -397,10 +398,12 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "devices.loadingActiveSessions": "Loading active sessions...",
     "devices.currentNotFound": "Current device not found.",
     "devices.terminateOthers": "Terminate All Other Sessions",
-    "devices.terminateOthersDescription": "Logs out all devices except for this one.",
+    "devices.terminateOthersDescription":
+      "Logs out all devices except for this one.",
     "devices.activeSessions": "Active sessions",
     "devices.noOtherSessions": "No other active sessions.",
-    "devices.reviewDescription": "You can review all logged-in devices and remotely log out sessions you no longer use.",
+    "devices.reviewDescription":
+      "You can review all logged-in devices and remotely log out sessions you no longer use.",
     "devices.logoutDevice": "Log out this device",
     "devices.confirmLogoutDevice": "Log out this device?",
     "devices.confirmLogoutOthers": "Log out all other devices?",
@@ -441,8 +444,10 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "invite.groupLink": "Group Invite Link",
     "invite.regenerate": "Regenerate Link",
     "invite.revoke": "Revoke Link",
-    "invite.noPermission": "You do not have permission to view this invite link.",
-    "invite.loadError": "Could not load the invite link. Please check your group permissions.",
+    "invite.noPermission":
+      "You do not have permission to view this invite link.",
+    "invite.loadError":
+      "Could not load the invite link. Please check your group permissions.",
     "invite.noActiveLink": "No active invite link found.",
     "invite.generate": "Generate Link",
     "invite.url": "Invite URL",
@@ -459,7 +464,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profileCard.sentToast": "Contact card sent",
     "profileCard.sharedToast": "Contact card shared",
     "profileCard.sendFailed": "Could not send contact card",
-    "profileCard.shareFailedPrivacy": "Cannot share this contact card because of privacy settings",
+    "profileCard.shareFailedPrivacy":
+      "Cannot share this contact card because of privacy settings",
     "profileCard.shareFailed": "Cannot share this contact card",
     "profileCard.friends": "Friends",
     "profileCard.search": "Search",
@@ -521,7 +527,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.noImages": "No images",
     "chat.noVoice": "No voice messages found",
     "chat.enterKeyword": "Enter a keyword to search",
-    "chat.tryDifferentKeyword": "Try a different keyword or start a new message from the + button.",
+    "chat.tryDifferentKeyword":
+      "Try a different keyword or start a new message from the + button.",
     "chat.typeMessage": "Type a message",
     "chat.reply": "Reply",
     "chat.replyTo": "Reply to",
@@ -591,12 +598,15 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "group.thisGroup": "this group",
     "group.deleting": "Deleting...",
     "group.leaving": "Leaving...",
-    "group.deleteConfirm": "Are you sure you want to delete \"{groupName}\"?",
-    "group.deleteWarning": "This will permanently remove the group and all its messages for every member. This action cannot be undone.",
+    "group.deleteConfirm": 'Are you sure you want to delete "{groupName}"?',
+    "group.deleteWarning":
+      "This will permanently remove the group and all its messages for every member. This action cannot be undone.",
     "group.deleteForAll": "Delete for all members",
-    "group.deleteForAllDescription": "Remove this group for everyone and delete all messages",
+    "group.deleteForAllDescription":
+      "Remove this group for everyone and delete all messages",
     "group.leaveConfirm": "Are you sure you want to leave this group?",
-    "group.leaveWarning": "You will lose access to messages and media. This action cannot be undone.",
+    "group.leaveWarning":
+      "You will lose access to messages and media. This action cannot be undone.",
     "chat.editMessage": "Edit Message",
     "chat.copy": "Copy",
     "chat.pin": "Pin",
@@ -648,7 +658,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profile.phoneNumber": "Phone Number",
     "profile.bio": "Bio",
     "profile.bioPlaceholder": "Tell us about yourself...",
-    "profile.unsavedConfirm": "You have unsaved changes. Are you sure you want to close?",
+    "profile.unsavedConfirm":
+      "You have unsaved changes. Are you sure you want to close?",
     "profile.avatarUpdated": "Avatar updated successfully!",
     "profile.updateFailed": "Failed to update profile",
     "profile.updated": "Profile updated successfully!",
@@ -709,7 +720,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "settings.premium": "Telegram Premium",
     "privacy.title": "Quyền riêng tư và bảo mật",
     "privacy.blockList": "Danh sách chặn",
-    "privacy.blockListDescription": "Quản lý những người bạn đã chặn. Người bị chặn không thể nhắn tin hoặc gọi cho bạn.",
+    "privacy.blockListDescription":
+      "Quản lý những người bạn đã chặn. Người bị chặn không thể nhắn tin hoặc gọi cho bạn.",
     "devices.title": "Phiên đăng nhập",
     "devices.thisDevice": "Thiết bị này",
     "devices.current": "Hiện tại",
@@ -718,10 +730,12 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "devices.loadingActiveSessions": "Đang tải các phiên đang hoạt động...",
     "devices.currentNotFound": "Không tìm thấy thiết bị hiện tại.",
     "devices.terminateOthers": "Đăng xuất tất cả thiết bị khác",
-    "devices.terminateOthersDescription": "Đăng xuất tất cả thiết bị ngoại trừ thiết bị này.",
+    "devices.terminateOthersDescription":
+      "Đăng xuất tất cả thiết bị ngoại trừ thiết bị này.",
     "devices.activeSessions": "Phiên đang hoạt động",
     "devices.noOtherSessions": "Không có phiên hoạt động khác.",
-    "devices.reviewDescription": "Bạn có thể xem tất cả thiết bị đã đăng nhập và đăng xuất từ xa các phiên không còn sử dụng.",
+    "devices.reviewDescription":
+      "Bạn có thể xem tất cả thiết bị đã đăng nhập và đăng xuất từ xa các phiên không còn sử dụng.",
     "devices.logoutDevice": "Đăng xuất thiết bị này",
     "devices.confirmLogoutDevice": "Đăng xuất thiết bị này?",
     "devices.confirmLogoutOthers": "Đăng xuất tất cả thiết bị khác?",
@@ -752,7 +766,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "sidebar.userInfo": "Thông tin người dùng",
     "sidebar.inviteLink": "Liên kết mời",
     "sidebar.inviteManage": "Nhấn để quản lý liên kết mời nhóm",
-    "sidebar.inviteRestricted": "Chỉ quản trị viên hoặc thành viên được phép mới có thể mời",
+    "sidebar.inviteRestricted":
+      "Chỉ quản trị viên hoặc thành viên được phép mới có thể mời",
     "sidebar.notifications": "Thông báo",
     "sidebar.changeWallpaper": "Đổi hình nền",
     "sidebar.updatingWallpaper": "Đang cập nhật hình nền...",
@@ -763,7 +778,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "invite.regenerate": "Tạo lại liên kết",
     "invite.revoke": "Thu hồi liên kết",
     "invite.noPermission": "Bạn không có quyền xem liên kết mời này.",
-    "invite.loadError": "Không thể tải liên kết mời. Vui lòng kiểm tra quyền nhóm.",
+    "invite.loadError":
+      "Không thể tải liên kết mời. Vui lòng kiểm tra quyền nhóm.",
     "invite.noActiveLink": "Chưa có liên kết mời đang hoạt động.",
     "invite.generate": "Tạo liên kết",
     "invite.url": "URL mời",
@@ -780,7 +796,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profileCard.sentToast": "Đã gửi danh thiếp",
     "profileCard.sharedToast": "Đã chia sẻ danh thiếp",
     "profileCard.sendFailed": "Không thể gửi danh thiếp",
-    "profileCard.shareFailedPrivacy": "Không thể chia sẻ danh thiếp do cài đặt quyền riêng tư",
+    "profileCard.shareFailedPrivacy":
+      "Không thể chia sẻ danh thiếp do cài đặt quyền riêng tư",
     "profileCard.shareFailed": "Không thể chia sẻ danh thiếp này",
     "profileCard.friends": "Bạn bè",
     "profileCard.search": "Tìm kiếm",
@@ -842,7 +859,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.noImages": "Không có ảnh",
     "chat.noVoice": "Không tìm thấy tin nhắn thoại",
     "chat.enterKeyword": "Nhập từ khóa để tìm kiếm",
-    "chat.tryDifferentKeyword": "Thử từ khóa khác hoặc bắt đầu tin nhắn mới từ nút +.",
+    "chat.tryDifferentKeyword":
+      "Thử từ khóa khác hoặc bắt đầu tin nhắn mới từ nút +.",
     "chat.typeMessage": "Nhập tin nhắn",
     "chat.reply": "Trả lời",
     "chat.replyTo": "Trả lời",
@@ -880,7 +898,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.searchSmartPlaceholder": "Tìm kiếm... (gõ '/ai ' để tìm thông minh)",
     "chat.savedMessagesLower": "Tin nhắn đã lưu",
     "chat.openingConversation": "Đang mở cuộc trò chuyện...",
-    "chat.members": "thành viên",
+    "chat.members": "Thành viên",
     "chat.justNow": "Vừa xong",
     "chat.lastSeenMinutes": "hoạt động {count} phút trước",
     "chat.lastSeenHours": "hoạt động {count} giờ trước",
@@ -912,12 +930,15 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "group.thisGroup": "nhóm này",
     "group.deleting": "Đang xóa...",
     "group.leaving": "Đang rời nhóm...",
-    "group.deleteConfirm": "Bạn có chắc muốn xóa \"{groupName}\"?",
-    "group.deleteWarning": "Thao tác này sẽ xóa vĩnh viễn nhóm và toàn bộ tin nhắn với mọi thành viên. Không thể hoàn tác.",
+    "group.deleteConfirm": 'Bạn có chắc muốn xóa "{groupName}"?',
+    "group.deleteWarning":
+      "Thao tác này sẽ xóa vĩnh viễn nhóm và toàn bộ tin nhắn với mọi thành viên. Không thể hoàn tác.",
     "group.deleteForAll": "Xóa với tất cả thành viên",
-    "group.deleteForAllDescription": "Xóa nhóm này với mọi người và xóa toàn bộ tin nhắn",
+    "group.deleteForAllDescription":
+      "Xóa nhóm này với mọi người và xóa toàn bộ tin nhắn",
     "group.leaveConfirm": "Bạn có chắc muốn rời nhóm này?",
-    "group.leaveWarning": "Bạn sẽ mất quyền truy cập tin nhắn và media. Không thể hoàn tác.",
+    "group.leaveWarning":
+      "Bạn sẽ mất quyền truy cập tin nhắn và media. Không thể hoàn tác.",
     "chat.editMessage": "Sửa tin nhắn",
     "chat.copy": "Sao chép",
     "chat.pin": "Ghim",
@@ -969,7 +990,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profile.phoneNumber": "Số điện thoại",
     "profile.bio": "Tiểu sử",
     "profile.bioPlaceholder": "Giới thiệu về bạn...",
-    "profile.unsavedConfirm": "Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?",
+    "profile.unsavedConfirm":
+      "Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?",
     "profile.avatarUpdated": "Cập nhật ảnh đại diện thành công!",
     "profile.updateFailed": "Không thể cập nhật hồ sơ",
     "profile.updated": "Cập nhật hồ sơ thành công!",
@@ -1004,7 +1026,8 @@ const getInitialLanguage = (): LanguageCode => {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [language, setLanguageState] = useState<LanguageCode>(getInitialLanguage);
+  const [language, setLanguageState] =
+    useState<LanguageCode>(getInitialLanguage);
 
   const setLanguage = useCallback((nextLanguage: LanguageCode) => {
     setLanguageState(nextLanguage);

@@ -1,12 +1,65 @@
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "../../hooks";
 import { User } from "../../types/user";
 
 interface LoginFormProps {
   onSuccess?: (user: User) => void;
+  onEmailUnverified?: (context: { email: string; phone: string }) => void;
 }
 
-export const LoginForm = ({ onSuccess }: LoginFormProps) => {
+const isEmailUnverifiedError = (error: any) => {
+  const message = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || error?.payload?.code || "").toLowerCase();
+
+  return (
+    (code.includes("email") && code.includes("verified")) ||
+    message.includes("email is not verified") ||
+    message.includes("email not verified") ||
+    message.includes("chưa được xác thực")
+  );
+};
+
+const extractEmailFromError = (error: any) => {
+  const payload = error?.payload || {};
+  const details = error?.details || payload?.details || {};
+  const seen = new Set<any>();
+
+  const findEmail = (value: any): string => {
+    if (!value || typeof value !== "object" || seen.has(value)) return "";
+    seen.add(value);
+
+    if (typeof value.email === "string") return value.email;
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const email = findEmail(item);
+        if (email) return email;
+      }
+      return "";
+    }
+
+    for (const nested of Object.values(value)) {
+      const email = findEmail(nested);
+      if (email) return email;
+    }
+
+    return "";
+  };
+
+  return (
+    details?.email ||
+    payload?.email ||
+    payload?.data?.email ||
+    payload?.user?.email ||
+    payload?.data?.user?.email ||
+    findEmail(payload) ||
+    findEmail(details) ||
+    ""
+  );
+};
+
+export const LoginForm = ({ onSuccess, onEmailUnverified }: LoginFormProps) => {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,9 +78,27 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
       }
 
       const userProfile = await login(phone, password);
+      toast.success(
+        userProfile?.verified?.email === false
+          ? "Vui lòng xác thực email để tiếp tục."
+          : "Đăng nhập thành công",
+      );
       onSuccess?.(userProfile);
     } catch (err: any) {
-      setError(err.message || "Đăng nhập thất bại");
+      if (isEmailUnverifiedError(err)) {
+        const message =
+          "Email chưa được xác thực. Vui lòng nhập OTP để tiếp tục.";
+        toast.warning(message);
+        onEmailUnverified?.({
+          email: extractEmailFromError(err),
+          phone: phone.trim(),
+        });
+        return;
+      }
+
+      const message = err.message || "Đăng nhập thất bại";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -37,7 +108,9 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     <div className="w-full max-w-md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Số điện thoại
+          </label>
           <input
             type="tel"
             value={phone}
@@ -49,7 +122,9 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Mật khẩu
+          </label>
           <input
             type="password"
             value={password}
@@ -61,7 +136,9 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
         )}
 
         <button
