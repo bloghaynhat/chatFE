@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { authService } from "../../services";
 
 const getErrorMessage = (error) => {
@@ -15,6 +16,13 @@ const getErrorMessage = (error) => {
 };
 
 const buildIdentifierPayload = (value) => ({ email: value.trim() });
+const OTP_TTL_SECONDS = 300;
+
+const formatCountdown = (seconds) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
 
 export const ForgotPasswordForm = ({ onSuccess }) => {
   const navigate = useNavigate();
@@ -24,14 +32,37 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [step, setStep] = useState("request");
+  const [expiresIn, setExpiresIn] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+
+  const showError = (message) => {
+    toast.error(message);
+    return false;
+  };
+
+  useEffect(() => {
+    if (step !== "verify" || expiresIn <= 0) return undefined;
+
+    const timerId = window.setInterval(() => {
+      setExpiresIn((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [step, expiresIn]);
+
+  useEffect(() => {
+    if (step !== "verify" || expiresIn !== 0) return;
+    toast.error("OTP đã hết hạn. Vui lòng gửi lại mã mới.");
+  }, [step, expiresIn]);
 
   const validateIdentifier = () => {
-    if (!identifier.trim()) {
-      setError("Vui lòng nhập email.");
-      return false;
+    const normalizedIdentifier = identifier.trim();
+    if (!normalizedIdentifier) {
+      return showError("Vui lòng nhập email.");
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) {
+      return showError("Email không hợp lệ.");
     }
 
     return true;
@@ -39,8 +70,15 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
   const validateVerifyStep = () => {
     if (!otp.trim()) {
-      setError("Vui lòng nhập mã OTP.");
-      return false;
+      return showError("Vui lòng nhập mã OTP.");
+    }
+
+    if (!/^\d{6}$/.test(otp.trim())) {
+      return showError("OTP phải gồm đúng 6 chữ số.");
+    }
+
+    if (step === "verify" && expiresIn === 0) {
+      return showError("OTP đã hết hạn. Vui lòng gửi lại mã mới.");
     }
 
     return true;
@@ -48,18 +86,15 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
   const validateResetStep = () => {
     if (!newPassword.trim()) {
-      setError("Vui lòng nhập mật khẩu mới.");
-      return false;
+      return showError("Vui lòng nhập mật khẩu mới.");
     }
 
     if (newPassword.length < 6) {
-      setError("Mật khẩu mới phải có ít nhất 6 ký tự.");
-      return false;
+      return showError("Mật khẩu mới phải có ít nhất 6 ký tự.");
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
-      return false;
+      return showError("Mật khẩu xác nhận không khớp.");
     }
 
     return true;
@@ -69,17 +104,18 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
     if (!validateIdentifier()) return;
 
     setLoading(true);
-    setError("");
-    setSuccessMessage("");
     try {
       const payload = buildIdentifierPayload(identifier);
-      await authService.forgotPassword(payload);
+      const response = await authService.forgotPassword(payload);
 
       const message = "Mã OTP đã được gửi. Vui lòng kiểm tra email/SMS để tiếp tục.";
-      setSuccessMessage(message);
+      toast.success(message);
+      setOtp("");
+      setResetToken("");
+      setExpiresIn(response?.expiresIn || OTP_TTL_SECONDS);
       setStep("verify");
     } catch (requestError) {
-      setError(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError));
     } finally {
       setLoading(false);
     }
@@ -89,8 +125,6 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
     if (!validateIdentifier() || !validateVerifyStep()) return;
 
     setLoading(true);
-    setError("");
-    setSuccessMessage("");
     try {
       const payload = {
         ...buildIdentifierPayload(identifier),
@@ -106,10 +140,11 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
         throw new Error("Không nhận được tempToken từ bước xác thực OTP.");
       }
 
-      setSuccessMessage("OTP hợp lệ. Hãy nhập mật khẩu mới.");
+      toast.success("OTP hợp lệ. Hãy nhập mật khẩu mới.");
+      setExpiresIn(0);
       setStep("reset");
     } catch (requestError) {
-      setError(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError));
     } finally {
       setLoading(false);
     }
@@ -119,13 +154,15 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
     if (!validateIdentifier()) return;
 
     setLoading(true);
-    setError("");
     try {
       const payload = buildIdentifierPayload(identifier);
-      await authService.resendResetOtp(payload);
-      setSuccessMessage("Đã gửi lại OTP. Vui lòng kiểm tra lại email/SMS.");
+      const response = await authService.resendResetOtp(payload);
+      setOtp("");
+      setResetToken("");
+      setExpiresIn(response?.expiresIn || OTP_TTL_SECONDS);
+      toast.success("Đã gửi lại OTP. Vui lòng kiểm tra lại email/SMS.");
     } catch (requestError) {
-      setError(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError));
     } finally {
       setLoading(false);
     }
@@ -135,8 +172,6 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
     if (!validateIdentifier() || !validateVerifyStep() || !validateResetStep()) return;
 
     setLoading(true);
-    setError("");
-    setSuccessMessage("");
     try {
       if (!resetToken) {
         throw new Error("Thiếu tempToken. Vui lòng xác thực OTP lại.");
@@ -148,13 +183,15 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
       };
 
       await authService.resetPassword(payload);
+      await authService.clearLocalSession();
 
       const message = "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập lại.";
-      setSuccessMessage(message);
+      toast.success(message);
       onSuccess?.(message);
+      setExpiresIn(0);
       setStep("done");
     } catch (requestError) {
-      setError(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError));
     } finally {
       setLoading(false);
     }
@@ -162,7 +199,6 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
 
     if (step === "request") {
       await handleRequestOtp();
@@ -201,11 +237,17 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
           <input
             type="text"
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
             placeholder="Nhập mã OTP"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading || isDone}
+            disabled={loading || isDone || step === "reset"}
           />
+          {step === "verify" && expiresIn > 0 && (
+            <p className="mt-1 text-xs text-gray-500">Mã hết hạn sau {formatCountdown(expiresIn)}.</p>
+          )}
         </div>
       )}
 
@@ -235,16 +277,6 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
             />
           </div>
         </>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          {successMessage}
-        </div>
       )}
 
       {!isDone && (

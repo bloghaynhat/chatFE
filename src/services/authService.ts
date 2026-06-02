@@ -56,6 +56,12 @@ const clearClientSession = async () => {
   }
 };
 
+const clearStoredAuthSession = async () => {
+  await authStorage.removeItem("token");
+  await authStorage.removeItem("refreshToken");
+  await authStorage.removeItem("user");
+};
+
 export const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register", userData, {
@@ -212,6 +218,10 @@ export const authService = {
       skipAuth: true,
     });
     return unwrapData(response);
+  },
+
+  async clearLocalSession() {
+    await clearStoredAuthSession();
   },
 
   async updatePassword(payload) {
