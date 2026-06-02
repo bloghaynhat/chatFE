@@ -303,6 +303,17 @@ export const MessageItem = ({
       messageStatus === "recalled" ||
       messageStatus === "deleted_for_everyone",
   );
+  const isEditedMessage = Boolean(
+    message.isEdited ||
+      message.edited ||
+      message.isEditted ||
+      message.editted ||
+      message.editedAt ||
+      message.edittedAt ||
+      message.editHistory?.length ||
+      messageStatus === "edited" ||
+      messageStatus === "editted",
+  );
 
   if (isRevokedMessage) {
     return (
@@ -560,7 +571,7 @@ export const MessageItem = ({
                 strokeWidth={2.5}
               />
             )}
-            {message.isEdited && (
+            {isEditedMessage && (
               <span
                 className={`italic font-semibold ${(isJumboEmoji || onlyImagesOrVideos) && (!message.reactions || message.reactions.length === 0) ? "text-[10px]" : "opacity-75 text-[10px]"}`}
               >

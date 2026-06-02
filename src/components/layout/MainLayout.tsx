@@ -59,6 +59,16 @@ const getMessageTimeValue = (message: any) => {
   return Number.isFinite(time) ? time : 0;
 };
 
+const getMessagePreviewValue = (message: any) => {
+  const value =
+    message?.text ||
+    message?.content ||
+    message?.textPreview ||
+    (typeof message?.message === "string" ? message.message : "");
+
+  return String(value || "").trim();
+};
+
 const getChatActivityTimeValue = (chat: any) => {
   const value =
     chat?.lastMessageAt ||
@@ -113,16 +123,51 @@ const isMessageRevoked = (message: any) => {
   );
 };
 
+const isMessageEdited = (message: any) => {
+  const status = String(
+    message?.status ||
+      message?.messageStatus ||
+      message?.state ||
+      "",
+  ).toLowerCase();
+
+  return Boolean(
+    message?.isEdited ||
+      message?.edited ||
+      message?.isEditted ||
+      message?.editted ||
+      message?.editedAt ||
+      message?.edittedAt ||
+      message?.editHistory?.length ||
+      status === "edited" ||
+      status === "editted",
+  );
+};
+
 const normalizeMessageLifecycle = (message: any) => {
-  if (!message || !isMessageRevoked(message)) return message;
+  if (!message) return message;
+
+  const editedMessage = isMessageEdited(message)
+    ? {
+        ...message,
+        isEdited: true,
+        editedAt:
+          message.editedAt ||
+          message.edittedAt ||
+          message.updatedAt ||
+          new Date().toISOString(),
+      }
+    : message;
+
+  if (!isMessageRevoked(editedMessage)) return editedMessage;
 
   return {
-    ...message,
+    ...editedMessage,
     isRevoked: true,
     deletedAt:
-      message.deletedAt ||
-      message.revokedAt ||
-      message.recalledAt ||
+      editedMessage.deletedAt ||
+      editedMessage.revokedAt ||
+      editedMessage.recalledAt ||
       new Date().toISOString(),
   };
 };
@@ -289,6 +334,51 @@ const MainLayout = ({ children }: { children?: any }) => {
             ...payload?.message,
             isRevoked: true,
             deletedAt: revokedAt,
+          });
+        });
+
+        if (found) {
+          touched = true;
+          conversationMessageCacheRef.current.set(conversationId, {
+            ...entry,
+            messages: nextMessages,
+            cachedAt: Date.now(),
+          });
+        }
+      });
+
+      return touched;
+    },
+    [],
+  );
+
+  const markCachedMessageEdited = useCallback(
+    (messageId: string, editedMessage: any = {}) => {
+      if (!messageId) return false;
+
+      let touched = false;
+      const newText =
+        editedMessage?.text ||
+        editedMessage?.content ||
+        editedMessage?.message ||
+        editedMessage?.textPreview;
+
+      conversationMessageCacheRef.current.forEach((entry, conversationId) => {
+        let found = false;
+        const nextMessages = (entry.messages || []).map((message) => {
+          if (String(getMessageId(message)) !== String(messageId)) {
+            return normalizeMessageLifecycle(message);
+          }
+
+          found = true;
+          return normalizeMessageLifecycle({
+            ...message,
+            ...editedMessage,
+            isEdited: true,
+            text: newText ?? message.text,
+            content: newText ?? message.content,
+            textPreview: newText ?? message.textPreview,
+            updatedAt: editedMessage?.updatedAt || new Date().toISOString(),
           });
         });
 
@@ -633,21 +723,40 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         socketService.onMessageEdited((payload) => {
           const editedMsg = payload?.message || payload;
-          if (!editedMsg || (!editedMsg._id && !editedMsg.id)) return;
+          if (!editedMsg || (!editedMsg._id && !editedMsg.id && !editedMsg.messageId)) return;
+          const editedMessageId = getMessageId(editedMsg);
+          const newText =
+            editedMsg.text ||
+            editedMsg.content ||
+            editedMsg.message ||
+            editedMsg.textPreview;
+          const touchedCache = markCachedMessageEdited(String(editedMessageId), editedMsg);
+          const editedConversationId = getMessageConversationId(editedMsg, payload);
+          if (editedConversationId && !touchedCache) {
+            conversationMessageCacheRef.current.delete(String(editedConversationId));
+          }
 
           setMessages((prev) =>
             prev.map((m) => {
-              if (String(m._id || m.id) === String(editedMsg._id || editedMsg.id)) {
-                const newText = editedMsg.text || editedMsg.content || editedMsg.message || m.text;
-                return {
+              if (String(getMessageId(m)) === String(editedMessageId)) {
+                return normalizeMessageLifecycle({
                   ...m,
                   ...editedMsg,
                   isEdited: true,
-                  text: newText,
-                  content: newText,
-                };
+                  text: newText ?? m.text,
+                  content: newText ?? m.content,
+                  textPreview: newText ?? m.textPreview,
+                });
               }
               return m;
+            }),
+          );
+          window.dispatchEvent(
+            new CustomEvent("chatList:messageEdited", {
+              detail: {
+                message: editedMsg,
+                conversationId: editedConversationId,
+              },
             }),
           );
         });
@@ -1194,6 +1303,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     getPayloadConversationId,
     upsertMessageFromPayload,
     markCachedMessageRevoked,
+    markCachedMessageEdited,
     shouldSkipDuplicateMemberRemoval,
   ]);
 
@@ -1418,6 +1528,8 @@ const MainLayout = ({ children }: { children?: any }) => {
           const incomingLastMessageId = getMessageId(incomingLastMessage);
           const cachedLastMessageTime = getMessageTimeValue(cachedLastMessage);
           const incomingLastMessageTime = getChatActivityTimeValue(processedChat);
+          const cachedLastMessagePreview = getMessagePreviewValue(cachedLastMessage);
+          const incomingLastMessagePreview = getMessagePreviewValue(incomingLastMessage);
           const cacheIsStale =
             (Boolean(incomingLastMessageId) &&
               (!cachedLastMessageId ||
@@ -1426,6 +1538,10 @@ const MainLayout = ({ children }: { children?: any }) => {
               String(incomingLastMessageId) === String(cachedLastMessageId) &&
               isMessageRevoked(incomingLastMessage) &&
               !isMessageRevoked(cachedLastMessage)) ||
+            (Boolean(incomingLastMessageId) &&
+              String(incomingLastMessageId) === String(cachedLastMessageId) &&
+              Boolean(incomingLastMessagePreview) &&
+              incomingLastMessagePreview !== cachedLastMessagePreview) ||
             (Boolean(incomingLastMessageTime && cachedLastMessageTime) &&
               incomingLastMessageTime > cachedLastMessageTime + 1000) ||
             Boolean(incomingLastMessageTime && !cachedLastMessageTime);
@@ -1845,13 +1961,36 @@ const MainLayout = ({ children }: { children?: any }) => {
                     ...msg,
                     text: payloadOrText.text,
                     content: payloadOrText.text,
+                    textPreview: payloadOrText.text,
                     isEdited: true,
                   }
                 : msg,
             ),
           );
+          markCachedMessageEdited(String(payloadOrText.id), {
+            id: payloadOrText.id,
+            text: payloadOrText.text,
+            content: payloadOrText.text,
+            textPreview: payloadOrText.text,
+            updatedAt: new Date().toISOString(),
+          });
 
           await socketService.editMessage(payloadOrText.id, payloadOrText.text);
+          window.dispatchEvent(
+            new CustomEvent("chatList:messageEdited", {
+              detail: {
+                conversationId,
+                message: {
+                  id: payloadOrText.id,
+                  messageId: payloadOrText.id,
+                  text: payloadOrText.text,
+                  content: payloadOrText.text,
+                  textPreview: payloadOrText.text,
+                  updatedAt: new Date().toISOString(),
+                },
+              },
+            }),
+          );
         } catch (error: any) {
           console.error("Failed to edit message", error);
           let errorMessage = error?.message || "Chỉnh sửa tin nhắn thất bại";

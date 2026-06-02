@@ -1253,6 +1253,68 @@ export const ChatList = ({
     };
   }, [activeChatId, openingChatId, fetchChats, user?.id]);
 
+  useEffect(() => {
+    const handleMessageEdited = (payload: any) => {
+      const { message, conversationId } = extractSocketMessage(payload);
+      const editedMessageId = getChatMessageId(message);
+      if (!editedMessageId) return;
+
+      let msgConvId = conversationId;
+      if (msgConvId && typeof msgConvId === "object") {
+        msgConvId = msgConvId._id || msgConvId.id;
+      }
+
+      const newText =
+        message?.text ||
+        message?.content ||
+        message?.message ||
+        message?.textPreview;
+
+      setChats((prevChats) =>
+        prevChats.map((chat) => {
+          if (msgConvId && String(chat.id) !== String(msgConvId)) return chat;
+
+          const lastMessageId = getChatMessageId(chat.lastMessage);
+          if (String(lastMessageId) !== String(editedMessageId)) return chat;
+
+          const updatedLastMessage = {
+            ...chat.lastMessage,
+            ...message,
+            messageId: chat.lastMessage?.messageId || editedMessageId,
+            id: chat.lastMessage?.id || message?.id || message?._id,
+            text: newText ?? chat.lastMessage?.text,
+            content: newText ?? chat.lastMessage?.content,
+            textPreview: getChatMessagePreview({
+              ...chat.lastMessage,
+              ...message,
+              text: newText ?? chat.lastMessage?.text,
+              content: newText ?? chat.lastMessage?.content,
+              textPreview: newText ?? chat.lastMessage?.textPreview,
+            }),
+            isEdited: true,
+            updatedAt: message?.updatedAt || new Date().toISOString(),
+          };
+
+          return {
+            ...chat,
+            lastMessage: updatedLastMessage,
+          };
+        }),
+      );
+    };
+
+    const unsubscribe = socketService.onMessageEdited(handleMessageEdited);
+    const handleWindowMessageEdited = (event: Event) => {
+      handleMessageEdited((event as CustomEvent).detail || {});
+    };
+    window.addEventListener("chatList:messageEdited", handleWindowMessageEdited);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("chatList:messageEdited", handleWindowMessageEdited);
+    };
+  }, []);
+
   // Listen to seen/delivered events to update the status for the latest message
   // so the sender immediately sees the "eye" icon without refreshing
   useEffect(() => {
