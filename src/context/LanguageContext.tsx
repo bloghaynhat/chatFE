@@ -29,6 +29,70 @@ type TranslationKey =
   | "app.unknownLocation"
   | "app.user"
   | "app.you"
+  | "auth.hidePassword"
+  | "auth.showPassword"
+  | "auth.passwordStrength"
+  | "auth.passwordWeak"
+  | "auth.passwordMedium"
+  | "auth.passwordStrong"
+  | "auth.passwordRuleLength"
+  | "auth.passwordRuleUppercase"
+  | "auth.passwordRuleNumberSpecial"
+  | "auth.requiredAll"
+  | "login.success"
+  | "login.emailVerifyRequired"
+  | "login.emailUnverified"
+  | "login.failed"
+  | "login.loading"
+  | "login.submit"
+  | "register.success"
+  | "register.failed"
+  | "register.passwordMismatch"
+  | "register.passwordMinLength"
+  | "register.phoneInvalid"
+  | "register.emailInvalid"
+  | "register.mustAgreeTerms"
+  | "register.loading"
+  | "register.submit"
+  | "forgotPassword.requestFailed"
+  | "forgotPassword.emailRequired"
+  | "forgotPassword.emailInvalid"
+  | "forgotPassword.otpExpired"
+  | "forgotPassword.otpRequired"
+  | "forgotPassword.otpInvalid"
+  | "forgotPassword.newPasswordRequired"
+  | "forgotPassword.newPasswordMinLength"
+  | "forgotPassword.confirmMismatch"
+  | "forgotPassword.otpSent"
+  | "forgotPassword.missingTempTokenVerify"
+  | "forgotPassword.otpVerified"
+  | "forgotPassword.otpResent"
+  | "forgotPassword.missingTempTokenReset"
+  | "forgotPassword.resetSuccess"
+  | "forgotPassword.processing"
+  | "forgotPassword.sendOtp"
+  | "forgotPassword.verifyOtp"
+  | "forgotPassword.resetPassword"
+  | "forgotPassword.resendingOtp"
+  | "forgotPassword.resendOtp"
+  | "forgotPassword.loginNow"
+  | "forgotPassword.expiresIn"
+  | "emailVerification.resolveEmailNotFound"
+  | "emailVerification.resolveEmailFailed"
+  | "emailVerification.registerOtpSent"
+  | "emailVerification.accountOtpSent"
+  | "emailVerification.sendOtpFailed"
+  | "emailVerification.otpResent"
+  | "emailVerification.resendFailed"
+  | "emailVerification.required"
+  | "emailVerification.success"
+  | "emailVerification.failed"
+  | "emailVerification.resolvingEmail"
+  | "emailVerification.preparingOtp"
+  | "emailVerification.verifying"
+  | "emailVerification.verifyEmail"
+  | "emailVerification.resendOtp"
+  | "emailVerification.backToRegister"
   | "nav.savedMessages"
   | "nav.archivedChats"
   | "nav.contacts"
@@ -382,6 +446,70 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Unknown location",
     "app.user": "User",
     "app.you": "You",
+    "auth.hidePassword": "Hide password",
+    "auth.showPassword": "Show password",
+    "auth.passwordStrength": "Password strength",
+    "auth.passwordWeak": "Weak",
+    "auth.passwordMedium": "Medium",
+    "auth.passwordStrong": "Strong",
+    "auth.passwordRuleLength": "At least 8 characters",
+    "auth.passwordRuleUppercase": "Contains an uppercase letter",
+    "auth.passwordRuleNumberSpecial": "Contains a number or special character",
+    "auth.requiredAll": "Please fill in all required information.",
+    "login.success": "Login successful",
+    "login.emailVerifyRequired": "Please verify your email to continue.",
+    "login.emailUnverified": "Email is not verified. Please enter the OTP to continue.",
+    "login.failed": "Login failed",
+    "login.loading": "Logging in...",
+    "login.submit": "Log in",
+    "register.success": "Registration successful. Please check your email to enter the OTP.",
+    "register.failed": "Registration failed",
+    "register.passwordMismatch": "Confirmation password does not match.",
+    "register.passwordMinLength": "Password must be at least 6 characters.",
+    "register.phoneInvalid": "Phone number must have 10 digits and start with 0.",
+    "register.emailInvalid": "Please enter a valid email address.",
+    "register.mustAgreeTerms": "You need to agree to the policies and terms.",
+    "register.loading": "Registering...",
+    "register.submit": "Register",
+    "forgotPassword.requestFailed": "Request failed",
+    "forgotPassword.emailRequired": "Please enter your email.",
+    "forgotPassword.emailInvalid": "Email is invalid.",
+    "forgotPassword.otpExpired": "OTP has expired. Please request a new code.",
+    "forgotPassword.otpRequired": "Please enter the OTP.",
+    "forgotPassword.otpInvalid": "OTP must contain exactly 6 digits.",
+    "forgotPassword.newPasswordRequired": "Please enter a new password.",
+    "forgotPassword.newPasswordMinLength": "New password must be at least 6 characters.",
+    "forgotPassword.confirmMismatch": "Confirmation password does not match.",
+    "forgotPassword.otpSent": "OTP has been sent. Please check your email/SMS to continue.",
+    "forgotPassword.missingTempTokenVerify": "No tempToken was returned after OTP verification.",
+    "forgotPassword.otpVerified": "OTP is valid. Please enter your new password.",
+    "forgotPassword.otpResent": "OTP has been resent. Please check your email/SMS again.",
+    "forgotPassword.missingTempTokenReset": "Missing tempToken. Please verify the OTP again.",
+    "forgotPassword.resetSuccess": "Password reset successfully. You can log in again.",
+    "forgotPassword.processing": "Processing...",
+    "forgotPassword.sendOtp": "Send OTP",
+    "forgotPassword.verifyOtp": "Verify OTP",
+    "forgotPassword.resetPassword": "Reset password",
+    "forgotPassword.resendingOtp": "Resending...",
+    "forgotPassword.resendOtp": "Resend OTP",
+    "forgotPassword.loginNow": "Log in now",
+    "forgotPassword.expiresIn": "Code expires in {time}.",
+    "emailVerification.resolveEmailNotFound": "Could not find the email for this account. Please enter your email to receive the OTP.",
+    "emailVerification.resolveEmailFailed": "Could not get the account email. Please enter your email to receive the OTP.",
+    "emailVerification.registerOtpSent": "The OTP was sent during registration. Please check your email and enter the code to verify.",
+    "emailVerification.accountOtpSent": "Your account is not verified. An OTP has been sent to your email.",
+    "emailVerification.sendOtpFailed": "Could not send OTP. Please press resend.",
+    "emailVerification.otpResent": "A new OTP has been sent to your email. Please use the latest code.",
+    "emailVerification.resendFailed": "Resending OTP failed.",
+    "emailVerification.required": "Please enter both email and OTP.",
+    "emailVerification.success": "Email verified successfully",
+    "emailVerification.failed": "OTP verification failed",
+    "emailVerification.resolvingEmail": "Getting account email...",
+    "emailVerification.preparingOtp": "Preparing OTP...",
+    "emailVerification.verifying": "Verifying...",
+    "emailVerification.verifyEmail": "Verify email",
+    "emailVerification.resendOtp": "Resend OTP code",
+    "emailVerification.backToRegister": "Back to registration",
     "nav.savedMessages": "Saved Messages",
     "nav.archivedChats": "Archived Chats",
     "nav.contacts": "Contacts",
@@ -737,6 +865,70 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Vị trí không xác định",
     "app.user": "Người dùng",
     "app.you": "Bạn",
+    "auth.hidePassword": "Ẩn mật khẩu",
+    "auth.showPassword": "Hiện mật khẩu",
+    "auth.passwordStrength": "Độ mạnh mật khẩu",
+    "auth.passwordWeak": "Yếu",
+    "auth.passwordMedium": "Trung bình",
+    "auth.passwordStrong": "Mạnh",
+    "auth.passwordRuleLength": "Ít nhất 8 ký tự",
+    "auth.passwordRuleUppercase": "Có chữ in hoa",
+    "auth.passwordRuleNumberSpecial": "Có số hoặc ký tự đặc biệt",
+    "auth.requiredAll": "Vui lòng nhập đầy đủ thông tin.",
+    "login.success": "Đăng nhập thành công",
+    "login.emailVerifyRequired": "Vui lòng xác thực email để tiếp tục.",
+    "login.emailUnverified": "Email chưa được xác thực. Vui lòng nhập OTP để tiếp tục.",
+    "login.failed": "Đăng nhập thất bại",
+    "login.loading": "Đang đăng nhập...",
+    "login.submit": "Đăng nhập",
+    "register.success": "Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.",
+    "register.failed": "Đăng ký thất bại",
+    "register.passwordMismatch": "Mật khẩu xác nhận không khớp.",
+    "register.passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự.",
+    "register.phoneInvalid": "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.",
+    "register.emailInvalid": "Vui lòng nhập email hợp lệ.",
+    "register.mustAgreeTerms": "Bạn cần đồng ý với chính sách và điều khoản.",
+    "register.loading": "Đang đăng ký...",
+    "register.submit": "Đăng ký",
+    "forgotPassword.requestFailed": "Yêu cầu thất bại",
+    "forgotPassword.emailRequired": "Vui lòng nhập email.",
+    "forgotPassword.emailInvalid": "Email không hợp lệ.",
+    "forgotPassword.otpExpired": "OTP đã hết hạn. Vui lòng gửi lại mã mới.",
+    "forgotPassword.otpRequired": "Vui lòng nhập mã OTP.",
+    "forgotPassword.otpInvalid": "OTP phải gồm đúng 6 chữ số.",
+    "forgotPassword.newPasswordRequired": "Vui lòng nhập mật khẩu mới.",
+    "forgotPassword.newPasswordMinLength": "Mật khẩu mới phải có ít nhất 6 ký tự.",
+    "forgotPassword.confirmMismatch": "Mật khẩu xác nhận không khớp.",
+    "forgotPassword.otpSent": "Mã OTP đã được gửi. Vui lòng kiểm tra email/SMS để tiếp tục.",
+    "forgotPassword.missingTempTokenVerify": "Không nhận được tempToken từ bước xác thực OTP.",
+    "forgotPassword.otpVerified": "OTP hợp lệ. Hãy nhập mật khẩu mới.",
+    "forgotPassword.otpResent": "Đã gửi lại OTP. Vui lòng kiểm tra lại email/SMS.",
+    "forgotPassword.missingTempTokenReset": "Thiếu tempToken. Vui lòng xác thực OTP lại.",
+    "forgotPassword.resetSuccess": "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập lại.",
+    "forgotPassword.processing": "Đang xử lý...",
+    "forgotPassword.sendOtp": "Gửi OTP",
+    "forgotPassword.verifyOtp": "Xác thực OTP",
+    "forgotPassword.resetPassword": "Đặt lại mật khẩu",
+    "forgotPassword.resendingOtp": "Đang gửi lại...",
+    "forgotPassword.resendOtp": "Gửi lại OTP",
+    "forgotPassword.loginNow": "Đăng nhập ngay",
+    "forgotPassword.expiresIn": "Mã hết hạn sau {time}.",
+    "emailVerification.resolveEmailNotFound": "Không tìm thấy email của tài khoản này. Vui lòng nhập email để nhận OTP.",
+    "emailVerification.resolveEmailFailed": "Không thể lấy email tài khoản. Vui lòng nhập email để nhận OTP.",
+    "emailVerification.registerOtpSent": "Mã OTP đã được gửi từ bước đăng ký. Vui lòng kiểm tra email và nhập mã để xác thực.",
+    "emailVerification.accountOtpSent": "Tài khoản chưa được xác thực. Mã OTP đã được gửi đến email của bạn.",
+    "emailVerification.sendOtpFailed": "Không thể gửi OTP. Vui lòng nhấn gửi lại.",
+    "emailVerification.otpResent": "Mã OTP mới đã được gửi đến email của bạn. Vui lòng dùng mã mới nhất.",
+    "emailVerification.resendFailed": "Gửi lại OTP thất bại.",
+    "emailVerification.required": "Vui lòng nhập đầy đủ email và OTP.",
+    "emailVerification.success": "Xác thực email thành công",
+    "emailVerification.failed": "Xác thực OTP thất bại",
+    "emailVerification.resolvingEmail": "Đang lấy email tài khoản...",
+    "emailVerification.preparingOtp": "Đang chuẩn bị OTP...",
+    "emailVerification.verifying": "Đang xác thực...",
+    "emailVerification.verifyEmail": "Xác thực email",
+    "emailVerification.resendOtp": "Gửi lại mã OTP",
+    "emailVerification.backToRegister": "Quay lại đăng ký",
     "nav.savedMessages": "Tin nhắn đã lưu",
     "nav.archivedChats": "Đoạn chat lưu trữ",
     "nav.contacts": "Danh bạ",

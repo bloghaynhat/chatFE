@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useAuth } from "../../hooks";
+import { useLanguage } from "../../context";
 import { User } from "../../types/user";
 
 interface LoginFormProps {
@@ -67,6 +68,7 @@ export const LoginForm = ({ onSuccess, onEmailUnverified }: LoginFormProps) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,21 +77,20 @@ export const LoginForm = ({ onSuccess, onEmailUnverified }: LoginFormProps) => {
 
     try {
       if (!phone || !password) {
-        setError("Vui lòng nhập đầy đủ thông tin");
+        setError(t("auth.requiredAll"));
         return;
       }
 
       const userProfile = await login(phone, password);
       toast.success(
         userProfile?.verified?.email === false
-          ? "Vui lòng xác thực email để tiếp tục."
-          : "Đăng nhập thành công",
+          ? t("login.emailVerifyRequired")
+          : t("login.success"),
       );
       onSuccess?.(userProfile);
     } catch (err: any) {
       if (isEmailUnverifiedError(err)) {
-        const message =
-          "Email chưa được xác thực. Vui lòng nhập OTP để tiếp tục.";
+        const message = t("login.emailUnverified");
         toast.warning(message);
         onEmailUnverified?.({
           email: extractEmailFromError(err),
@@ -98,7 +99,7 @@ export const LoginForm = ({ onSuccess, onEmailUnverified }: LoginFormProps) => {
         return;
       }
 
-      const message = err.message || "Đăng nhập thất bại";
+      const message = err.message || t("login.failed");
       setError(message);
       toast.error(message);
     } finally {
@@ -142,7 +143,7 @@ export const LoginForm = ({ onSuccess, onEmailUnverified }: LoginFormProps) => {
               onClick={() => setShowPassword((visible) => !visible)}
               disabled={loading}
               className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-              title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <FiEyeOff /> : <FiEye />}
             </button>
@@ -160,7 +161,7 @@ export const LoginForm = ({ onSuccess, onEmailUnverified }: LoginFormProps) => {
           disabled={loading}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition"
         >
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {loading ? t("login.loading") : t("login.submit")}
         </button>
       </form>
     </div>

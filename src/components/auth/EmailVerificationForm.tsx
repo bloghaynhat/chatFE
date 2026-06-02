@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../../hooks";
+import { useLanguage } from "../../context";
 import { authService } from "../../services/authService";
 
 const resolveFieldErrors = (error) => {
@@ -54,6 +55,7 @@ export const EmailVerificationForm = ({
 }: any) => {
   const navigate = useNavigate();
   const { verifyEmail, sendVerification, resendVerification } = useAuth();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState("");
@@ -79,12 +81,12 @@ export const EmailVerificationForm = ({
           return;
         }
 
-        const message = "Không tìm thấy email của tài khoản này. Vui lòng nhập email để nhận OTP.";
+        const message = t("emailVerification.resolveEmailNotFound");
         setError(message);
         toast.error(message);
       } catch (err) {
         if (!isActive) return;
-        const message = err?.message || "Không thể lấy email tài khoản. Vui lòng nhập email để nhận OTP.";
+        const message = err?.message || t("emailVerification.resolveEmailFailed");
         setError(message);
         toast.error(message);
       } finally {
@@ -97,14 +99,14 @@ export const EmailVerificationForm = ({
     return () => {
       isActive = false;
     };
-  }, [fromLogin, email, initialPhone]);
+  }, [fromLogin, email, initialPhone, t]);
 
   useEffect(() => {
     if (!fromRegister && !fromLogin) return;
     if (autoSentRef.current) return;
 
     if (fromRegister) {
-      const message = "Mã OTP đã được gửi từ bước đăng ký. Vui lòng kiểm tra email và nhập mã để xác thực.";
+      const message = t("emailVerification.registerOtpSent");
       setSuccessMessage(message);
       autoSentRef.current = true;
     } else if (fromLogin && email) {
@@ -122,19 +124,19 @@ export const EmailVerificationForm = ({
         try {
           await sendVerification({ email: normalizedEmail });
           setOtp("");
-          const message = "Tài khoản chưa được xác thực. Mã OTP đã được gửi đến email của bạn.";
+          const message = t("emailVerification.accountOtpSent");
           setSuccessMessage(message);
           toast.info(message);
         } catch (err) {
           clearAutoSentVerification(normalizedEmail);
-          const message = err?.message || "Không thể gửi OTP. Vui lòng nhấn gửi lại.";
+          const message = err?.message || t("emailVerification.sendOtpFailed");
           setError(message);
           toast.error(message);
         }
       };
       autoSendOtp();
     }
-  }, [fromRegister, fromLogin, email, sendVerification]);
+  }, [fromRegister, fromLogin, email, sendVerification, t]);
 
   const handleManualResend = async () => {
     if (!email.trim() || loading) return;
@@ -147,11 +149,11 @@ export const EmailVerificationForm = ({
     try {
       await resendVerification({ email: email.trim() });
       setOtp("");
-      const message = "Mã OTP mới đã được gửi đến email của bạn. Vui lòng dùng mã mới nhất.";
+      const message = t("emailVerification.otpResent");
       setSuccessMessage(message);
       toast.success(message);
     } catch (err) {
-      const message = err?.message || "Gửi lại OTP thất bại.";
+      const message = err?.message || t("emailVerification.resendFailed");
       setError(message);
       toast.error(message);
     } finally {
@@ -166,7 +168,7 @@ export const EmailVerificationForm = ({
     setFieldErrors({});
 
     if (!email.trim() || !otp.trim()) {
-      const message = "Vui lòng nhập đầy đủ email và OTP.";
+      const message = t("emailVerification.required");
       setError(message);
       toast.error(message);
       return;
@@ -179,7 +181,7 @@ export const EmailVerificationForm = ({
         code: otp.trim(),
       });
 
-      const message = "Xác thực email thành công";
+      const message = t("emailVerification.success");
       setSuccessMessage(message);
       toast.success(message);
       setTimeout(() => {
@@ -193,7 +195,7 @@ export const EmailVerificationForm = ({
       if (Object.keys(detailErrors).length > 0) {
         setFieldErrors(detailErrors);
       }
-      const message = err?.message || "Xác thực OTP thất bại";
+      const message = err?.message || t("emailVerification.failed");
       setError(message);
       toast.error(message);
     } finally {
@@ -221,7 +223,7 @@ export const EmailVerificationForm = ({
           disabled={loading || resolvingEmail}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {resolvingEmail && <p className="mt-1 text-xs text-gray-500">Đang lấy email tài khoản...</p>}
+        {resolvingEmail && <p className="mt-1 text-xs text-gray-500">{t("emailVerification.resolvingEmail")}</p>}
         {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
       </div>
 
@@ -255,7 +257,11 @@ export const EmailVerificationForm = ({
         disabled={loading || resolvingEmail}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2.5 px-4 rounded-lg transition"
       >
-        {resolvingEmail ? "Đang chuẩn bị OTP..." : loading ? "Đang xác thực..." : "Xác thực email"}
+        {resolvingEmail
+          ? t("emailVerification.preparingOtp")
+          : loading
+            ? t("emailVerification.verifying")
+            : t("emailVerification.verifyEmail")}
       </button>
 
       <button
@@ -264,7 +270,7 @@ export const EmailVerificationForm = ({
         onClick={handleManualResend}
         className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium py-2.5 px-4 rounded-lg transition"
       >
-        Gửi lại mã OTP
+        {t("emailVerification.resendOtp")}
       </button>
 
       <button
@@ -272,7 +278,7 @@ export const EmailVerificationForm = ({
         onClick={() => navigate("/register")}
         className="w-full border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium py-2.5 px-4 rounded-lg transition"
       >
-        Quay lại đăng ký
+        {t("emailVerification.backToRegister")}
       </button>
     </form>
   );

@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { useLanguage } from "../../context";
 import { authService } from "../../services";
 
-const getErrorMessage = (error) => {
-  if (!error) return "Yêu cầu thất bại";
+const getErrorMessage = (error, fallback) => {
+  if (!error) return fallback;
   if (error.details && typeof error.details === "object" && !Array.isArray(error.details)) {
     const firstDetail = Object.values(error.details)[0];
     if (typeof firstDetail === "string") return firstDetail;
@@ -13,7 +14,7 @@ const getErrorMessage = (error) => {
   if (error.message) return error.message;
   if (error.msg) return error.msg;
   if (error.response?.data?.msg) return error.response.data.msg;
-  return "Yêu cầu thất bại";
+  return fallback;
 };
 
 const buildIdentifierPayload = (value) => ({ email: value.trim() });
@@ -27,6 +28,7 @@ const formatCountdown = (seconds) => {
 
 export const ForgotPasswordForm = ({ onSuccess }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -55,17 +57,17 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
   useEffect(() => {
     if (step !== "verify" || expiresIn !== 0) return;
-    toast.error("OTP đã hết hạn. Vui lòng gửi lại mã mới.");
-  }, [step, expiresIn]);
+    toast.error(t("forgotPassword.otpExpired"));
+  }, [step, expiresIn, t]);
 
   const validateIdentifier = () => {
     const normalizedIdentifier = identifier.trim();
     if (!normalizedIdentifier) {
-      return showError("Vui lòng nhập email.");
+      return showError(t("forgotPassword.emailRequired"));
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedIdentifier)) {
-      return showError("Email không hợp lệ.");
+      return showError(t("forgotPassword.emailInvalid"));
     }
 
     return true;
@@ -73,15 +75,15 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
   const validateVerifyStep = () => {
     if (!otp.trim()) {
-      return showError("Vui lòng nhập mã OTP.");
+      return showError(t("forgotPassword.otpRequired"));
     }
 
     if (!/^\d{6}$/.test(otp.trim())) {
-      return showError("OTP phải gồm đúng 6 chữ số.");
+      return showError(t("forgotPassword.otpInvalid"));
     }
 
     if (step === "verify" && expiresIn === 0) {
-      return showError("OTP đã hết hạn. Vui lòng gửi lại mã mới.");
+      return showError(t("forgotPassword.otpExpired"));
     }
 
     return true;
@@ -89,15 +91,15 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
 
   const validateResetStep = () => {
     if (!newPassword.trim()) {
-      return showError("Vui lòng nhập mật khẩu mới.");
+      return showError(t("forgotPassword.newPasswordRequired"));
     }
 
     if (newPassword.length < 6) {
-      return showError("Mật khẩu mới phải có ít nhất 6 ký tự.");
+      return showError(t("forgotPassword.newPasswordMinLength"));
     }
 
     if (newPassword !== confirmPassword) {
-      return showError("Mật khẩu xác nhận không khớp.");
+      return showError(t("forgotPassword.confirmMismatch"));
     }
 
     return true;
@@ -111,14 +113,14 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
       const payload = buildIdentifierPayload(identifier);
       const response = await authService.forgotPassword(payload);
 
-      const message = "Mã OTP đã được gửi. Vui lòng kiểm tra email/SMS để tiếp tục.";
+      const message = t("forgotPassword.otpSent");
       toast.success(message);
       setOtp("");
       setResetToken("");
       setExpiresIn(response?.expiresIn || OTP_TTL_SECONDS);
       setStep("verify");
     } catch (requestError) {
-      toast.error(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError, t("forgotPassword.requestFailed")));
     } finally {
       setLoading(false);
     }
@@ -140,14 +142,14 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
       if (tokenFromVerify) {
         setResetToken(tokenFromVerify);
       } else {
-        throw new Error("Không nhận được tempToken từ bước xác thực OTP.");
+        throw new Error(t("forgotPassword.missingTempTokenVerify"));
       }
 
-      toast.success("OTP hợp lệ. Hãy nhập mật khẩu mới.");
+      toast.success(t("forgotPassword.otpVerified"));
       setExpiresIn(0);
       setStep("reset");
     } catch (requestError) {
-      toast.error(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError, t("forgotPassword.requestFailed")));
     } finally {
       setLoading(false);
     }
@@ -163,9 +165,9 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
       setOtp("");
       setResetToken("");
       setExpiresIn(response?.expiresIn || OTP_TTL_SECONDS);
-      toast.success("Đã gửi lại OTP. Vui lòng kiểm tra lại email/SMS.");
+      toast.success(t("forgotPassword.otpResent"));
     } catch (requestError) {
-      toast.error(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError, t("forgotPassword.requestFailed")));
     } finally {
       setLoading(false);
     }
@@ -177,7 +179,7 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
     setLoading(true);
     try {
       if (!resetToken) {
-        throw new Error("Thiếu tempToken. Vui lòng xác thực OTP lại.");
+        throw new Error(t("forgotPassword.missingTempTokenReset"));
       }
 
       const payload = {
@@ -188,13 +190,13 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
       await authService.resetPassword(payload);
       await authService.clearLocalSession();
 
-      const message = "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập lại.";
+      const message = t("forgotPassword.resetSuccess");
       toast.success(message);
       onSuccess?.(message);
       setExpiresIn(0);
       setStep("done");
     } catch (requestError) {
-      toast.error(getErrorMessage(requestError));
+      toast.error(getErrorMessage(requestError, t("forgotPassword.requestFailed")));
     } finally {
       setLoading(false);
     }
@@ -249,7 +251,9 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
             disabled={loading || isDone || step === "reset"}
           />
           {step === "verify" && expiresIn > 0 && (
-            <p className="mt-1 text-xs text-gray-500">Mã hết hạn sau {formatCountdown(expiresIn)}.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {t("forgotPassword.expiresIn").replace("{time}", formatCountdown(expiresIn))}
+            </p>
           )}
         </div>
       )}
@@ -273,7 +277,7 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
                 onClick={() => setShowNewPassword((visible) => !visible)}
                 disabled={loading || isDone}
                 className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-                title={showNewPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                title={showNewPassword ? t("auth.hidePassword") : t("auth.showPassword")}
               >
                 {showNewPassword ? <FiEyeOff /> : <FiEye />}
               </button>
@@ -297,7 +301,7 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
                 onClick={() => setShowConfirmPassword((visible) => !visible)}
                 disabled={loading || isDone}
                 className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-                title={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                title={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")}
               >
                 {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
               </button>
@@ -313,12 +317,12 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2.5 px-4 rounded-lg transition"
         >
           {loading
-            ? "Đang xử lý..."
+            ? t("forgotPassword.processing")
             : step === "request"
-              ? "Gửi OTP"
+              ? t("forgotPassword.sendOtp")
               : step === "verify"
-                ? "Xác thực OTP"
-                : "Đặt lại mật khẩu"}
+                ? t("forgotPassword.verifyOtp")
+                : t("forgotPassword.resetPassword")}
         </button>
       )}
 
@@ -329,7 +333,7 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
           disabled={loading}
           className="w-full border border-blue-200 text-blue-600 hover:bg-blue-50 disabled:text-gray-400 disabled:border-gray-200 font-medium py-2.5 px-4 rounded-lg transition"
         >
-          {loading ? "Đang gửi lại..." : "Gửi lại OTP"}
+          {loading ? t("forgotPassword.resendingOtp") : t("forgotPassword.resendOtp")}
         </button>
       )}
 
@@ -339,7 +343,7 @@ export const ForgotPasswordForm = ({ onSuccess }) => {
           onClick={() => navigate("/login")}
           className="w-full border border-green-300 text-green-700 hover:bg-green-50 font-medium py-2.5 px-4 rounded-lg transition"
         >
-          Đăng nhập ngay
+          {t("forgotPassword.loginNow")}
         </button>
       )}
     </form>

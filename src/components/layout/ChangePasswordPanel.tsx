@@ -175,6 +175,8 @@ export const ChangePasswordPanel = ({ isCollapsed, onBack }: any) => {
             onChange={(value) => updateField("currentPassword", value)}
             onBlur={() => markTouched("currentPassword")}
             onToggleVisibility={() => toggleVisibility("current")}
+            showPasswordTitle={t("auth.showPassword")}
+            hidePasswordTitle={t("auth.hidePassword")}
           />
 
           <div>
@@ -187,6 +189,8 @@ export const ChangePasswordPanel = ({ isCollapsed, onBack }: any) => {
               onChange={(value) => updateField("newPassword", value)}
               onBlur={() => markTouched("newPassword")}
               onToggleVisibility={() => toggleVisibility("next")}
+              showPasswordTitle={t("auth.showPassword")}
+              hidePasswordTitle={t("auth.hidePassword")}
             />
 
             {form.newPassword && (
@@ -245,6 +249,8 @@ export const ChangePasswordPanel = ({ isCollapsed, onBack }: any) => {
             onChange={(value) => updateField("confirmPassword", value)}
             onBlur={() => markTouched("confirmPassword")}
             onToggleVisibility={() => toggleVisibility("confirm")}
+            showPasswordTitle={t("auth.showPassword")}
+            hidePasswordTitle={t("auth.hidePassword")}
           />
 
           <button
@@ -276,6 +282,8 @@ const PasswordInput = ({
   onChange,
   onBlur,
   onToggleVisibility,
+  showPasswordTitle,
+  hidePasswordTitle,
 }: {
   label: string;
   value: string;
@@ -285,6 +293,8 @@ const PasswordInput = ({
   onChange: (value: string) => void;
   onBlur: () => void;
   onToggleVisibility: () => void;
+  showPasswordTitle: string;
+  hidePasswordTitle: string;
 }) => (
   <label className="block">
     <span className="block text-[13px] font-medium text-gray-600 dark:text-gray-300 mb-1.5">
@@ -310,7 +320,7 @@ const PasswordInput = ({
         onClick={onToggleVisibility}
         disabled={disabled}
         className="h-8 w-8 rounded-full inline-flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-800 dark:hover:text-gray-200 transition disabled:opacity-50"
-        title={visible ? "Hide password" : "Show password"}
+        title={visible ? hidePasswordTitle : showPasswordTitle}
       >
         {visible ? <FiEyeOff /> : <FiEye />}
       </button>
