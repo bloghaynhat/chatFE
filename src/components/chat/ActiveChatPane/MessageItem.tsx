@@ -282,8 +282,29 @@ export const MessageItem = ({
   const isContextActive =
     activeContextMessageId &&
     String(activeContextMessageId) === String(currentMessageId);
+  const messageStatus = String(
+    message?.status ||
+      message?.messageStatus ||
+      message?.state ||
+      message?.action ||
+      "",
+  ).toLowerCase();
+  const isRevokedMessage = Boolean(
+    message.isRevoked ||
+      message.deletedAt ||
+      message.revoked ||
+      message.isRecalled ||
+      message.recalled ||
+      message.deletedForEveryone ||
+      message.isDeletedForEveryone ||
+      message.revokedAt ||
+      message.recalledAt ||
+      messageStatus === "revoked" ||
+      messageStatus === "recalled" ||
+      messageStatus === "deleted_for_everyone",
+  );
 
-  if (message.isRevoked || message.deletedAt) {
+  if (isRevokedMessage) {
     return (
       <RevokedMessage
         message={message}

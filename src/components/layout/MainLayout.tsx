@@ -88,6 +88,48 @@ const getMessageConversationId = (message: any, payload?: any) => {
   return conversationId ? String(conversationId) : "";
 };
 
+const isMessageRevoked = (message: any) => {
+  const status = String(
+    message?.status ||
+      message?.messageStatus ||
+      message?.state ||
+      message?.action ||
+      "",
+  ).toLowerCase();
+
+  return Boolean(
+    message?.isRevoked ||
+      message?.revoked ||
+      message?.isRecalled ||
+      message?.recalled ||
+      message?.deletedForEveryone ||
+      message?.isDeletedForEveryone ||
+      message?.revokedAt ||
+      message?.recalledAt ||
+      message?.deletedAt ||
+      status === "revoked" ||
+      status === "recalled" ||
+      status === "deleted_for_everyone",
+  );
+};
+
+const normalizeMessageLifecycle = (message: any) => {
+  if (!message || !isMessageRevoked(message)) return message;
+
+  return {
+    ...message,
+    isRevoked: true,
+    deletedAt:
+      message.deletedAt ||
+      message.revokedAt ||
+      message.recalledAt ||
+      new Date().toISOString(),
+  };
+};
+
+const normalizeMessagesLifecycle = (items: any[] = []) =>
+  items.map(normalizeMessageLifecycle);
+
 const sortPinnedMessages = (items: any[] = []) =>
   [...items].sort((a, b) => {
     const dateA = new Date(a.pinnedAt || a.createdAt || 0).getTime();
@@ -220,6 +262,51 @@ const MainLayout = ({ children }: { children?: any }) => {
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
   const lastInteractionSeenRef = useRef<string>("");
 
+  const markCachedMessageRevoked = useCallback(
+    (messageId: string, payload: any = {}) => {
+      if (!messageId) return false;
+
+      let touched = false;
+      const revokedAt =
+        payload?.deletedAt ||
+        payload?.revokedAt ||
+        payload?.recalledAt ||
+        payload?.message?.deletedAt ||
+        payload?.message?.revokedAt ||
+        payload?.message?.recalledAt ||
+        new Date().toISOString();
+
+      conversationMessageCacheRef.current.forEach((entry, conversationId) => {
+        let found = false;
+        const nextMessages = (entry.messages || []).map((message) => {
+          if (String(getMessageId(message)) !== String(messageId)) {
+            return normalizeMessageLifecycle(message);
+          }
+
+          found = true;
+          return normalizeMessageLifecycle({
+            ...message,
+            ...payload?.message,
+            isRevoked: true,
+            deletedAt: revokedAt,
+          });
+        });
+
+        if (found) {
+          touched = true;
+          conversationMessageCacheRef.current.set(conversationId, {
+            ...entry,
+            messages: nextMessages,
+            cachedAt: Date.now(),
+          });
+        }
+      });
+
+      return touched;
+    },
+    [],
+  );
+
   const shouldSkipDuplicateMemberRemoval = useCallback(
     (conversationId?: string, userId?: string) => {
       if (!conversationId || !userId) return false;
@@ -247,7 +334,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       if (prev.some((item: any) => String(item.id || item._id) === String(messageId))) {
         return prev;
       }
-      return [...prev, message];
+      return [...prev, normalizeMessageLifecycle(message)];
     });
   }, []);
 
@@ -327,7 +414,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     if (!selectedConversationId || isOpeningConversation) return;
 
     conversationMessageCacheRef.current.set(String(selectedConversationId), {
-      messages,
+      messages: normalizeMessagesLifecycle(messages),
       messagePageInfo,
       memberSeenMap,
       pinnedMessages,
@@ -431,7 +518,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           );
         }
 
-        return sortMessagesByCreatedAt([...prev, message]);
+        return sortMessagesByCreatedAt([...prev, normalizeMessageLifecycle(message)]);
       });
     },
     [getPayloadConversationId, selectedConversationId],
@@ -491,7 +578,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   })
                   .catch(() => {});
               }
-              return [...prev, message];
+              return [...prev, normalizeMessageLifecycle(message)];
             }
             return prev;
           });
@@ -532,7 +619,7 @@ const MainLayout = ({ children }: { children?: any }) => {
             }
             if (String(msgConvId) === String(selectedConversationId)) {
               console.log("[Socket] Adding quoted message to state:", msgId);
-              return [...prev, message];
+              return [...prev, normalizeMessageLifecycle(message)];
             }
             console.log(
               "[Socket] message:quoted conversationId mismatch. msgConvId:",
@@ -575,14 +662,28 @@ const MainLayout = ({ children }: { children?: any }) => {
             payload?._id;
           if (!revokedId) return;
 
+          const touchedCache = markCachedMessageRevoked(String(revokedId), payload);
+          const revokedConversationId = getMessageConversationId(payload?.message, payload);
+          if (revokedConversationId && !touchedCache) {
+            conversationMessageCacheRef.current.delete(String(revokedConversationId));
+          }
+
           setMessages((prev) =>
             prev.map((m) =>
               String(m._id || m.id) === String(revokedId)
-                ? {
+                ? normalizeMessageLifecycle({
                     ...m,
+                    ...payload?.message,
                     isRevoked: true,
-                    deletedAt: payload.deletedAt || new Date().toISOString(),
-                  }
+                    deletedAt:
+                      payload.deletedAt ||
+                      payload.revokedAt ||
+                      payload.recalledAt ||
+                      payload?.message?.deletedAt ||
+                      payload?.message?.revokedAt ||
+                      payload?.message?.recalledAt ||
+                      new Date().toISOString(),
+                  })
                 : m,
             ),
           );
@@ -907,7 +1008,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   limit: MESSAGE_PAGE_SIZE,
                 })
                 .then((messageResult) => {
-                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
                   setMessagePageInfo({
                     nextCursor: messageResult.nextCursor,
                     hasMore: messageResult.hasMore,
@@ -947,7 +1048,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   limit: MESSAGE_PAGE_SIZE,
                 })
                 .then((messageResult) => {
-                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
                   setMessagePageInfo({
                     nextCursor: messageResult.nextCursor,
                     hasMore: messageResult.hasMore,
@@ -991,7 +1092,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                   limit: MESSAGE_PAGE_SIZE,
                 })
                 .then((messageResult) => {
-                  setMessages(sortMessagesByCreatedAt(messageResult.messages || []));
+                  setMessages(sortMessagesByCreatedAt(normalizeMessagesLifecycle(messageResult.messages || [])));
                   setMessagePageInfo({
                     nextCursor: messageResult.nextCursor,
                     hasMore: messageResult.hasMore,
@@ -1092,6 +1193,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     updatePollInMessages,
     getPayloadConversationId,
     upsertMessageFromPayload,
+    markCachedMessageRevoked,
     shouldSkipDuplicateMemberRemoval,
   ]);
 
@@ -1306,7 +1408,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         if (cachedConversation) {
           const cachedMessages = mergeSearchTargetMessages(
-            cachedConversation.messages || [],
+            normalizeMessagesLifecycle(cachedConversation.messages || []),
             processedChat,
             conversationId,
           );
@@ -1320,6 +1422,10 @@ const MainLayout = ({ children }: { children?: any }) => {
             (Boolean(incomingLastMessageId) &&
               (!cachedLastMessageId ||
                 String(incomingLastMessageId) !== String(cachedLastMessageId))) ||
+            (Boolean(incomingLastMessageId) &&
+              String(incomingLastMessageId) === String(cachedLastMessageId) &&
+              isMessageRevoked(incomingLastMessage) &&
+              !isMessageRevoked(cachedLastMessage)) ||
             (Boolean(incomingLastMessageTime && cachedLastMessageTime) &&
               incomingLastMessageTime > cachedLastMessageTime + 1000) ||
             Boolean(incomingLastMessageTime && !cachedLastMessageTime);
@@ -1386,7 +1492,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Sort messages by createdAt in ascending order (oldest first)
         const sortedMessages = sortMessagesByCreatedAt(
-          messageResult.messages || [],
+          normalizeMessagesLifecycle(messageResult.messages || []),
         );
 
         setMemberSeenMap(messageResult.memberSeenMap || {});
@@ -1610,7 +1716,7 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       setMessages((prev) =>
         applyMemberSeenMapToMessages(
-          mergeUniqueMessages(messageResult.messages || [], prev),
+          mergeUniqueMessages(normalizeMessagesLifecycle(messageResult.messages || []), prev),
           {
             ...memberSeenMap,
             ...(messageResult.memberSeenMap || {}),
@@ -2049,7 +2155,7 @@ const MainLayout = ({ children }: { children?: any }) => {
                       String(m._id || m.id) === String(newMsg._id || newMsg.id),
                   )
                 ) {
-                  newMsgs.push(newMsg);
+                  newMsgs.push(normalizeMessageLifecycle(newMsg));
                 }
               });
               return newMsgs;
@@ -2080,10 +2186,14 @@ const MainLayout = ({ children }: { children?: any }) => {
       const res: any = await socketService.revokeMessage(messageId);
 
       if (res && res.success) {
+        markCachedMessageRevoked(String(messageId), {
+          message,
+          deletedAt: new Date().toISOString(),
+        });
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === messageId || msg._id === messageId
-              ? { ...msg, isRevoked: true, deletedAt: new Date().toISOString() }
+              ? normalizeMessageLifecycle({ ...msg, isRevoked: true, deletedAt: new Date().toISOString() })
               : msg,
           ),
         );
