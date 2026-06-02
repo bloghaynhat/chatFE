@@ -11,10 +11,13 @@ import "./styles/globals.css";
 import IncomingCallModal from "./components/call/IncomingCallModal";
 import OutgoingCallModal from "./components/call/OutgoingCallModal";
 import ActiveCallView from "./components/call/ActiveCallView";
+import { installLocalizedToastMessages } from "./utils/localizedToast";
 
 configureRuntime({
   apiUrl: import.meta.env.VITE_API_URL || "/v1",
 });
+
+installLocalizedToastMessages();
 
 const queryClient = new QueryClient();
 
