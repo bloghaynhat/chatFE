@@ -19,12 +19,16 @@ export interface DeleteMessagePayload {
 
 export interface PinMessagePayload {
   messageId: string;
-  pinnedBy: string;
-  pinnedAt: string;
+  conversationId?: string;
+  message?: Message;
+  pinnedBy?: string;
+  pinnedAt?: string;
 }
 
 export interface UnpinMessagePayload {
   messageId: string;
+  conversationId?: string;
+  message?: Message;
 }
 
 export interface QuotedMessagePayload {

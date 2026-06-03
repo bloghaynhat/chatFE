@@ -370,12 +370,30 @@ class SocketService {
       this.emit("message:reactions:clear", data);
     });
 
-    this.messagesSocket.on("message:pinned", (data) => {
+    const forwardMessagePinned = (data) => {
       this.emit("message:pinned", data);
+    };
+
+    [
+      "message:pinned",
+      "message:pin",
+      "message:pinnedMessage",
+      "messagePinned",
+    ].forEach((eventName) => {
+      this.messagesSocket.on(eventName, forwardMessagePinned);
     });
 
-    this.messagesSocket.on("message:unpinned", (data) => {
+    const forwardMessageUnpinned = (data) => {
       this.emit("message:unpinned", data);
+    };
+
+    [
+      "message:unpinned",
+      "message:unpin",
+      "message:unpinnedMessage",
+      "messageUnpinned",
+    ].forEach((eventName) => {
+      this.messagesSocket.on(eventName, forwardMessageUnpinned);
     });
 
     this.messagesSocket.on("message:quoted", (data) => {
@@ -616,10 +634,20 @@ class SocketService {
     };
   }
 
-  off(eventName) {
-    if (this.listeners.has(eventName)) {
+  off(eventName, callback?) {
+    if (!this.listeners.has(eventName)) return;
+
+    if (!callback) {
       this.listeners.delete(eventName);
+      return;
     }
+
+    const arr = this.listeners.get(eventName);
+    if (!arr) return;
+
+    const index = arr.indexOf(callback);
+    if (index !== -1) arr.splice(index, 1);
+    if (arr.length === 0) this.listeners.delete(eventName);
   }
 
   // ================= CONVENIENCE METHODS =================
@@ -675,8 +703,8 @@ class SocketService {
     return this.on("receiveMessage", callback);
   }
 
-  offNewMessage() {
-    this.off("receiveMessage");
+  offNewMessage(callback?) {
+    this.off("receiveMessage", callback);
   }
 
   onMessageEdited(callback) {

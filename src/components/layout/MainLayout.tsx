@@ -103,6 +103,21 @@ const getMessageConversationId = (message: any, payload?: any) => {
   return conversationId ? String(conversationId) : "";
 };
 
+const getMessageIdFromPayload = (
+  payload: PinMessagePayload | UnpinMessagePayload | any,
+) =>
+  getMessageId(payload?.message) ||
+  getMessageId(payload?.data?.message) ||
+  payload?.messageId ||
+  payload?.data?.messageId ||
+  payload?.id ||
+  payload?._id ||
+  null;
+
+const getMessageFromPinPayload = (
+  payload: PinMessagePayload | UnpinMessagePayload | any,
+) => payload?.message || payload?.data?.message || null;
+
 const isMessageRevoked = (message: any) => {
   const status = String(
     message?.status ||
@@ -299,6 +314,8 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [chatError, setChatError] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const [pinnedMessages, setPinnedMessages] = useState<any[]>([]);
+  const messagesRef = useRef<any[]>([]);
+  const pinnedMessagesRef = useRef<any[]>([]);
   const conversationMessageCacheRef = useRef<
     Map<string, ConversationMessageCacheEntry>
   >(new Map());
@@ -311,6 +328,14 @@ const MainLayout = ({ children }: { children?: any }) => {
   const pendingPinOperations = useRef<Set<string>>(new Set());
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
   const lastInteractionSeenRef = useRef<string>("");
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    pinnedMessagesRef.current = pinnedMessages;
+  }, [pinnedMessages]);
 
   const removeConversationFromSession = useCallback(
     (conversationId: string, options: { reason?: string; message?: string } = {}) => {
@@ -599,6 +624,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       payload?.message?.conversationId ||
       payload?.data?.conversationId ||
       payload?.data?.groupId ||
+      payload?.data?.message?.conversationId ||
       payload?.data?.block?.conversationId;
 
     if (rawId && typeof rawId === "object") {
@@ -1226,29 +1252,61 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Handle message pin
         socketService.onMessagePinned((payload: any) => {
-          const { conversationId, message } = payload;
-          if (!message) return;
-          const msgId = message.id || message._id;
-          let msgConvId = conversationId || message.conversationId;
+          const message = getMessageFromPinPayload(payload);
+          const msgId = getMessageIdFromPayload(payload);
+          if (!msgId) return;
+
+          const existingMessage =
+            messagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            ) ||
+            pinnedMessagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            );
+
+          let msgConvId =
+            getPayloadConversationId(payload) ||
+            getMessageConversationId(message, payload) ||
+            getMessageConversationId(existingMessage, payload);
+
           if (msgConvId && typeof msgConvId === "object") {
             msgConvId = msgConvId._id || msgConvId.id;
           }
 
-          if (String(msgConvId) === String(selectedConversationId)) {
-            setPinnedMessages((prev) => upsertPinnedMessage(prev, message));
+          const belongsToCurrentConversation =
+            msgConvId
+              ? String(msgConvId) === String(selectedConversationId)
+              : Boolean(existingMessage);
+
+          if (!belongsToCurrentConversation) return;
+
+          const pinnedAt =
+            message?.pinnedAt ||
+            payload?.pinnedAt ||
+            payload?.data?.pinnedAt ||
+            new Date().toISOString();
+          const pinnedBy =
+            message?.pinnedBy || payload?.pinnedBy || payload?.data?.pinnedBy;
+          const pinnedMessage = {
+            ...(existingMessage || {}),
+            ...(message || {}),
+            messageId: msgId,
+            pinnedAt,
+            pinnedBy,
+          };
+
+          if (existingMessage || message) {
+            setPinnedMessages((prev) => upsertPinnedMessage(prev, pinnedMessage));
           }
 
           setMessages((prev) => {
-            // Only update if it belongs to currently open conversation
-            if (String(msgConvId) !== String(selectedConversationId))
-              return prev;
-
             return prev.map((m) =>
-              String(m._id || m.id) === String(msgId)
+              String(getMessageId(m)) === String(msgId)
                 ? {
                     ...m,
-                    ...message,
-                    pinnedAt: message.pinnedAt || new Date().toISOString(),
+                    ...(message || {}),
+                    pinnedAt,
+                    pinnedBy,
                   }
                 : m,
             );
@@ -1257,26 +1315,40 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Handle message unpin
         socketService.onMessageUnpinned((payload: any) => {
-          const { conversationId, message } = payload;
-          if (!message) return;
-          const msgId = message.id || message._id;
-          let msgConvId = conversationId || message.conversationId;
+          const message = getMessageFromPinPayload(payload);
+          const msgId = getMessageIdFromPayload(payload);
+          if (!msgId) return;
+
+          const existingMessage =
+            messagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            ) ||
+            pinnedMessagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            );
+
+          let msgConvId =
+            getPayloadConversationId(payload) ||
+            getMessageConversationId(message, payload) ||
+            getMessageConversationId(existingMessage, payload);
+
           if (msgConvId && typeof msgConvId === "object") {
             msgConvId = msgConvId._id || msgConvId.id;
           }
 
-          if (String(msgConvId) === String(selectedConversationId)) {
-            setPinnedMessages((prev) => removePinnedMessage(prev, msgId));
-          }
+          const belongsToCurrentConversation =
+            msgConvId
+              ? String(msgConvId) === String(selectedConversationId)
+              : Boolean(existingMessage);
+
+          if (!belongsToCurrentConversation) return;
+
+          setPinnedMessages((prev) => removePinnedMessage(prev, msgId));
 
           setMessages((prev) => {
-            // Only update if it belongs to currently open conversation
-            if (String(msgConvId) !== String(selectedConversationId))
-              return prev;
-
             return prev.map((m) =>
-              String(m._id || m.id) === String(msgId)
-                ? { ...m, ...message, pinnedAt: undefined, pinnedBy: undefined }
+              String(getMessageId(m)) === String(msgId)
+                ? { ...m, ...(message || {}), pinnedAt: undefined, pinnedBy: undefined }
                 : m,
             );
           });

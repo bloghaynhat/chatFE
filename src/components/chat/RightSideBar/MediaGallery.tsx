@@ -125,10 +125,10 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({
       }
     };
 
-    socketService.onNewMessage(handleNewMessage);
+    const unsubscribe = socketService.onNewMessage(handleNewMessage);
 
     return () => {
-      socketService.offNewMessage();
+      unsubscribe?.();
     };
   }, [conversationId, fetchMedia]);
 

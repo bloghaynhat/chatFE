@@ -134,6 +134,7 @@ const isGroupChatItem = (chat: any) =>
 const isSavedMessagesChat = (chat: any) =>
   chat?.type === "saved_messages" || chat?.isSavedMessages || chat?.isSelfChat;
 
+const canPinConversation = (chat: any) => Boolean(chat?.id || chat?.conversationId);
 const canArchiveConversation = (chat: any) => !isSavedMessagesChat(chat);
 
 const getPrivateChatTargetUserId = (chat: any, currentUserId?: string | null) => {
@@ -834,7 +835,7 @@ export const ChatList = ({
   const handleTogglePinConversation = useCallback(async (chat: any) => {
     const conversationId = chat?.id || chat?.conversationId;
     if (!conversationId) return;
-    if (!canArchiveConversation(chat)) return;
+    if (!canPinConversation(chat)) return;
 
     const wasPinned = isConversationPinned(chat);
     const nextPinnedAt = new Date().toISOString();
