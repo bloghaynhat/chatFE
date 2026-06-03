@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { FiArrowLeft, FiArrowRight, FiCamera, FiX } from "react-icons/fi";
 
 import { useFriendManagement } from "../../hooks";
@@ -171,9 +172,9 @@ export const CreateGroupModal = ({
 
   // We want the modal to open over the whole screen or maybe look like a standalone mobile app
   // on smaller screens, and standard centered modal on large layout.
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/40 flex flex-col items-center justify-center z-[70] p-0 sm:p-4 transition-opacity"
+      className="fixed inset-0 bg-black/40 flex flex-col items-center justify-center z-[10000] p-0 sm:p-4 transition-opacity"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -487,6 +488,7 @@ export const CreateGroupModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

@@ -82,8 +82,10 @@ export const MessageList = ({
   typingUsers,
   selectedChat,
   wallpaperUrl,
+  containerRef,
   firstMessageRef,
   messagesEndRef,
+  onScroll,
   handleContextMenu,
   activeContextMessageId,
   setPreviewVideoUrl,
@@ -126,8 +128,9 @@ export const MessageList = ({
 
     const messageId = matchingRow.dataset.messageId;
     const message = visibleMessages.find((item: any) => {
-      const itemId = item?.id || item?._id || item?.messageId;
-      return String(itemId) === String(messageId);
+      return [item?.id, item?._id, item?.messageId, item?.serverId]
+        .filter(Boolean)
+        .some((itemId) => String(itemId) === String(messageId));
     });
     if (!message) return;
 
@@ -136,7 +139,7 @@ export const MessageList = ({
 
   if (isLoading) {
     return (
-      <div className={containerClassName} style={wallpaperStyle}>
+      <div ref={containerRef} className={containerClassName} style={wallpaperStyle} onScroll={onScroll} data-chat-container>
         <div className="h-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
           Opening conversation...
         </div>
@@ -146,7 +149,7 @@ export const MessageList = ({
 
   if (error) {
     return (
-      <div className={containerClassName} style={wallpaperStyle}>
+      <div ref={containerRef} className={containerClassName} style={wallpaperStyle} onScroll={onScroll} data-chat-container>
         <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
           <p className="text-sm text-red-600 dark:text-red-400">Couldn’t open this conversation</p>
           <button
@@ -163,7 +166,7 @@ export const MessageList = ({
 
   if (messages.length === 0) {
     return (
-      <div className={containerClassName} style={wallpaperStyle}>
+      <div ref={containerRef} className={containerClassName} style={wallpaperStyle} onScroll={onScroll} data-chat-container>
         <div className={`h-full flex flex-col items-center justify-center ${overlayClassName}`}>
           <div className="bg-black/15 dark:bg-black/30 rounded-[20px] p-6 px-8 flex flex-col items-center justify-center text-center max-w-[300px] backdrop-blur-md border border-white/10 shadow-sm">
             <span className="text-white dark:text-white/90 font-semibold text-[15px] mb-1">
@@ -181,9 +184,11 @@ export const MessageList = ({
 
   return (
     <div
+      ref={containerRef}
       className={containerClassName}
       style={wallpaperStyle}
       data-chat-container
+      onScroll={onScroll}
       onPointerDown={onChatInteractionRead}
       onContextMenu={handleContainerContextMenu}
     >

@@ -20,46 +20,20 @@ const formatDuration = (seconds?: number) => {
   return `${minutes}:${rest}`;
 };
 
-const parseDurationText = (value?: string) => {
-  if (!value) return undefined;
-  const match = value.match(/(\d{1,2}):(\d{2})/);
-  if (!match) return undefined;
-  return Number(match[1]) * 60 + Number(match[2]);
+const normalizeCallStatus = (status?: string): CallStatus => {
+  if (status === "missed" || status === "rejected" || status === "cancelled") return status;
+  return "completed";
 };
 
-export const parseCallMessage = (message: any, text?: string): ParsedCallMessage | null => {
+export const parseCallMessage = (message: any, _text?: string): ParsedCallMessage | null => {
   const call = message?.call || message?.callMetadata || message?.metadata?.call;
-  if (message?.type === "call" || message?.type === "CALL" || call) {
-    return {
-      callType: call?.callType === "video" ? "video" : "audio",
-      status: call?.status || "completed",
-      durationSeconds: call?.durationSeconds,
-    };
-  }
-
-  const normalized = (text || "").trim().toLowerCase();
-  if (!normalized) return null;
-
-  const looksLikeCall =
-    normalized.includes("cuộc gọi") ||
-    normalized.includes("cuoc goi") ||
-    normalized.includes("voice call") ||
-    normalized.includes("video call");
-  if (!looksLikeCall) return null;
-
-  const callType = normalized.includes("video") ? "video" : "audio";
-  const status: CallStatus = normalized.includes("nhỡ") || normalized.includes("nho") || normalized.includes("missed")
-    ? "missed"
-    : normalized.includes("từ chối") || normalized.includes("tu choi") || normalized.includes("rejected")
-      ? "rejected"
-      : normalized.includes("hủy") || normalized.includes("huy") || normalized.includes("cancel")
-        ? "cancelled"
-        : "completed";
+  const messageType = String(message?.type || message?.messageType || "").toLowerCase();
+  if (messageType !== "call" && !call) return null;
 
   return {
-    callType,
-    status,
-    durationSeconds: parseDurationText(normalized),
+    callType: call?.callType === "video" ? "video" : "audio",
+    status: normalizeCallStatus(call?.status),
+    durationSeconds: call?.durationSeconds,
   };
 };
 

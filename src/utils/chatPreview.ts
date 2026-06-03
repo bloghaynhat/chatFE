@@ -3,6 +3,38 @@ type PreviewLanguage = "en" | "vi";
 const getLanguage = (language?: string): PreviewLanguage =>
   language === "vi" ? "vi" : "en";
 
+const formatCallDuration = (seconds?: number) => {
+  const duration = Number(seconds);
+  if (!Number.isFinite(duration) || duration <= 0) return "";
+  const safeSeconds = Math.floor(duration);
+  const minutes = Math.floor(safeSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const rest = (safeSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${rest}`;
+};
+
+const getCallPreview = (message: any, language: PreviewLanguage) => {
+  const call = message?.call || message?.callMetadata || message?.metadata?.call;
+  const isVideo = call?.callType === "video";
+  const status = String(call?.status || "").toLowerCase();
+  const duration = formatCallDuration(call?.durationSeconds);
+
+  if (status === "missed") {
+    if (language === "vi") return isVideo ? "Cuộc gọi video nhỡ" : "Cuộc gọi thoại nhỡ";
+    return isVideo ? "Missed video call" : "Missed voice call";
+  }
+
+  const label = language === "vi"
+    ? isVideo
+      ? "Cuộc gọi video"
+      : "Cuộc gọi thoại"
+    : isVideo
+      ? "Video call"
+      : "Voice call";
+  return duration ? `${label} ${duration}` : label;
+};
+
 const translateKnownPreviewText = (value: string, language: PreviewLanguage) => {
   const text = value.trim();
   if (!text) return text;
@@ -10,10 +42,6 @@ const translateKnownPreviewText = (value: string, language: PreviewLanguage) => 
   const exact: Record<PreviewLanguage, Record<string, string>> = {
     en: {
       "Tin nhắn đã thu hồi": "Message recalled",
-      "Cuộc gọi thoại nhỡ": "Missed voice call",
-      "Cuộc gọi video nhỡ": "Missed video call",
-      "Cuộc gọi thoại": "Voice call",
-      "Cuộc gọi video": "Video call",
       "Một thành viên đã rời khỏi nhóm": "A member left the group",
       "Có thành viên mới được thêm vào nhóm": "A new member was added to the group",
       "Bạn đã rời khỏi nhóm này.": "You left this group.",
@@ -30,10 +58,6 @@ const translateKnownPreviewText = (value: string, language: PreviewLanguage) => 
     },
     vi: {
       "Tin nhắn đã thu hồi": "Tin nhắn đã thu hồi",
-      "Cuộc gọi thoại nhỡ": "Cuộc gọi thoại nhỡ",
-      "Cuộc gọi video nhỡ": "Cuộc gọi video nhỡ",
-      "Cuộc gọi thoại": "Cuộc gọi thoại",
-      "Cuộc gọi video": "Cuộc gọi video",
       "Một thành viên đã rời khỏi nhóm": "Một thành viên đã rời khỏi nhóm",
       "Có thành viên mới được thêm vào nhóm": "Có thành viên mới được thêm vào nhóm",
       "Bạn đã rời khỏi nhóm này.": "Bạn đã rời khỏi nhóm này.",
@@ -69,16 +93,6 @@ const translateKnownPreviewText = (value: string, language: PreviewLanguage) => 
     return language === "vi" ? text : `Closed poll "${lockedPoll[1]}"`;
   }
 
-  const voiceCallWithDuration = text.match(/^Cuộc gọi thoại\s+(.+)$/i);
-  if (voiceCallWithDuration) {
-    return language === "vi" ? text : `Voice call ${voiceCallWithDuration[1]}`;
-  }
-
-  const videoCallWithDuration = text.match(/^Cuộc gọi video\s+(.+)$/i);
-  if (videoCallWithDuration) {
-    return language === "vi" ? text : `Video call ${videoCallWithDuration[1]}`;
-  }
-
   const leftGroup = text.match(/^(.+?)\s+đã rời khỏi nhóm$/i);
   if (leftGroup) {
     return language === "vi" ? text : `${leftGroup[1]} left the group`;
@@ -110,6 +124,11 @@ export const getChatMessagePreview = (message: any, language?: string) => {
     return translateKnownPreviewText("Tin nhắn đã thu hồi", previewLanguage);
   }
 
+  const type = String(message.type || message.messageType || "").toLowerCase();
+  if (type.includes("call")) {
+    return getCallPreview(message, previewLanguage);
+  }
+
   const text =
     message.textPreview ||
     message.preview ||
@@ -125,12 +144,14 @@ export const getChatMessagePreview = (message: any, language?: string) => {
     return translateKnownPreviewText(text, previewLanguage);
   }
 
-  const type = String(message.type || message.messageType || "").toLowerCase();
   if (type.includes("poll")) {
     return message.poll?.question
       ? translateKnownPreviewText(`Poll: ${message.poll.question}`, previewLanguage)
       : translateKnownPreviewText("Poll", previewLanguage);
   }
+
+  if (type.includes("sticker")) return "Sticker";
+  if (type.includes("gif")) return "GIF";
 
   const media = message.media || message.files || message.attachments || [];
   const firstMedia = Array.isArray(media) ? media[0] : media;
@@ -138,8 +159,8 @@ export const getChatMessagePreview = (message: any, language?: string) => {
 
   if (type.includes("image") || mediaType.includes("image")) return translateKnownPreviewText("Sent a photo", previewLanguage);
   if (type.includes("video") || mediaType.includes("video")) return translateKnownPreviewText("Sent a video", previewLanguage);
-  if (type.includes("audio") || mediaType.includes("audio")) return translateKnownPreviewText("Sent a voice message", previewLanguage);
-  if (type.includes("document") || type.includes("file") || mediaType) return translateKnownPreviewText("Sent a file", previewLanguage);
+  if (type.includes("voice") || type.includes("audio") || mediaType.includes("voice") || mediaType.includes("audio")) return translateKnownPreviewText("Sent a voice message", previewLanguage);
+  if (type.includes("file") || mediaType) return translateKnownPreviewText("Sent a file", previewLanguage);
   if (type.includes("media") || (Array.isArray(media) && media.length > 0)) return translateKnownPreviewText("Sent a media file", previewLanguage);
 
   return translateKnownPreviewText("No messages", previewLanguage);

@@ -339,6 +339,7 @@ type TranslationKey =
   | "chat.aiExtractTasks"
   | "chat.extracting"
   | "chat.mute"
+  | "chat.unmute"
   | "chat.call"
   | "chat.videoCall"
   | "chat.shareContact"
@@ -798,6 +799,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.aiExtractTasks": "Extract tasks (AI)",
     "chat.extracting": "Extracting...",
     "chat.mute": "Mute",
+    "chat.unmute": "Unmute",
     "chat.call": "Call",
     "chat.videoCall": "Video Call",
     "chat.shareContact": "Share contact",
@@ -1251,6 +1253,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.aiExtractTasks": "Trích xuất công việc (AI)",
     "chat.extracting": "Đang trích xuất...",
     "chat.mute": "Tắt thông báo",
+    "chat.unmute": "Bật thông báo",
     "chat.call": "Gọi",
     "chat.videoCall": "Gọi video",
     "chat.shareContact": "Chia sẻ liên hệ",

@@ -200,25 +200,29 @@ export const ChatInput = ({
     const text = (msg.text || msg.content || "").trim();
     const msgType = typeof msg.type === "string" ? msg.type.toLowerCase() : "";
 
-    const isImage = msgType.includes("image") || msg.imageUrl || msg.type === "IMAGE";
-    const isVideo = msgType.includes("video") || msg.videoUrl || msg.type === "VIDEO";
-    const isAudio = msgType.includes("audio") || msg.type === "AUDIO";
-    const isDoc = msgType === "document" || msgType === "file" || msg.type === "DOCUMENT";
+    const isImage = msgType === "image" || msg.imageUrl;
+    const isVideo = msgType === "video" || msg.videoUrl;
+    const isVoice = msgType === "voice" || msgType.includes("audio");
+    const isDoc = msgType === "file";
+    const isSticker = msgType === "sticker";
+    const isGif = msgType === "gif";
 
     const files = msg.files || msg.media || msg.mediaItems || [];
     let mediaLabel = "";
 
     if (isImage) mediaLabel = "Photos";
     else if (isVideo) mediaLabel = "Video";
-    else if (isAudio) mediaLabel = "Voice Message";
+    else if (isVoice) mediaLabel = "Voice Message";
     else if (isDoc) mediaLabel = "Documents";
+    else if (isSticker) mediaLabel = "Sticker";
+    else if (isGif) mediaLabel = "GIF";
     else if (files && files.length > 0) {
       const firstFile = files[0];
       const type = typeof firstFile === "string" ? "image" : firstFile.type || firstFile.mimetype || "";
       const url = typeof firstFile === "string" ? firstFile : firstFile.url || "";
       if (type.toLowerCase().includes("image") || url.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i)) mediaLabel = "Photos";
       else if (type.toLowerCase().includes("video") || url.match(/\.(mp4|mpeg|webm|ogg|mov)$/i)) mediaLabel = "Video";
-      else if (type.toLowerCase().includes("audio") || url.match(/\.(mp3|wav|ogg|m4a|aac)$/i))
+      else if (type.toLowerCase().includes("voice") || type.toLowerCase().includes("audio") || url.match(/\.(mp3|wav|ogg|m4a|aac)$/i))
         mediaLabel = "Voice Message";
       else mediaLabel = "Documents";
     }

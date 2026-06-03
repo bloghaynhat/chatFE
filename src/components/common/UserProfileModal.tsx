@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { FiEdit2 } from "react-icons/fi";
 import { useAuth } from "../../hooks";
 import { updateProfile, updateAvatarViaAuth } from "../../services";
+import { socketService } from "../../services/socketService";
 import { AvatarEditor } from "./AvatarEditor";
 import { useLanguage } from "../../context";
 
@@ -18,6 +20,7 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useLanguage();
   const { user, updateUserProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isCurrentUserOnline, setIsCurrentUserOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -57,6 +60,34 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
       setError("");
       setSuccess("");
     }
+  }, [isOpen, user]);
+
+  useEffect(() => {
+    if (!isOpen || !user) {
+      setIsCurrentUserOnline(false);
+      return;
+    }
+
+    const syncCurrentUserOnline = () => {
+      setIsCurrentUserOnline(
+        Boolean(
+          socketService.rootSocket?.connected ||
+            socketService.messagesSocket?.connected ||
+            user.status === "online" ||
+            (user as any)?.isOnline === true,
+        ),
+      );
+    };
+
+    syncCurrentUserOnline();
+
+    const offPresenceReady = socketService.on("presence:ready", syncCurrentUserOnline);
+    const refreshTimer = window.setInterval(syncCurrentUserOnline, 2000);
+
+    return () => {
+      offPresenceReady();
+      window.clearInterval(refreshTimer);
+    };
   }, [isOpen, user]);
 
   // Close on escape key or outside click
@@ -197,8 +228,8 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
       <div
         ref={modalRef}
         className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
@@ -249,9 +280,15 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
                     formData.displayName?.charAt(0) || "U"
                   )}
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {user?.status === "online" ? `? ${t("app.online")}` : `? ${t("app.offline")}`}
-                </p>
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      isCurrentUserOnline ? "bg-emerald-500" : "bg-gray-400"
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>{isCurrentUserOnline ? t("app.online") : t("app.offline")}</span>
+                </div>
               </>
             )}
           </div>
@@ -370,7 +407,8 @@ export const UserProfileModal = ({ isOpen, onClose, onSuccess }) => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

@@ -15,6 +15,7 @@ interface RightSidebarSettingsProps {
   targetUserDetails?: any;
   notificationsEnabled: boolean;
   setNotificationsEnabled: (enabled: boolean) => void;
+  isNotificationUpdating?: boolean;
   onOpenInviteLink?: () => void;
   canOpenInviteLink?: boolean;
   wallpaperUrl?: string | null;
@@ -36,6 +37,7 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
   targetUserDetails,
   notificationsEnabled,
   setNotificationsEnabled,
+  isNotificationUpdating = false,
   onOpenInviteLink,
   canOpenInviteLink = true,
   wallpaperUrl,
@@ -172,8 +174,16 @@ export const RightSidebarSettings: React.FC<RightSidebarSettingsProps> = ({
       )}
 
       <div
-        className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group"
-        onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+        className={`flex items-center justify-between px-4 py-3 transition-colors group ${
+          isNotificationUpdating
+            ? "cursor-wait opacity-70"
+            : "cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50"
+        }`}
+        onClick={() => {
+          if (!isNotificationUpdating) {
+            setNotificationsEnabled(!notificationsEnabled);
+          }
+        }}
       >
         <div className="flex items-center">
           <FiBell className="text-[#aab8c2] group-hover:text-blue-500 text-xl mr-4" />
