@@ -1,5 +1,6 @@
 import { FiArrowLeft, FiEdit2, FiMoreVertical, FiPhone, FiAtSign, FiGift, FiBell, FiDatabase, FiLock, FiSettings, FiFolder, FiSmile, FiMonitor } from "react-icons/fi";
 import { MdTranslate } from "react-icons/md";
+import { toast } from "sonner";
 import { useAuth } from "../../hooks";
 import { useCallback, useEffect, useState } from "react";
 import { authService } from "../../services/authService";
@@ -118,11 +119,11 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
         {/* Menu list */}
         <div className="flex flex-col py-2 border-b border-gray-100/60 dark:border-slate-800">
            <SettingsMenuItem icon={<FiBell />} label={t("settings.notifications")} onClick={() => onNavigate("notifications-sound")} />
-           <SettingsMenuItem icon={<FiDatabase />} label={t("settings.dataStorage")} />
+           <SettingsMenuItem icon={<FiDatabase />} label={t("settings.dataStorage")} onClick={() => toast.info(t("app.featureUnderDevelopment"))} />
            <SettingsMenuItem icon={<FiLock />} label={t("settings.privacySecurity")} onClick={() => onNavigate("privacy-security")} />
-           <SettingsMenuItem icon={<FiSettings />} label={t("settings.general")} />
-           <SettingsMenuItem icon={<FiFolder />} label={t("settings.chatFolders")} />
-           <SettingsMenuItem icon={<FiSmile />} label={t("settings.stickersEmoji")} />
+           <SettingsMenuItem icon={<FiSettings />} label={t("settings.general")} onClick={() => toast.info(t("app.featureUnderDevelopment"))} />
+           <SettingsMenuItem icon={<FiFolder />} label={t("settings.chatFolders")} onClick={() => toast.info(t("app.featureUnderDevelopment"))} />
+           <SettingsMenuItem icon={<FiSmile />} label={t("settings.stickersEmoji")} onClick={() => toast.info(t("app.featureUnderDevelopment"))} />
            <SettingsMenuItem icon={<FiMonitor />} label={t("settings.devices")} rightText={deviceCount ?? ""} onClick={() => onNavigate("devices")} />
            <SettingsMenuItem
              icon={<MdTranslate />}

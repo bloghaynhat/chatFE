@@ -868,7 +868,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           setMessages((prev) => {
-            const msgId = message.id;
+            const msgId = getMessageId(message);
             if (!msgId) {
               console.warn(
                 "[Socket] message:quoted message has no id:",
@@ -876,7 +876,14 @@ const MainLayout = ({ children }: { children?: any }) => {
               );
               return prev;
             }
-            if (prev.some((m) => String(m.id) === String(msgId))) {
+            
+            const exists = prev.some((m) =>
+              [m.id, m._id, m.messageId, m.serverId]
+                .filter(Boolean)
+                .some((id) => String(id) === String(msgId)),
+            );
+
+            if (exists) {
               console.log(
                 "[Socket] message:quoted already exists, skipping:",
                 msgId,
@@ -2211,7 +2218,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           // Optimistically update UI
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === payloadOrText.id || msg._id === payloadOrText.id
+              msg.id === payloadOrText.id || msg._id === payloadOrText.id || msg.serverId === payloadOrText.id || msg.messageId === payloadOrText.id
                 ? {
                     ...msg,
                     text: payloadOrText.text,
