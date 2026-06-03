@@ -5,6 +5,10 @@ import { callV2Socket } from "../services/callV2Socket";
 import { callV2Service } from "../services/callV2.service";
 import { userService } from "../services/userService";
 import { conversationService } from "../services/conversationService";
+import {
+  startLoopingNotificationSound,
+  stopNotificationSound,
+} from "../services/notificationSound";
 import { useAuth } from "../hooks/useAuth";
 import {
   CallV2IncomingPayload,
@@ -506,6 +510,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     if (!state.callId) return;
     if (isJoiningRef.current) return;
     isJoiningRef.current = true;
+    stopNotificationSound("call");
     clearIncomingTimer();
     try {
       const res = await callV2Service.joinCall(state.callId);
@@ -573,6 +578,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
   }, [state.isGroup, state.participants, state.status, user?.id]);
 
   const leaveCallV2 = useCallback(async () => {
+    stopNotificationSound("call");
     const callId = state.callId;
     if (callId) {
       try {
@@ -601,6 +607,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
 
   const rejectCallV2 = useCallback(async () => {
     if (!state.callId) return;
+    stopNotificationSound("call");
     clearIncomingTimer();
     try {
       const res = await callV2Service.rejectCall(state.callId);
@@ -615,6 +622,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
   }, [state.callId, clearIncomingTimer, cleanupRoom]);
 
   const endCallV2 = useCallback(async () => {
+    stopNotificationSound("call");
     const callId = state.callId;
     if (callId) {
       try {
@@ -662,6 +670,12 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
   }, [state.localAudioEnabled]);
 
   useEffect(() => {
+    if (state.status !== "incoming") {
+      stopNotificationSound("call");
+    }
+  }, [state.status]);
+
+  useEffect(() => {
     if (!user?.id) return;
 
     void callV2Socket.connect();
@@ -670,6 +684,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       console.log("[CallV2SocketProvider] Received call:incoming:", data);
       if (data.callerId === user?.id) return;
       if (currentCallIdRef.current && currentCallIdRef.current !== data.callId) return;
+      startLoopingNotificationSound("call");
       clearIncomingTimer();
       currentCallIdRef.current = data.callId;
       currentTypeRef.current = data.type;
@@ -689,6 +704,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "SET_REMOTE_PEER", remotePeer: { id: data.callerId } });
         });
       incomingTimerRef.current = setTimeout(async () => {
+        stopNotificationSound("call");
         try {
           const res = await callV2Service.missedCall(data.callId);
           refreshCallMessage(res.call?.conversationId);
@@ -800,6 +816,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     const offEnded = callV2Socket.on<CallV2EndedPayload>("call:ended", (data) => {
       console.log("[CallV2SocketProvider] Call ended:", data);
       if (currentCallIdRef.current !== data.callId) return;
+      stopNotificationSound("call");
       clearIncomingTimer();
       refreshCallMessage(data.conversationId);
       cleanupRoom();
@@ -820,6 +837,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       offBusy();
       offEnded();
       callV2Socket.disconnect();
+      stopNotificationSound("call");
       clearIncomingTimer();
       cleanupRoom();
       currentCallIdRef.current = null;

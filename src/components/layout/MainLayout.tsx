@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { conversationService, mediaService } from "../../services";
+import { playNotificationSound } from "../../services/notificationSound";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
 import { DeleteConversationModal } from "../chat/ActiveChatPane/DeleteConversationModal";
@@ -734,6 +735,17 @@ const MainLayout = ({ children }: { children?: any }) => {
           const message = payload?.message || payload;
           const incomingConversationId = getMessageConversationId(message, payload);
           const activeConversationId = selectedConversationIdRef.current;
+          const senderId =
+            message?.senderId ||
+            message?.sender?.id ||
+            message?.sender?._id ||
+            message?.id_sender ||
+            (typeof message?.sender === "string" ? message.sender : null);
+          const currentUserId = user?.id || user?._id;
+
+          if (senderId && currentUserId && String(senderId) !== String(currentUserId)) {
+            playNotificationSound("message");
+          }
 
           if (
             incomingConversationId &&
@@ -755,14 +767,9 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           setTypingUsers((prev) => {
-            const sender =
-              message?.senderId ||
-              message?.sender?.id ||
-              message?.id_sender ||
-              (typeof message?.sender === "string" ? message.sender : null);
-            if (sender && prev.has(sender)) {
+            if (senderId && prev.has(senderId)) {
               const ns = new Set(prev);
-              ns.delete(sender);
+              ns.delete(senderId);
               return ns;
             }
             return prev;
@@ -778,9 +785,7 @@ const MainLayout = ({ children }: { children?: any }) => {
             const msgConvId = incomingConversationId;
             if (String(msgConvId) === String(selectedConversationIdRef.current)) {
               // Auto mark as seen when message is received in current conversation
-              const senderId =
-                message?.senderId || message?.sender?.id || message?.id_sender;
-              if (senderId && senderId !== user?.id) {
+              if (senderId && currentUserId && String(senderId) !== String(currentUserId)) {
                 // Only mark seen if message is from someone else, not from current user
                 socketService
                   .markSeen(selectedConversationIdRef.current, msgId)
