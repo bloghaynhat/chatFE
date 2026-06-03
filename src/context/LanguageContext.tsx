@@ -450,7 +450,8 @@ type TranslationKey =
   | "profile.calls"
   | "archive.conversation"
   | "archive.conversations"
-  | "archive.previewFallback";
+  | "archive.previewFallback"
+  | "app.featureUnderDevelopment";
 
 type LanguageContextValue = {
   language: LanguageCode;
@@ -481,6 +482,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Unknown location",
     "app.user": "User",
     "app.you": "You",
+    "app.featureUnderDevelopment": "Feature is under development",
     "auth.hidePassword": "Hide password",
     "auth.showPassword": "Show password",
     "auth.passwordStrength": "Password strength",
@@ -935,6 +937,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Vị trí không xác định",
     "app.user": "Người dùng",
     "app.you": "Bạn",
+    "app.featureUnderDevelopment": "Tính năng đang phát triển",
     "auth.hidePassword": "Ẩn mật khẩu",
     "auth.showPassword": "Hiện mật khẩu",
     "auth.passwordStrength": "Độ mạnh mật khẩu",
