@@ -37,7 +37,7 @@ class SocketService {
 
   // ================= INIT =================
   async initRootSocket() {
-    if (this.rootSocket?.connected) {
+    if (this.rootSocket) {
       return this.rootSocket;
     }
     if (this.rootSocketPromise) {
@@ -87,7 +87,7 @@ class SocketService {
   }
 
   async initMessagesSocket() {
-    if (this.messagesSocket?.connected) {
+    if (this.messagesSocket) {
       return this.messagesSocket;
     }
     if (this.messagesSocketPromise) {
@@ -137,7 +137,7 @@ class SocketService {
   }
 
   async initFriendsSocket() {
-    if (this.friendsSocket?.connected) {
+    if (this.friendsSocket) {
       return this.friendsSocket;
     }
     if (this.friendsSocketPromise) {
@@ -177,7 +177,7 @@ class SocketService {
   }
 
   async initBlocksSocket() {
-    if (this.blocksSocket?.connected) {
+    if (this.blocksSocket) {
       return this.blocksSocket;
     }
     if (this.blocksSocketPromise) {
@@ -1393,6 +1393,11 @@ class SocketService {
       this.blocksSocket.disconnect();
       this.blocksSocket = null;
     }
+
+    this.rootSocketPromise = null;
+    this.messagesSocketPromise = null;
+    this.friendsSocketPromise = null;
+    this.blocksSocketPromise = null;
 
     this.listeners.clear();
   }
