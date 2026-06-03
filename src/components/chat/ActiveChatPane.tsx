@@ -125,6 +125,7 @@ export const ActiveChatPane = ({
   const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
   const [chatInputHeight, setChatInputHeight] = useState(96);
+  const [isChatAtBottom, setIsChatAtBottom] = useState(true);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -865,7 +866,9 @@ export const ActiveChatPane = ({
     const container = event.currentTarget as HTMLElement;
     const distanceFromBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight;
-    shouldStickToBottomRef.current = distanceFromBottom < 180;
+    const isNearBottom = distanceFromBottom < 180;
+    shouldStickToBottomRef.current = isNearBottom;
+    setIsChatAtBottom(isNearBottom);
   }, []);
 
   const visibleMessages = useMemo(() => messages, [messages]);
@@ -889,6 +892,7 @@ export const ActiveChatPane = ({
       previousConversationIdRef.current = conversationId;
       previousLastMessageIdRef.current = String(lastMessageId || "");
       shouldStickToBottomRef.current = true;
+      setIsChatAtBottom(true);
       scheduleScrollToBottom("auto");
       return;
     }
@@ -897,6 +901,7 @@ export const ActiveChatPane = ({
 
     previousLastMessageIdRef.current = String(lastMessageId || "");
     if (isLastMessageFromCurrentUser || shouldStickToBottomRef.current) {
+      setIsChatAtBottom(true);
       scheduleScrollToBottom("auto");
     }
   }, [
@@ -910,6 +915,7 @@ export const ActiveChatPane = ({
   useEffect(() => {
     if (!isLoading) {
       shouldStickToBottomRef.current = true;
+      setIsChatAtBottom(true);
       scheduleScrollToBottom("auto");
     }
   }, [isLoading, selectedConversationId]);
@@ -1431,6 +1437,12 @@ export const ActiveChatPane = ({
         disabledTone={inputDisabledTone}
         onChatInteractionRead={onChatInteractionRead}
         onInputHeightChange={setChatInputHeight}
+        isScrolledUp={!isChatAtBottom}
+        onScrollToBottom={() => {
+          shouldStickToBottomRef.current = true;
+          setIsChatAtBottom(true);
+          scrollToBottom("smooth");
+        }}
       />
 
       <CreatePollModal

@@ -13,6 +13,7 @@ import {
   FiTrash2,
   FiLock,
   FiZap,
+  FiChevronDown,
 } from "react-icons/fi";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { AiSmartReply } from "../AiSmartReply";
@@ -53,6 +54,8 @@ export const ChatInput = ({
   disabledTone = "danger",
   onChatInteractionRead,
   onInputHeightChange,
+  isScrolledUp = false,
+  onScrollToBottom,
 }) => {
   const { t } = useLanguage();
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
@@ -285,10 +288,27 @@ export const ChatInput = ({
     <div
       ref={inputRootRef}
       data-chat-input-root
-      className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent"
+      className={`absolute left-0 right-0 bottom-0 px-4 pb-3 lg:px-5 bg-transparent transition-[border-color] duration-200 ${
+        isScrolledUp
+          ? "border-t border-gray-300/45 bg-white/20 pt-3 backdrop-blur-[1px] dark:border-slate-600/45 dark:bg-slate-950/20"
+          : "border-t border-transparent pt-0"
+      }`}
       onPointerDown={onChatInteractionRead}
       onFocus={onChatInteractionRead}
     >
+      {isScrolledUp && (
+        <button
+          type="button"
+          onClick={onScrollToBottom}
+          className="scroll-to-bottom-button absolute bottom-[70px] z-[70] flex h-11 w-11 items-center justify-center rounded-full border border-white/75 bg-white/95 text-gray-500 shadow-lg transition hover:bg-white hover:text-[#2ea6f3] active:scale-95 lg:bottom-[74px] lg:h-12 lg:w-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:text-slate-200 dark:hover:text-blue-300"
+          style={{ right: "max(1rem, calc((100% - 56rem) / 2))" }}
+          title="Scroll to bottom"
+          aria-label="Scroll to bottom"
+        >
+          <FiChevronDown className="text-[28px]" strokeWidth={2.2} />
+        </button>
+      )}
+
       {(forwardingMessage || replyingMessage) && !editingMessage && (
         <div className="relative z-40 mx-auto mb-2 flex max-w-4xl items-center overflow-hidden rounded-[22px] border border-white/70 bg-white/55 py-2 pl-4 pr-12 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/35">
           <div className="absolute left-2 top-2 bottom-2 w-[3px] rounded-full bg-[#2ea6f3]" />
