@@ -176,7 +176,7 @@ export const ActiveChatPane = ({
       const sourcePinnedMessages =
         pinnedMessages.length > 0
           ? pinnedMessages
-          : (messages || []).filter((m) => m.pinnedAt);
+          : (messages || []).filter((m) => m.pinned === true);
 
       if (!sourcePinnedMessages || sourcePinnedMessages.length === 0) {
         setEnrichedPinnedMessages([]);

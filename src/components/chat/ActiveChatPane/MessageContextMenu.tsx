@@ -62,9 +62,17 @@ export const MessageContextMenu = ({
     contextMenu.message.sender?.id === currentUserId ||
     contextMenu.message.id_sender === currentUserId;
 
-  const msgId = contextMenu.message.id || contextMenu.message._id;
-  const message = messages.find((m) => (m.id || m._id) === msgId);
-  const isPinned = !!message?.pinnedAt;
+  const msgId =
+    contextMenu.message.serverId ||
+    contextMenu.message._id ||
+    contextMenu.message.messageId ||
+    contextMenu.message.id;
+  const message = messages.find((m) =>
+    [m.serverId, m._id, m.messageId, m.id]
+      .filter(Boolean)
+      .some((id) => String(id) === String(msgId)),
+  );
+  const isPinned = message?.pinned === true;
   const viewportPadding = 8;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuPosition, setMenuPosition] = useState({

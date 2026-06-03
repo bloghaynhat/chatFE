@@ -77,6 +77,7 @@ export interface Message {
   quotedMessagePreview?: string;
 
   // Pin-related fields
+  pinned?: boolean;
   pinnedAt?: string;
   pinnedBy?: string;
 

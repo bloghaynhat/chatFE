@@ -255,6 +255,32 @@ class SocketService {
       this.emit("user_presence", data);
       this.emit("presence:changed", data);
     });
+
+    const forwardMessagePinned = (data) => {
+      this.emit("message:pinned", data);
+    };
+
+    [
+      "message:pinned",
+      "message:pin",
+      "message:pinnedMessage",
+      "messagePinned",
+    ].forEach((eventName) => {
+      this.rootSocket.on(eventName, forwardMessagePinned);
+    });
+
+    const forwardMessageUnpinned = (data) => {
+      this.emit("message:unpinned", data);
+    };
+
+    [
+      "message:unpinned",
+      "message:unpin",
+      "message:unpinnedMessage",
+      "messageUnpinned",
+    ].forEach((eventName) => {
+      this.rootSocket.on(eventName, forwardMessageUnpinned);
+    });
   }
 
   setupMessageListeners() {
