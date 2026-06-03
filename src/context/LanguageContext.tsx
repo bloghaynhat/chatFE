@@ -348,6 +348,7 @@ type TranslationKey =
   | "chat.searchByDate"
   | "chat.searchSmartPlaceholder"
   | "chat.savedMessagesLower"
+  | "chat.translateMessage"
   | "chat.openingConversation"
   | "chat.members"
   | "chat.justNow"
@@ -810,6 +811,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.searchByDate": "Search by date",
     "chat.searchSmartPlaceholder": "Search... (Type '/ai ' for Smart Search)",
     "chat.savedMessagesLower": "Saved messages",
+    "chat.translateMessage": "Translate message",
     "chat.openingConversation": "Opening conversation...",
     "chat.members": "members",
     "chat.justNow": "Just now",
@@ -1265,6 +1267,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.searchByDate": "Tìm theo ngày",
     "chat.searchSmartPlaceholder": "Tìm kiếm... (gõ '/ai ' để tìm thông minh)",
     "chat.savedMessagesLower": "Tin nhắn đã lưu",
+    "chat.translateMessage": "Dịch tin nhắn",
     "chat.openingConversation": "Đang mở cuộc trò chuyện...",
     "chat.members": "Thành viên",
     "chat.justNow": "Vừa xong",

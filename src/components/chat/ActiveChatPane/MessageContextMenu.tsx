@@ -250,7 +250,7 @@ export const MessageContextMenu = ({
                 <path d="M14 18h6" />
               </svg>
             </div>
-            Dịch tin nhắn
+            <span className="font-medium">{t("chat.translateMessage")}</span>
           </button>
         )}
 
