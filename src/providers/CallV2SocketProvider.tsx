@@ -578,12 +578,27 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     return joinedParticipantIds.every((participantId) => participantId === user?.id);
   }, [state.isGroup, state.participants, state.status, user?.id]);
 
+  const shouldEndGroupCallOnLeave = useCallback(() => {
+    if (!state.isGroup || state.status !== "active") return false;
+
+    const remoteLiveKitParticipants = roomRef.current?.remoteParticipants.size;
+    if (typeof remoteLiveKitParticipants === "number") {
+      return remoteLiveKitParticipants <= 1;
+    }
+
+    const joinedParticipantIds = Object.entries(state.participants || {})
+      .filter(([, participant]) => hasJoinedStatus(participant))
+      .map(([participantId]) => participantId);
+
+    return joinedParticipantIds.length <= 2;
+  }, [state.isGroup, state.participants, state.status]);
+
   const leaveCallV2 = useCallback(async () => {
     stopNotificationSound("call");
     const callId = state.callId;
     if (callId) {
       try {
-        if (state.status === "calling" || (state.isGroup && isCurrentUserLastJoinedParticipant())) {
+        if (state.status === "calling" || shouldEndGroupCallOnLeave()) {
           const res = await callV2Service.endCall(callId);
           refreshCallMessage(res.call?.conversationId);
         } else {
@@ -604,7 +619,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     clearIncomingTimer();
     dispatch({ type: "RESET" });
     currentCallIdRef.current = null;
-  }, [state.callId, state.isGroup, state.status, isCurrentUserLastJoinedParticipant, cleanupRoom, clearIncomingTimer]);
+  }, [state.callId, state.status, shouldEndGroupCallOnLeave, isCurrentUserLastJoinedParticipant, cleanupRoom, clearIncomingTimer]);
 
   const rejectCallV2 = useCallback(async () => {
     if (!state.callId) return;
