@@ -1,3 +1,8 @@
+import {
+  canPlayNotificationSound,
+  getNotificationSoundVolume,
+} from "./notificationPreferences";
+
 const NOTIFICATION_SOUNDS = {
   message: "/noti_message.mp3",
   call: "/noti_call.mp3",
@@ -29,7 +34,13 @@ const getAudio = (type: NotificationSoundType) => {
   return audio;
 };
 
+const applyCurrentVolume = (audio: HTMLAudioElement) => {
+  audio.volume = getNotificationSoundVolume();
+};
+
 export const playNotificationSound = (type: NotificationSoundType) => {
+  if (!canPlayNotificationSound(type)) return;
+
   const now = Date.now();
   if (now - lastPlayedAt[type] < MIN_PLAY_INTERVAL_MS[type]) return;
 
@@ -38,6 +49,7 @@ export const playNotificationSound = (type: NotificationSoundType) => {
 
   lastPlayedAt[type] = now;
   audio.pause();
+  applyCurrentVolume(audio);
   audio.currentTime = 0;
   void audio.play().catch(() => {
     // Browsers can block autoplay until the user interacts with the app.
@@ -45,11 +57,14 @@ export const playNotificationSound = (type: NotificationSoundType) => {
 };
 
 export const startLoopingNotificationSound = (type: NotificationSoundType) => {
+  if (!canPlayNotificationSound(type)) return;
+
   const audio = getAudio(type);
   if (!audio) return;
 
   audio.loop = true;
   audio.pause();
+  applyCurrentVolume(audio);
   audio.currentTime = 0;
   void audio.play().catch(() => {
     // Browsers can block autoplay until the user interacts with the app.

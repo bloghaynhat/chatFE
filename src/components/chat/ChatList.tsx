@@ -21,6 +21,13 @@ import { BsPinAngle, BsPinAngleFill } from "react-icons/bs";
 import { PhotoProvider, PhotoView } from "react-photo-view";
 import { toast } from "sonner";
 import { socketService } from "../../services/socketService";
+import {
+  isConversationMuted,
+  isConversationMutedValue,
+  setConversationMuted,
+  syncMutedConversations,
+} from "../../services/muteRegistry";
+import { shouldShowTabUnread } from "../../services/notificationPreferences";
 import { ConversationItem } from "./ChatList/ConversationItem";
 import { GlobalUserItem } from "./ChatList/GlobalUserItem";
 import { ForwardModal } from "./ActiveChatPane/ForwardModal";
@@ -77,6 +84,9 @@ const mergeFetchedChats = (previousChats: any[], fetchedChats: any[]) => {
 
 const isConversationPinned = (chat: any) => Boolean(chat?.pinned || chat?.isPinned);
 const isConversationArchived = (chat: any) => Boolean(chat?.archived || chat?.isArchived);
+const isChatMutedForNotifications = (chat: any) =>
+  isConversationMuted(chat?.id || chat?.conversationId || chat?._id) ||
+  isConversationMutedValue(chat);
 
 const sortChats = (chats: any[]) =>
   [...chats].sort((a, b) => {
@@ -990,6 +1000,7 @@ export const ChatList = ({
 
       const fetchedChats = (Array.isArray(response?.conversations) ? response.conversations : [])
         .filter((chat: any) => !locallyRemovedConversationIds.current.has(String(chat?.id)));
+      syncMutedConversations(fetchedChats);
       setConversationCursor(response?.nextCursor || null);
       setHasMoreConversations(Boolean(response?.hasMore && response?.nextCursor));
       setChats((previousChats) =>
@@ -1189,12 +1200,63 @@ export const ChatList = ({
   }, [activeChatId]);
 
   useEffect(() => {
+    if (!shouldShowTabUnread()) {
+      document.title = APP_TITLE;
+      setTabFavicon(0);
+      return;
+    }
+
     const activeUnread = chats
       .filter((chat) => !isConversationArchived(chat))
+      .filter((chat) => !isChatMutedForNotifications(chat))
       .reduce((total, chat) => total + Number(chat.unreadCount || 0), 0);
     document.title = activeUnread > 0 ? `(${activeUnread > 99 ? "99+" : activeUnread}) ${APP_TITLE}` : APP_TITLE;
     setTabFavicon(activeUnread);
   }, [chats]);
+
+  useEffect(() => {
+    const handlePreferencesChanged = () => {
+      if (!shouldShowTabUnread()) {
+        document.title = APP_TITLE;
+        setTabFavicon(0);
+        return;
+      }
+
+      const activeUnread = chatsRef.current
+        .filter((chat) => !isConversationArchived(chat))
+        .filter((chat) => !isChatMutedForNotifications(chat))
+        .reduce((total, chat) => total + Number(chat.unreadCount || 0), 0);
+      document.title = activeUnread > 0 ? `(${activeUnread > 99 ? "99+" : activeUnread}) ${APP_TITLE}` : APP_TITLE;
+      setTabFavicon(activeUnread);
+    };
+
+    window.addEventListener("notification-preferences:changed", handlePreferencesChanged);
+    return () => window.removeEventListener("notification-preferences:changed", handlePreferencesChanged);
+  }, []);
+
+  useEffect(() => {
+    const handleLocalMuteChanged = (event: any) => {
+      const conversationId = event?.detail?.conversationId;
+      if (!conversationId) return;
+
+      setChats((previousChats) =>
+        previousChats.map((chat) =>
+          String(chat.id) === String(conversationId)
+            ? {
+                ...chat,
+                muted: Boolean(event.detail.muted),
+                isMuted: Boolean(event.detail.muted),
+                mutedUntil: event.detail.muted ? event.detail.mutedUntil : undefined,
+                notificationsEnabled: !event.detail.muted,
+              }
+            : chat,
+        ),
+      );
+    };
+
+    window.addEventListener("conversation:mute-local-changed", handleLocalMuteChanged);
+    return () => window.removeEventListener("conversation:mute-local-changed", handleLocalMuteChanged);
+  }, []);
 
   useEffect(() => {
     if (!onArchiveStatsChange) return;
@@ -1523,7 +1585,30 @@ export const ChatList = ({
         ),
       );
     };
-    const handleMuteChanged = () => fetchChats(false);
+    const handleMuteChanged = (payload: any) => {
+      const conversationId = payload?.conversationId || payload?.id || payload?.conversation?._id || payload?.conversation?.id;
+      const muted = Boolean(payload?.muted ?? payload?.isMuted ?? payload?.notificationsMuted);
+      const mutedUntil = payload?.mutedUntil || payload?.muteUntil || payload?.notificationsMutedUntil || null;
+
+      if (conversationId) {
+        setConversationMuted(String(conversationId), muted, mutedUntil);
+        setChats((previousChats) =>
+          previousChats.map((chat) =>
+            String(chat.id) === String(conversationId)
+              ? {
+                  ...chat,
+                  muted,
+                  isMuted: muted,
+                  mutedUntil: muted ? mutedUntil : undefined,
+                  notificationsEnabled: !muted,
+                }
+              : chat,
+          ),
+        );
+      }
+
+      fetchChats(false);
+    };
 
     const cleanupPin = socketService.on("conversation:pin_toggled", handlePinToggled);
     const cleanupArchive = socketService.on("conversation:archived_toggled", handleArchivedToggled);

@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { conversationService, mediaService } from "../../services";
+import { isConversationMuted } from "../../services/muteRegistry";
 import { playNotificationSound } from "../../services/notificationSound";
 import { socketService } from "../../services/socketService";
 import { ActiveChatPane } from "../chat";
@@ -743,7 +744,12 @@ const MainLayout = ({ children }: { children?: any }) => {
             (typeof message?.sender === "string" ? message.sender : null);
           const currentUserId = user?.id || user?._id;
 
-          if (senderId && currentUserId && String(senderId) !== String(currentUserId)) {
+          if (
+            senderId &&
+            currentUserId &&
+            String(senderId) !== String(currentUserId) &&
+            !isConversationMuted(incomingConversationId)
+          ) {
             playNotificationSound("message");
           }
 

@@ -4,6 +4,7 @@ import { ChatList } from "../chat/ChatList";
 import { ContactsPanel } from "../chat/ContactsPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { DevicesPanel } from "./DevicesPanel";
+import { NotificationsSoundPanel } from "./NotificationsSoundPanel";
 import { PrivacySecurityPanel } from "./PrivacySecurityPanel";
 import { BlockListPanel } from "./BlockListPanel";
 import { ChangePasswordPanel } from "./ChangePasswordPanel";
@@ -489,7 +490,7 @@ export const ResizableChatPanel = ({
 
           {/* Settings View */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "privacy-security" || activeView === "block-list" || activeView === "change-password" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-30 pointer-events-auto ${activeView === "settings" ? "translate-x-0" : activeView === "devices" || activeView === "notifications-sound" || activeView === "privacy-security" || activeView === "block-list" || activeView === "change-password" ? "-translate-x-[20%]" : "translate-x-full pointer-events-none"}`}
           >
             <SettingsPanel
               isCollapsed={isCollapsed}
@@ -514,6 +515,16 @@ export const ResizableChatPanel = ({
             className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "devices" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
           >
             <DevicesPanel
+              isCollapsed={isCollapsed}
+              onBack={() => onViewChange("settings")}
+            />
+          </div>
+
+          {/* Notifications and Sound View */}
+          <div
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-black lg:dark:bg-slate-900 transition-transform duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] z-40 pointer-events-auto ${activeView === "notifications-sound" ? "translate-x-0" : "translate-x-full pointer-events-none"}`}
+          >
+            <NotificationsSoundPanel
               isCollapsed={isCollapsed}
               onBack={() => onViewChange("settings")}
             />

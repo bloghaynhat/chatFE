@@ -5,6 +5,7 @@ import { callV2Socket } from "../services/callV2Socket";
 import { callV2Service } from "../services/callV2.service";
 import { userService } from "../services/userService";
 import { conversationService } from "../services/conversationService";
+import { isConversationMuted } from "../services/muteRegistry";
 import {
   startLoopingNotificationSound,
   stopNotificationSound,
@@ -684,7 +685,9 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
       console.log("[CallV2SocketProvider] Received call:incoming:", data);
       if (data.callerId === user?.id) return;
       if (currentCallIdRef.current && currentCallIdRef.current !== data.callId) return;
-      startLoopingNotificationSound("call");
+      if (!isConversationMuted(data.conversationId)) {
+        startLoopingNotificationSound("call");
+      }
       clearIncomingTimer();
       currentCallIdRef.current = data.callId;
       currentTypeRef.current = data.type;
