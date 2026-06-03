@@ -88,18 +88,21 @@ export const MessageList = ({
   onScroll,
   handleContextMenu,
   activeContextMessageId,
+  activeContextMenuClosing,
   setPreviewVideoUrl,
   onNavigateToMessage,
   onPollUpdated,
   onOpenChat,
   onChatInteractionRead,
+  inputBottomInset = 96,
 }: any) => {
   const { t } = useLanguage();
   const wallpaperPreset = getWallpaperPresetByValue(wallpaperUrl);
   const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
   const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
+  const bottomInset = Math.max(96, Number(inputBottomInset) || 96);
   const containerClassName =
-    `chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
+    `chat-highlight-container chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
   const wallpaperStyle = wallpaperUrl
     ? {
         backgroundImage:
@@ -110,9 +113,19 @@ export const MessageList = ({
         backgroundAttachment: wallpaperPreset ? "scroll" : "fixed",
       }
     : undefined;
+  const containerStyle = {
+    ...wallpaperStyle,
+    paddingBottom: `${bottomInset}px`,
+  };
   const overlayClassName = wallpaperUrl
-    ? "min-h-full -mx-4 lg:-mx-6 -mt-4 -mb-24 px-4 lg:px-6 pt-4 pb-24 bg-white/30 dark:bg-black/35 backdrop-blur-[1px]"
+    ? "min-h-full -mx-4 lg:-mx-6 -mt-4 px-4 lg:px-6 pt-4 bg-white/30 dark:bg-black/35 backdrop-blur-[1px]"
     : "";
+  const overlayStyle = wallpaperUrl
+    ? {
+        marginBottom: `-${bottomInset}px`,
+        paddingBottom: `${bottomInset}px`,
+      }
+    : undefined;
   const handleContainerContextMenu = (event: any) => {
     const target = event.target as HTMLElement;
     if (target.closest("[data-message-row='true']")) return;
@@ -139,7 +152,7 @@ export const MessageList = ({
 
   if (isLoading) {
     return (
-      <div ref={containerRef} className={containerClassName} style={wallpaperStyle} onScroll={onScroll} data-chat-container>
+      <div ref={containerRef} className={containerClassName} style={containerStyle} onScroll={onScroll} data-chat-container>
         <div className="h-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
           Opening conversation...
         </div>
@@ -149,7 +162,7 @@ export const MessageList = ({
 
   if (error) {
     return (
-      <div ref={containerRef} className={containerClassName} style={wallpaperStyle} onScroll={onScroll} data-chat-container>
+      <div ref={containerRef} className={containerClassName} style={containerStyle} onScroll={onScroll} data-chat-container>
         <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
           <p className="text-sm text-red-600 dark:text-red-400">Couldn’t open this conversation</p>
           <button
@@ -166,8 +179,8 @@ export const MessageList = ({
 
   if (messages.length === 0) {
     return (
-      <div ref={containerRef} className={containerClassName} style={wallpaperStyle} onScroll={onScroll} data-chat-container>
-        <div className={`h-full flex flex-col items-center justify-center ${overlayClassName}`}>
+      <div ref={containerRef} className={containerClassName} style={containerStyle} onScroll={onScroll} data-chat-container>
+        <div className={`h-full flex flex-col items-center justify-center ${overlayClassName}`} style={overlayStyle}>
           <div className="bg-black/15 dark:bg-black/30 rounded-[20px] p-6 px-8 flex flex-col items-center justify-center text-center max-w-[300px] backdrop-blur-md border border-white/10 shadow-sm">
             <span className="text-white dark:text-white/90 font-semibold text-[15px] mb-1">
               {t("chat.noMessagesYet")}
@@ -186,13 +199,13 @@ export const MessageList = ({
     <div
       ref={containerRef}
       className={containerClassName}
-      style={wallpaperStyle}
+      style={containerStyle}
       data-chat-container
       onScroll={onScroll}
       onPointerDown={onChatInteractionRead}
       onContextMenu={handleContainerContextMenu}
     >
-      <div className={overlayClassName}>
+      <div className={overlayClassName} style={overlayStyle}>
       {visibleMessages.length > 0 && (
         <PhotoProvider maskOpacity={0.8}>
           <div className="flex flex-col gap-0 items-start max-w-4xl mx-auto w-full">
@@ -253,6 +266,7 @@ export const MessageList = ({
                     isLastInSequence={isLastInSequence}
                     handleContextMenu={handleContextMenu}
                     activeContextMessageId={activeContextMessageId}
+                    activeContextMenuClosing={activeContextMenuClosing}
                     setPreviewVideoUrl={setPreviewVideoUrl}
                     currentUserId={currentUserId}
                     onNavigateToMessage={onNavigateToMessage}

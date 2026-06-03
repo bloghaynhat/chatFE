@@ -41,7 +41,7 @@ export const MessageText = ({ message, text, mine, isSeen }) => {
         (isJumboEmoji ? (
           <AnimatedEmojiMessage emoji={trimmedText} isNew={isNewMsg} isMine={mine} />
         ) : (
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.32]">
+          <p className="cursor-text select-text whitespace-pre-wrap break-words text-[15px] leading-[1.32]">
             {renderTextWithLinks(text)}
             {!hasReactions && <span className="inline-block w-[58px] h-0" aria-hidden="true" />}
           </p>

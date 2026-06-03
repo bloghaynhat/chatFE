@@ -78,21 +78,48 @@ body {
     z-index: 1;
   }
 
+  .chat-highlight-container {
+    container-type: inline-size;
+  }
+
   .telegram-message-row-active::before {
     content: "";
     position: absolute;
     top: -2px;
     bottom: -2px;
-    left: 50%;
-    width: 100vw;
-    transform: translateX(-50%);
+    left: calc((min(100cqw, 56rem) - 100cqw) / 2 - 1rem);
+    right: calc((min(100cqw, 56rem) - 100cqw) / 2 - 1rem);
     background: rgba(76, 125, 79, 0.18);
     z-index: 0;
     pointer-events: none;
+    animation: contextHighlightIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: opacity, transform;
+  }
+
+  @media (min-width: 1024px) {
+    .telegram-message-row-active::before {
+      left: calc((min(100cqw, 56rem) - 100cqw) / 2 - 1.5rem);
+      right: calc((min(100cqw, 56rem) - 100cqw) / 2 - 1.5rem);
+    }
   }
 
   .dark .telegram-message-row-active::before {
     background: rgba(15, 23, 42, 0.28);
+  }
+
+  .telegram-message-row-active-closing::before {
+    animation: contextHighlightOut 140ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  .message-context-menu-shell {
+    animation: messageContextMenuIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    transform-origin: top center;
+    will-change: opacity, transform;
+  }
+
+  .message-context-menu-shell-closing {
+    animation: messageContextMenuOut 140ms cubic-bezier(0.4, 0, 1, 1) both;
+    pointer-events: none;
   }
 
   .telegram-bubble > * {
@@ -195,6 +222,61 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes messageContextMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes messageContextMenuOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+
+@keyframes contextHighlightIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes contextHighlightOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.scroll-to-bottom-button {
+  animation: scrollToBottomButtonIn 190ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes scrollToBottomButtonIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
