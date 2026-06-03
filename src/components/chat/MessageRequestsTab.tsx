@@ -109,8 +109,8 @@ export const MessageRequestsTab: React.FC<MessageRequestsTabProps> = ({
         const isPending = pendingActionId === conversationId;
         const previewMessage =
           chat.lastMessage ||
-          ((chat as any).lastMessage?.type === "media"
-            ? { type: "media" }
+          ((chat as any).lastMessage?.media?.length || (chat as any).lastMessage?.files?.length
+            ? { type: "file" }
             : { text: "Tin nhắn mới từ người lạ" });
 
         return (
