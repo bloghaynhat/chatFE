@@ -349,6 +349,16 @@ export const MessageItem = ({
           from { opacity: 0; transform: translateY(-3px) scale(0.88); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes outgoingMessageIn {
+          0% { transform: translate3d(0, 8px, 0) scale(0.985); }
+          70% { transform: translate3d(0, -1px, 0) scale(1.002); }
+          100% { transform: translate3d(0, 0, 0) scale(1); }
+        }
+        .telegram-message-sending {
+          animation: outgoingMessageIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          transform-origin: right bottom;
+          will-change: transform;
+        }
       `}</style>
       {isGroup && !mine && (
         <div
@@ -383,7 +393,7 @@ export const MessageItem = ({
               } ${
                 isLastInSequence ? "telegram-bubble-last telegram-bubble-tail" : "telegram-bubble-middle"
               }`
-        } ${message.status === 'sending' ? 'opacity-70 transition-opacity duration-300' : ''} ${
+        } ${message.status === "sending" && mine ? "telegram-message-sending" : ""} ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"

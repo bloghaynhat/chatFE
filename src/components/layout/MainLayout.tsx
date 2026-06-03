@@ -48,7 +48,10 @@ const sortMessagesByCreatedAt = (items: any[] = []) =>
   });
 
 const getMessageId = (message: any) =>
-  message?.id || message?._id || message?.messageId || null;
+  message?.serverId || message?._id || message?.messageId || message?.id || null;
+
+const getClientMessageKey = (message: any) =>
+  message?.id || message?._id || message?.messageId || message?.serverId || null;
 
 const getMessageTimeValue = (message: any) => {
   const value =
@@ -449,10 +452,10 @@ const MainLayout = ({ children }: { children?: any }) => {
   );
 
   const appendLocalMessage = useCallback((message: any) => {
-    if (!message?.id && !message?._id) return;
+    const messageId = getMessageId(message);
+    if (!messageId) return;
     setMessages((prev) => {
-      const messageId = message.id || message._id;
-      if (prev.some((item: any) => String(item.id || item._id) === String(messageId))) {
+      if (prev.some((item: any) => String(getMessageId(item)) === String(messageId))) {
         return prev;
       }
       return [...prev, normalizeMessageLifecycle(message)];
@@ -782,10 +785,56 @@ const MainLayout = ({ children }: { children?: any }) => {
           });
 
           setMessages((prev) => {
-            if (!message || !message.id) return prev;
+            const msgId = getMessageId(message);
+            if (!message || !msgId) return prev;
             // Prevent duplicate messages
-            const msgId = message.id;
-            if (prev.some((m) => String(m.id) === String(msgId))) return prev;
+            const existingIndex = prev.findIndex((m) =>
+              [m.id, m._id, m.messageId, m.serverId]
+                .filter(Boolean)
+                .some((id) => String(id) === String(msgId)),
+            );
+            if (existingIndex !== -1) {
+              return prev.map((item, index) =>
+                index === existingIndex
+                  ? {
+                      ...item,
+                      ...normalizeMessageLifecycle(message),
+                      id: getClientMessageKey(item) || msgId,
+                      _id: message._id || message.id || item._id,
+                      messageId: message.messageId || message._id || message.id || item.messageId,
+                      serverId: message._id || message.id || message.messageId || item.serverId,
+                    }
+                  : item,
+              );
+            }
+
+            const pendingIndex = prev.findIndex((item) => {
+              const itemSenderId =
+                item?.senderId || item?.sender?.id || item?.sender?._id || item?.id_sender;
+              const sameSender =
+                currentUserId &&
+                senderId &&
+                String(senderId) === String(currentUserId) &&
+                String(itemSenderId) === String(currentUserId);
+              const sameText = String(item?.text || item?.content || "").trim() === String(message?.text || message?.content || "").trim();
+              return sameSender && item?.status === "sending" && sameText;
+            });
+
+            if (pendingIndex !== -1) {
+              return prev.map((item, index) =>
+                index === pendingIndex
+                  ? {
+                      ...item,
+                      ...normalizeMessageLifecycle(message),
+                      id: getClientMessageKey(item) || msgId,
+                      _id: message._id || message.id || item._id,
+                      messageId: message.messageId || message._id || message.id || item.messageId,
+                      serverId: message._id || message.id || message.messageId || item.serverId,
+                      status: "sent",
+                    }
+                  : item,
+              );
+            }
 
             // Only add if it belongs to currently open conversation
             const msgConvId = incomingConversationId;
@@ -2412,8 +2461,11 @@ const MainLayout = ({ children }: { children?: any }) => {
             : [responseData];
 
         setMessages((prev) => {
-          // Remove the optimistic 'tempId' message
-          const updatedMessages = prev.filter((m) => m.id !== tempId);
+          const updatedMessages = [...prev];
+          const tempIndex = updatedMessages.findIndex(
+            (m) => String(getClientMessageKey(m)) === String(tempId),
+          );
+          let hasMergedIntoTempMessage = false;
 
           // Append or update messages from the API response
           for (const sMsg of sentMessagesArray) {
@@ -2421,7 +2473,10 @@ const MainLayout = ({ children }: { children?: any }) => {
 
             const msgId = sMsg._id || sMsg.id;
             const existingIndex = updatedMessages.findIndex(
-              (m) => String(m.id || m._id) === String(msgId),
+              (m) =>
+                [m.serverId, m._id, m.messageId, m.id]
+                  .filter(Boolean)
+                  .some((id) => String(id) === String(msgId)),
             );
 
             if (existingIndex !== -1) {
@@ -2429,8 +2484,25 @@ const MainLayout = ({ children }: { children?: any }) => {
                 ...updatedMessages[existingIndex],
                 ...sMsg,
                 status: "sent",
-                id: msgId,
+                id: getClientMessageKey(updatedMessages[existingIndex]) || msgId,
+                _id: sMsg._id || msgId,
+                messageId: sMsg.messageId || msgId,
+                serverId: msgId,
               };
+              if (tempIndex !== -1 && tempIndex !== existingIndex) {
+                updatedMessages.splice(tempIndex, 1);
+              }
+            } else if (tempIndex !== -1 && !hasMergedIntoTempMessage) {
+              updatedMessages[tempIndex] = {
+                ...updatedMessages[tempIndex],
+                ...sMsg,
+                id: tempId,
+                _id: sMsg._id || msgId,
+                messageId: sMsg.messageId || msgId,
+                serverId: msgId,
+                status: "sent",
+              };
+              hasMergedIntoTempMessage = true;
             } else {
               updatedMessages.push({ ...sMsg, id: msgId, status: "sent" });
             }

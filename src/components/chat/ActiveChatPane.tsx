@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { socketService } from "../../services/socketService";
 import { userService } from "../../services/userService";
 import { conversationService } from "../../services/conversationService";
@@ -131,6 +131,10 @@ export const ActiveChatPane = ({
   const isTypingRef = useRef(false);
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
+  const chatContainerRef = useRef<HTMLElement | null>(null);
+  const previousConversationIdRef = useRef<string | null>(null);
+  const previousLastMessageIdRef = useRef<string>("");
+  const shouldStickToBottomRef = useRef(true);
   const photoVideoInputRef = useRef(null);
   const documentInputRef = useRef(null);
   const userCache = useRef<Map<string, any>>(new Map());
@@ -800,12 +804,16 @@ export const ActiveChatPane = ({
   };
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    const container = document.querySelector<HTMLElement>("[data-chat-container]");
+    const container =
+      chatContainerRef.current ||
+      document.querySelector<HTMLElement>("[data-chat-container]");
     if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior,
-      });
+      const top = Math.max(0, container.scrollHeight - container.clientHeight);
+      if (behavior === "auto") {
+        container.scrollTop = top;
+      } else {
+        container.scrollTo({ top, behavior });
+      }
       return;
     }
 
@@ -813,13 +821,20 @@ export const ActiveChatPane = ({
   };
 
   const scheduleScrollToBottom = (behavior: ScrollBehavior = "auto") => {
-    const delays = [0, 40, 120, 260];
+    const delays = [0, 40, 120, 260, 520];
     delays.forEach((delay) => {
       window.setTimeout(() => {
         requestAnimationFrame(() => scrollToBottom(behavior));
       }, delay);
     });
   };
+
+  const handleMessageListScroll = useCallback((event: any) => {
+    const container = event.currentTarget as HTMLElement;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    shouldStickToBottomRef.current = distanceFromBottom < 180;
+  }, []);
 
   const visibleMessages = useMemo(() => messages, [messages]);
 
@@ -829,21 +844,43 @@ export const ActiveChatPane = ({
   const isLastMessageFromCurrentUser =
     Boolean(lastMessage?.senderId) && lastMessage.senderId === currentUserId;
 
-  useEffect(() => {
-    if (!isLoadingOlderMessages) {
-      scheduleScrollToBottom("smooth");
-    }
-  }, [lastMessageId, typingUsers]);
+  useLayoutEffect(() => {
+    if (isLoadingOlderMessages) return;
 
-  useEffect(() => {
-    scheduleScrollToBottom("auto");
-  }, [selectedConversationId, lastMessageId]);
+    const conversationId = selectedConversationId || selectedChat?.id || "";
+    const conversationChanged =
+      previousConversationIdRef.current !== conversationId;
+    const lastMessageChanged =
+      previousLastMessageIdRef.current !== String(lastMessageId || "");
+
+    if (conversationChanged) {
+      previousConversationIdRef.current = conversationId;
+      previousLastMessageIdRef.current = String(lastMessageId || "");
+      shouldStickToBottomRef.current = true;
+      scheduleScrollToBottom("auto");
+      return;
+    }
+
+    if (!lastMessageChanged) return;
+
+    previousLastMessageIdRef.current = String(lastMessageId || "");
+    if (isLastMessageFromCurrentUser || shouldStickToBottomRef.current) {
+      scheduleScrollToBottom("auto");
+    }
+  }, [
+    isLastMessageFromCurrentUser,
+    isLoadingOlderMessages,
+    lastMessageId,
+    selectedChat?.id,
+    selectedConversationId,
+  ]);
 
   useEffect(() => {
     if (!isLoading) {
+      shouldStickToBottomRef.current = true;
       scheduleScrollToBottom("auto");
     }
-  }, [isLoading]);
+  }, [isLoading, selectedConversationId]);
 
   useEffect(() => {
     const el = firstMessageRef.current;
@@ -1212,8 +1249,10 @@ export const ActiveChatPane = ({
         typingUsers={typingUsers}
         selectedChat={selectedChat}
         wallpaperUrl={wallpaperUrl}
+        containerRef={chatContainerRef}
         firstMessageRef={firstMessageRef}
         messagesEndRef={messagesEndRef}
+        onScroll={handleMessageListScroll}
         handleContextMenu={handleContextMenu}
         activeContextMessageId={
           contextMenu?.message?.id ||
