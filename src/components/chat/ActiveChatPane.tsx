@@ -44,6 +44,8 @@ import {
 } from "react-icons/fi";
 import { toast } from "sonner";
 
+const CONTEXT_MENU_EXIT_MS = 140;
+
 const mergeGroupSettings = (...sources: any[]) =>
   sources.reduce((merged, source) => {
     if (!source) return merged;
@@ -132,6 +134,7 @@ export const ActiveChatPane = ({
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
   const chatContainerRef = useRef<HTMLElement | null>(null);
+  const contextMenuCloseTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const previousConversationIdRef = useRef<string | null>(null);
   const previousLastMessageIdRef = useRef<string>("");
   const shouldStickToBottomRef = useRef(true);
@@ -641,17 +644,44 @@ export const ActiveChatPane = ({
     isLoading,
   ]);
 
+  const closeContextMenu = useCallback(() => {
+    setContextMenu((current: any) => {
+      if (!current || current.isClosing) return current;
+      return { ...current, isClosing: true };
+    });
+
+    if (contextMenuCloseTimeoutRef.current) {
+      window.clearTimeout(contextMenuCloseTimeoutRef.current);
+    }
+    contextMenuCloseTimeoutRef.current = window.setTimeout(() => {
+      setContextMenu(null);
+      contextMenuCloseTimeoutRef.current = null;
+    }, CONTEXT_MENU_EXIT_MS);
+  }, []);
+
   useEffect(() => {
-    const handleClickOutside = () => setContextMenu(null);
+    const handleClickOutside = () => closeContextMenu();
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
+  }, [closeContextMenu]);
+
+  useEffect(() => {
+    return () => {
+      if (contextMenuCloseTimeoutRef.current) {
+        window.clearTimeout(contextMenuCloseTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleContextMenu = (e, message) => {
     e.preventDefault();
     e.stopPropagation();
 
-    setContextMenu({ x: e.clientX, y: e.clientY, message });
+    if (contextMenuCloseTimeoutRef.current) {
+      window.clearTimeout(contextMenuCloseTimeoutRef.current);
+      contextMenuCloseTimeoutRef.current = null;
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY, message, isClosing: false });
   };
 
   const onDrop = useCallback((acceptedFiles, fileRejections, event) => {
@@ -1260,6 +1290,7 @@ export const ActiveChatPane = ({
           contextMenu?.message?.messageId ||
           null
         }
+        activeContextMenuClosing={Boolean(contextMenu?.isClosing)}
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
         onPollUpdated={onPollUpdated}
@@ -1272,26 +1303,26 @@ export const ActiveChatPane = ({
           contextMenu={contextMenu}
           messages={messages}
           currentUserId={currentUserId}
-          onClose={() => setContextMenu(null)}
+          onClose={closeContextMenu}
           onReply={(message) => {
             setReplyingMessage(message);
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onEdit={(message) => {
             setEditingMessage(message);
             setDraftMessage(getMessageText(message));
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onPinMessage={handlePinMessage}
           onUnpinMessage={handleUnpinMessage}
           onOpenForwardModal={(message) => {
             setMessageToForward(message);
             setForwardModalVisible(true);
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onTranslateMessage={(message) => {
             setMessageToTranslate(message);
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onRevokeMessage={onRevokeMessage}
           onDeleteMessageForMe={onDeleteMessageForMe}

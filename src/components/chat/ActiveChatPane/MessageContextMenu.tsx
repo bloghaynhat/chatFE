@@ -25,6 +25,7 @@ interface MessageContextMenuProps {
     x: number;
     y: number;
     message: Message;
+    isClosing?: boolean;
   };
   messages: Message[];
   currentUserId: string;
@@ -157,7 +158,9 @@ export const MessageContextMenu = ({
   const menu = (
     <div
       ref={menuRef}
-      className="fixed z-[9999] flex w-[252px] flex-col items-start gap-2"
+      className={`message-context-menu-shell fixed z-[9999] flex w-[min(252px,calc(100vw-16px))] flex-col items-start gap-2 ${
+        contextMenu.isClosing ? "message-context-menu-shell-closing" : ""
+      }`}
       style={{
         top: menuPosition.top,
         left: menuPosition.left,
@@ -179,7 +182,7 @@ export const MessageContextMenu = ({
       `}</style>
       {/* Reaction Picker above menu */}
       <div
-        className="flex w-max flex-row items-center gap-0.5 rounded-full border border-white/80 bg-white/95 px-1.5 py-1 shadow-[0_10px_30px_rgba(15,23,42,0.18)] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/95 dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
+        className="flex w-full max-w-full flex-row flex-wrap items-center justify-between gap-0.5 rounded-full border border-white/80 bg-white/95 px-1.5 py-1 shadow-[0_10px_30px_rgba(15,23,42,0.18)] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/95 dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
         style={{ animation: "reactionBarIn 160ms cubic-bezier(0.16, 1, 0.3, 1) both" }}
       >
         {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => {
@@ -201,7 +204,7 @@ export const MessageContextMenu = ({
         })}
       </div>
 
-      <div className="w-[200px] max-h-[calc(100vh-120px)] overflow-y-auto bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
+      <div className="w-[200px] max-w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
         {isMyMessage && (
           <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
             <div className="flex -space-x-[4px] text-blue-500">

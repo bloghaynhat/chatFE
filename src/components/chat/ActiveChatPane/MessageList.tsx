@@ -88,6 +88,7 @@ export const MessageList = ({
   onScroll,
   handleContextMenu,
   activeContextMessageId,
+  activeContextMenuClosing,
   setPreviewVideoUrl,
   onNavigateToMessage,
   onPollUpdated,
@@ -99,7 +100,7 @@ export const MessageList = ({
   const wallpaperTheme = getWallpaperPresetTheme(wallpaperUrl);
   const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
   const containerClassName =
-    `chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
+    `chat-highlight-container chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 pb-24 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
   const wallpaperStyle = wallpaperUrl
     ? {
         backgroundImage:
@@ -253,6 +254,7 @@ export const MessageList = ({
                     isLastInSequence={isLastInSequence}
                     handleContextMenu={handleContextMenu}
                     activeContextMessageId={activeContextMessageId}
+                    activeContextMenuClosing={activeContextMenuClosing}
                     setPreviewVideoUrl={setPreviewVideoUrl}
                     currentUserId={currentUserId}
                     onNavigateToMessage={onNavigateToMessage}
