@@ -309,51 +309,24 @@ export const ChatInput = ({
         </button>
       )}
 
-      {(forwardingMessage || replyingMessage) && !editingMessage && (
+      {forwardingMessage && !editingMessage && !replyingMessage && (
         <div className="relative z-40 mx-auto mb-2 flex max-w-4xl items-center overflow-hidden rounded-[22px] border border-white/70 bg-white/55 py-2 pl-4 pr-12 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/35">
           <div className="absolute left-2 top-2 bottom-2 w-[3px] rounded-full bg-[#2ea6f3]" />
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 pl-2">
             <span className="flex items-center gap-1.5 text-[13px] font-semibold leading-none text-[#2ea6f3]">
-              {editingMessage ? (
-                <FiEdit2 className="text-[15px]" strokeWidth={2} />
-              ) : replyingMessage ? (
-                <FiCornerUpLeft className="text-[15px]" strokeWidth={2.5} />
-              ) : (
-                <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
-              )}
-              <span className="truncate">
-                {editingMessage
-                  ? t("chat.editing")
-                  : replyingMessage
-                    ? `${t("chat.replyTo")} ${replyingMessage?.senderId === currentUserId ? t("app.you") : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || t("app.unknown")}`
-                    : t("chat.forwardMessage")}
-              </span>
+              <FiCornerUpRight className="text-[14px]" strokeWidth={2.5} />
+              <span className="truncate">{t("chat.forwardMessage")}</span>
             </span>
             <p className="flex items-center gap-1 truncate text-[13px] leading-tight text-gray-500/90 dark:text-slate-400">
-              {editingMessage || replyingMessage ? null : (
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {forwardingMessage?.senderId === currentUserId ? t("app.you") : forwardingMessage?.sender?.name || t("chat.someone")}
-                  :
-                </span>
-              )}
-              {editingMessage
-                ? getPreviewText(editingMessage)
-                : replyingMessage
-                  ? getPreviewText(replyingMessage)
-                  : forwardingMessage
-                    ? getPreviewText(forwardingMessage)
-                    : ""}
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {forwardingMessage?.senderId === currentUserId ? t("app.you") : forwardingMessage?.sender?.name || t("chat.someone")}
+                :
+              </span>
+              {getPreviewText(forwardingMessage)}
             </p>
           </div>
           <button
             onClick={() => {
-              if (editingMessage) {
-                setEditingMessage(null);
-                setDraftMessage("");
-              }
-              if (replyingMessage) {
-                setReplyingMessage(null);
-              }
               if (forwardingMessage && onClearForwarding) {
                 onClearForwarding();
               }
@@ -379,7 +352,7 @@ export const ChatInput = ({
         shouldFetch={isSmartReplyOpen && canRequestSmartReply}
       />
 
-      <div className={`relative mx-auto flex max-w-4xl gap-2 ${editingMessage ? "items-end" : "items-center"}`}>
+      <div className={`relative mx-auto flex max-w-4xl gap-2 ${(editingMessage || replyingMessage) ? "items-end" : "items-center"}`}>
         {isRecordingAudio ? (
           <div className="relative flex-1 h-11 lg:h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-between px-4 border border-red-500/20 shadow-lg">
             <div className="flex items-center gap-3 text-red-500">
@@ -407,7 +380,7 @@ export const ChatInput = ({
           <div
             ref={attachMenuRef}
             className={`relative flex-1 h-auto bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${
-              editingMessage
+              (editingMessage || replyingMessage)
                 ? "min-h-[112px] rounded-[18px] flex flex-col items-stretch overflow-hidden px-3 py-3"
                 : "min-h-[44px] lg:min-h-[48px] rounded-[24px] flex items-center"
             } ${
@@ -433,33 +406,39 @@ export const ChatInput = ({
               </div>
             )}
 
-            {editingMessage && (
+            {(editingMessage || replyingMessage) && (
               <div className="flex items-center gap-3 pb-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center text-[#df5d7d]">
-                  <FiEdit2 className="text-[25px]" strokeWidth={1.8} />
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center ${editingMessage ? "text-[#df5d7d]" : "text-[#2ea6f3]"}`}>
+                  {editingMessage ? <FiEdit2 className="text-[25px]" strokeWidth={1.8} /> : <FiCornerUpLeft className="text-[25px]" strokeWidth={1.8} />}
                 </div>
-                <div className="min-w-0 flex-1 rounded-[5px] border-l-[4px] border-[#df5d7d] bg-[#fae9ed] px-3 py-1.5 dark:bg-rose-950/35">
-                  <div className="truncate text-[13px] font-semibold leading-tight text-[#df5d7d]">
-                    {getMessageSenderName(editingMessage)}
+                <div className={`min-w-0 flex-1 rounded-[5px] border-l-[4px] px-3 py-1.5 ${editingMessage ? "border-[#df5d7d] bg-[#fae9ed] dark:bg-rose-950/35" : "border-[#2ea6f3] bg-[#eef6fc] dark:bg-blue-950/35"}`}>
+                  <div className={`truncate text-[13px] font-semibold leading-tight ${editingMessage ? "text-[#df5d7d]" : "text-[#2ea6f3]"}`}>
+                    {editingMessage 
+                      ? getMessageSenderName(editingMessage)
+                      : replyingMessage?.senderId === currentUserId ? t("app.you") : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || t("app.unknown")}
                   </div>
                   <div className="truncate text-[14px] leading-tight text-gray-900 dark:text-slate-100">
-                    {getPreviewText(editingMessage)}
+                    {getPreviewText(editingMessage || replyingMessage)}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setEditingMessage(null);
-                    setDraftMessage("");
+                    if (editingMessage) {
+                      setEditingMessage(null);
+                      setDraftMessage("");
+                    }
+                    if (replyingMessage) {
+                      setReplyingMessage(null);
+                    }
                   }}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#df5d7d] transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${editingMessage ? "text-[#df5d7d] hover:bg-rose-50 dark:hover:bg-rose-950/40" : "text-[#2ea6f3] hover:bg-blue-50 dark:hover:bg-blue-950/40"}`}
                   title={t("app.cancel")}
                 >
                   <FiX className="text-[24px]" strokeWidth={1.6} />
                 </button>
               </div>
             )}
-
             <div
               className={`absolute right-0 bottom-14 w-[260px] max-w-[78vw] rounded-2xl bg-[#edf4f1] dark:bg-slate-800 shadow-xl p-2 border border-white/70 dark:border-slate-700 z-50 origin-bottom-right will-change-transform transition-all duration-200 ease-out ${isAttachMenuOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-95 translate-y-1 pointer-events-none"}`}
               aria-hidden={!isAttachMenuOpen}
@@ -504,7 +483,7 @@ export const ChatInput = ({
                 setIsMoreMenuOpen(false);
               }}
               className={`absolute h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${
-                editingMessage ? "bottom-2.5 left-3" : "left-2 top-1/2 -translate-y-1/2"
+                (editingMessage || replyingMessage) ? "bottom-2.5 left-3" : "left-2 top-1/2 -translate-y-1/2"
               }`}
               title={t("chat.openEmoji")}
             >
@@ -525,12 +504,12 @@ export const ChatInput = ({
               disabled={Boolean(disabledReason)}
               placeholder={disabledReason || t("chat.messagePlaceholder")}
               className={`w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${
-                editingMessage ? "py-[10px]" : "py-[12px] lg:py-[14px]"
+                (editingMessage || replyingMessage) ? "py-[10px]" : "py-[12px] lg:py-[14px]"
               }`}
             />
 
             <div
-              className={`absolute right-9 flex items-center ${editingMessage ? "bottom-2 h-10" : "bottom-0 top-0"}`}
+              className={`absolute right-9 flex items-center ${(editingMessage || replyingMessage) ? "bottom-2 h-10" : "bottom-0 top-0"}`}
             >
               <AiToneAdjustMenu currentText={draftMessage} onApplyTone={(newText) => setDraftMessage(newText)} />
             </div>
@@ -543,7 +522,7 @@ export const ChatInput = ({
                 setIsEmojiPickerOpen(false);
               }}
               className={`absolute right-1.5 flex w-8 lg:w-9 items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition ${
-                editingMessage ? "bottom-2 h-10" : "bottom-0 top-0 h-full"
+                (editingMessage || replyingMessage) ? "bottom-2 h-10" : "bottom-0 top-0 h-full"
               }`}
               title={t("chat.openAttachments")}
             >
