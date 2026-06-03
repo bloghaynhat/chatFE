@@ -348,6 +348,7 @@ type TranslationKey =
   | "chat.searchByDate"
   | "chat.searchSmartPlaceholder"
   | "chat.savedMessagesLower"
+  | "chat.translateMessage"
   | "chat.openingConversation"
   | "chat.members"
   | "chat.justNow"
@@ -450,7 +451,8 @@ type TranslationKey =
   | "profile.calls"
   | "archive.conversation"
   | "archive.conversations"
-  | "archive.previewFallback";
+  | "archive.previewFallback"
+  | "app.featureUnderDevelopment";
 
 type LanguageContextValue = {
   language: LanguageCode;
@@ -481,6 +483,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Unknown location",
     "app.user": "User",
     "app.you": "You",
+    "app.featureUnderDevelopment": "Feature is under development",
     "auth.hidePassword": "Hide password",
     "auth.showPassword": "Show password",
     "auth.passwordStrength": "Password strength",
@@ -808,6 +811,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.searchByDate": "Search by date",
     "chat.searchSmartPlaceholder": "Search... (Type '/ai ' for Smart Search)",
     "chat.savedMessagesLower": "Saved messages",
+    "chat.translateMessage": "Translate message",
     "chat.openingConversation": "Opening conversation...",
     "chat.members": "members",
     "chat.justNow": "Just now",
@@ -935,6 +939,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Vị trí không xác định",
     "app.user": "Người dùng",
     "app.you": "Bạn",
+    "app.featureUnderDevelopment": "Tính năng đang phát triển",
     "auth.hidePassword": "Ẩn mật khẩu",
     "auth.showPassword": "Hiện mật khẩu",
     "auth.passwordStrength": "Độ mạnh mật khẩu",
@@ -1262,6 +1267,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.searchByDate": "Tìm theo ngày",
     "chat.searchSmartPlaceholder": "Tìm kiếm... (gõ '/ai ' để tìm thông minh)",
     "chat.savedMessagesLower": "Tin nhắn đã lưu",
+    "chat.translateMessage": "Dịch tin nhắn",
     "chat.openingConversation": "Đang mở cuộc trò chuyện...",
     "chat.members": "Thành viên",
     "chat.justNow": "Vừa xong",

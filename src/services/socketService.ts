@@ -37,7 +37,7 @@ class SocketService {
 
   // ================= INIT =================
   async initRootSocket() {
-    if (this.rootSocket?.connected) {
+    if (this.rootSocket) {
       return this.rootSocket;
     }
     if (this.rootSocketPromise) {
@@ -87,7 +87,7 @@ class SocketService {
   }
 
   async initMessagesSocket() {
-    if (this.messagesSocket?.connected) {
+    if (this.messagesSocket) {
       return this.messagesSocket;
     }
     if (this.messagesSocketPromise) {
@@ -137,7 +137,7 @@ class SocketService {
   }
 
   async initFriendsSocket() {
-    if (this.friendsSocket?.connected) {
+    if (this.friendsSocket) {
       return this.friendsSocket;
     }
     if (this.friendsSocketPromise) {
@@ -177,7 +177,7 @@ class SocketService {
   }
 
   async initBlocksSocket() {
-    if (this.blocksSocket?.connected) {
+    if (this.blocksSocket) {
       return this.blocksSocket;
     }
     if (this.blocksSocketPromise) {
@@ -254,6 +254,32 @@ class SocketService {
     this.rootSocket.on("user_presence", (data) => {
       this.emit("user_presence", data);
       this.emit("presence:changed", data);
+    });
+
+    const forwardMessagePinned = (data) => {
+      this.emit("message:pinned", data);
+    };
+
+    [
+      "message:pinned",
+      "message:pin",
+      "message:pinnedMessage",
+      "messagePinned",
+    ].forEach((eventName) => {
+      this.rootSocket.on(eventName, forwardMessagePinned);
+    });
+
+    const forwardMessageUnpinned = (data) => {
+      this.emit("message:unpinned", data);
+    };
+
+    [
+      "message:unpinned",
+      "message:unpin",
+      "message:unpinnedMessage",
+      "messageUnpinned",
+    ].forEach((eventName) => {
+      this.rootSocket.on(eventName, forwardMessageUnpinned);
     });
   }
 
@@ -370,12 +396,30 @@ class SocketService {
       this.emit("message:reactions:clear", data);
     });
 
-    this.messagesSocket.on("message:pinned", (data) => {
+    const forwardMessagePinned = (data) => {
       this.emit("message:pinned", data);
+    };
+
+    [
+      "message:pinned",
+      "message:pin",
+      "message:pinnedMessage",
+      "messagePinned",
+    ].forEach((eventName) => {
+      this.messagesSocket.on(eventName, forwardMessagePinned);
     });
 
-    this.messagesSocket.on("message:unpinned", (data) => {
+    const forwardMessageUnpinned = (data) => {
       this.emit("message:unpinned", data);
+    };
+
+    [
+      "message:unpinned",
+      "message:unpin",
+      "message:unpinnedMessage",
+      "messageUnpinned",
+    ].forEach((eventName) => {
+      this.messagesSocket.on(eventName, forwardMessageUnpinned);
     });
 
     this.messagesSocket.on("message:quoted", (data) => {
@@ -616,10 +660,20 @@ class SocketService {
     };
   }
 
-  off(eventName) {
-    if (this.listeners.has(eventName)) {
+  off(eventName, callback?) {
+    if (!this.listeners.has(eventName)) return;
+
+    if (!callback) {
       this.listeners.delete(eventName);
+      return;
     }
+
+    const arr = this.listeners.get(eventName);
+    if (!arr) return;
+
+    const index = arr.indexOf(callback);
+    if (index !== -1) arr.splice(index, 1);
+    if (arr.length === 0) this.listeners.delete(eventName);
   }
 
   // ================= CONVENIENCE METHODS =================
@@ -675,8 +729,8 @@ class SocketService {
     return this.on("receiveMessage", callback);
   }
 
-  offNewMessage() {
-    this.off("receiveMessage");
+  offNewMessage(callback?) {
+    this.off("receiveMessage", callback);
   }
 
   onMessageEdited(callback) {
@@ -1393,6 +1447,11 @@ class SocketService {
       this.blocksSocket.disconnect();
       this.blocksSocket = null;
     }
+
+    this.rootSocketPromise = null;
+    this.messagesSocketPromise = null;
+    this.friendsSocketPromise = null;
+    this.blocksSocketPromise = null;
 
     this.listeners.clear();
   }

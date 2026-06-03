@@ -53,6 +53,8 @@ const getMessageId = (message: any) =>
 const getClientMessageKey = (message: any) =>
   message?.id || message?._id || message?.messageId || message?.serverId || null;
 
+const isMessagePinned = (message: any) => message?.pinned === true;
+
 const getMessageTimeValue = (message: any) => {
   const value =
     message?.createdAt ||
@@ -102,6 +104,21 @@ const getMessageConversationId = (message: any, payload?: any) => {
 
   return conversationId ? String(conversationId) : "";
 };
+
+const getMessageIdFromPayload = (
+  payload: PinMessagePayload | UnpinMessagePayload | any,
+) =>
+  getMessageId(payload?.message) ||
+  getMessageId(payload?.data?.message) ||
+  payload?.messageId ||
+  payload?.data?.messageId ||
+  payload?.id ||
+  payload?._id ||
+  null;
+
+const getMessageFromPinPayload = (
+  payload: PinMessagePayload | UnpinMessagePayload | any,
+) => payload?.message || payload?.data?.message || null;
 
 const isMessageRevoked = (message: any) => {
   const status = String(
@@ -193,6 +210,7 @@ const upsertPinnedMessage = (items: any[], message: any) => {
 
   const pinnedMessage = {
     ...message,
+    pinned: true,
     pinnedAt: message.pinnedAt || new Date().toISOString(),
   };
   const exists = items.some((item) => String(getMessageId(item)) === String(messageId));
@@ -209,6 +227,48 @@ const upsertPinnedMessage = (items: any[], message: any) => {
 
 const removePinnedMessage = (items: any[], messageId: string) =>
   items.filter((item) => String(getMessageId(item)) !== String(messageId));
+
+const getPinActionMessage = (response: any) =>
+  response?.message ||
+  response?.data?.message ||
+  (response?.data?.id || response?.data?._id || response?.data?.messageId
+    ? response.data
+    : null) ||
+  (response?.id || response?._id || response?.messageId ? response : null) ||
+  null;
+
+const isSystemMessagePayload = (message: any) =>
+  String(message?.type || message?.messageType || "").toLowerCase() === "system";
+
+const getSystemMessageFromPayload = (payload: any) => {
+  const candidates = [
+    payload?.systemMessage,
+    payload?.timelineMessage,
+    payload?.data?.systemMessage,
+    payload?.data?.timelineMessage,
+    payload?.result?.systemMessage,
+    payload?.result?.timelineMessage,
+    payload?.message,
+    payload?.data?.message,
+  ];
+
+  return candidates.find(isSystemMessagePayload) || null;
+};
+
+const getPinErrorMessage = (error: any) => {
+  const message = String(
+    error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      "",
+  );
+
+  if (error?.response?.status === 400 || /max|limit|5|tối đa|toi da/i.test(message)) {
+    return "Chỉ có thể pin tối đa 5 tin nhắn trong một cuộc trò chuyện.";
+  }
+
+  return message || "Không thể cập nhật ghim tin nhắn.";
+};
 
 type ConversationMessageCacheEntry = {
   messages: any[];
@@ -299,6 +359,8 @@ const MainLayout = ({ children }: { children?: any }) => {
   const [chatError, setChatError] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState(null); // Added state
   const [pinnedMessages, setPinnedMessages] = useState<any[]>([]);
+  const messagesRef = useRef<any[]>([]);
+  const pinnedMessagesRef = useRef<any[]>([]);
   const conversationMessageCacheRef = useRef<
     Map<string, ConversationMessageCacheEntry>
   >(new Map());
@@ -311,6 +373,14 @@ const MainLayout = ({ children }: { children?: any }) => {
   const pendingPinOperations = useRef<Set<string>>(new Set());
   const recentMemberRemovalEvents = useRef<Map<string, number>>(new Map());
   const lastInteractionSeenRef = useRef<string>("");
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    pinnedMessagesRef.current = pinnedMessages;
+  }, [pinnedMessages]);
 
   const removeConversationFromSession = useCallback(
     (conversationId: string, options: { reason?: string; message?: string } = {}) => {
@@ -474,7 +544,7 @@ const MainLayout = ({ children }: { children?: any }) => {
         setPinnedMessages(sortPinnedMessages(pinned || []));
       } catch (error) {
         console.warn("Failed to load pinned messages", error);
-        setPinnedMessages(sortPinnedMessages(messages.filter((message: any) => message.pinnedAt)));
+        setPinnedMessages(sortPinnedMessages(messages.filter(isMessagePinned)));
       }
     },
     [messages, selectedConversationId],
@@ -599,6 +669,7 @@ const MainLayout = ({ children }: { children?: any }) => {
       payload?.message?.conversationId ||
       payload?.data?.conversationId ||
       payload?.data?.groupId ||
+      payload?.data?.message?.conversationId ||
       payload?.data?.block?.conversationId;
 
     if (rawId && typeof rawId === "object") {
@@ -700,8 +771,9 @@ const MainLayout = ({ children }: { children?: any }) => {
 
       if (!message) return;
 
+      const activeConversationId = selectedConversationIdRef.current;
       const conversationId = getPayloadConversationId(payload);
-      if (String(conversationId || message.conversationId) !== String(selectedConversationId)) {
+      if (String(conversationId || message.conversationId) !== String(activeConversationId)) {
         return;
       }
 
@@ -724,7 +796,20 @@ const MainLayout = ({ children }: { children?: any }) => {
         return sortMessagesByCreatedAt([...prev, normalizeMessageLifecycle(message)]);
       });
     },
-    [getPayloadConversationId, selectedConversationId],
+    [getPayloadConversationId],
+  );
+
+  const upsertSystemMessageFromPayload = useCallback(
+    (payload: any) => {
+      const systemMessage = getSystemMessageFromPayload(payload);
+      if (!systemMessage) return;
+
+      upsertMessageFromPayload({
+        ...payload,
+        message: systemMessage,
+      });
+    },
+    [upsertMessageFromPayload],
   );
 
   useEffect(() => {
@@ -868,7 +953,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           }
 
           setMessages((prev) => {
-            const msgId = message.id;
+            const msgId = getMessageId(message);
             if (!msgId) {
               console.warn(
                 "[Socket] message:quoted message has no id:",
@@ -876,7 +961,14 @@ const MainLayout = ({ children }: { children?: any }) => {
               );
               return prev;
             }
-            if (prev.some((m) => String(m.id) === String(msgId))) {
+            
+            const exists = prev.some((m) =>
+              [m.id, m._id, m.messageId, m.serverId]
+                .filter(Boolean)
+                .some((id) => String(id) === String(msgId)),
+            );
+
+            if (exists) {
               console.log(
                 "[Socket] message:quoted already exists, skipping:",
                 msgId,
@@ -1219,29 +1311,66 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Handle message pin
         socketService.onMessagePinned((payload: any) => {
-          const { conversationId, message } = payload;
-          if (!message) return;
-          const msgId = message.id || message._id;
-          let msgConvId = conversationId || message.conversationId;
+          const message = getMessageFromPinPayload(payload);
+          const msgId = getMessageIdFromPayload(payload);
+          if (!msgId) return;
+          const activeConversationId = selectedConversationIdRef.current;
+
+          const existingMessage =
+            messagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            ) ||
+            pinnedMessagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            );
+
+          let msgConvId =
+            getPayloadConversationId(payload) ||
+            getMessageConversationId(message, payload) ||
+            getMessageConversationId(existingMessage, payload);
+
           if (msgConvId && typeof msgConvId === "object") {
             msgConvId = msgConvId._id || msgConvId.id;
           }
 
-          if (String(msgConvId) === String(selectedConversationId)) {
-            setPinnedMessages((prev) => upsertPinnedMessage(prev, message));
+          const belongsToCurrentConversation =
+            msgConvId
+              ? String(msgConvId) === String(activeConversationId)
+              : Boolean(existingMessage);
+
+          if (!belongsToCurrentConversation) return;
+
+          upsertSystemMessageFromPayload(payload);
+
+          const pinnedAt =
+            message?.pinnedAt ||
+            payload?.pinnedAt ||
+            payload?.data?.pinnedAt ||
+            new Date().toISOString();
+          const pinnedBy =
+            message?.pinnedBy || payload?.pinnedBy || payload?.data?.pinnedBy;
+          const pinnedMessage = {
+            ...(existingMessage || {}),
+            ...(message || {}),
+            messageId: msgId,
+            pinned: true,
+            pinnedAt,
+            pinnedBy,
+          };
+
+          if (existingMessage || message) {
+            setPinnedMessages((prev) => upsertPinnedMessage(prev, pinnedMessage));
           }
 
           setMessages((prev) => {
-            // Only update if it belongs to currently open conversation
-            if (String(msgConvId) !== String(selectedConversationId))
-              return prev;
-
             return prev.map((m) =>
-              String(m._id || m.id) === String(msgId)
+              String(getMessageId(m)) === String(msgId)
                 ? {
                     ...m,
-                    ...message,
-                    pinnedAt: message.pinnedAt || new Date().toISOString(),
+                    ...(message || {}),
+                    pinned: true,
+                    pinnedAt,
+                    pinnedBy,
                   }
                 : m,
             );
@@ -1250,26 +1379,49 @@ const MainLayout = ({ children }: { children?: any }) => {
 
         // Handle message unpin
         socketService.onMessageUnpinned((payload: any) => {
-          const { conversationId, message } = payload;
-          if (!message) return;
-          const msgId = message.id || message._id;
-          let msgConvId = conversationId || message.conversationId;
+          const message = getMessageFromPinPayload(payload);
+          const msgId = getMessageIdFromPayload(payload);
+          if (!msgId) return;
+          const activeConversationId = selectedConversationIdRef.current;
+
+          const existingMessage =
+            messagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            ) ||
+            pinnedMessagesRef.current.find(
+              (item: any) => String(getMessageId(item)) === String(msgId),
+            );
+
+          let msgConvId =
+            getPayloadConversationId(payload) ||
+            getMessageConversationId(message, payload) ||
+            getMessageConversationId(existingMessage, payload);
+
           if (msgConvId && typeof msgConvId === "object") {
             msgConvId = msgConvId._id || msgConvId.id;
           }
 
-          if (String(msgConvId) === String(selectedConversationId)) {
-            setPinnedMessages((prev) => removePinnedMessage(prev, msgId));
-          }
+          const belongsToCurrentConversation =
+            msgConvId
+              ? String(msgConvId) === String(activeConversationId)
+              : Boolean(existingMessage);
+
+          if (!belongsToCurrentConversation) return;
+
+          upsertSystemMessageFromPayload(payload);
+
+          setPinnedMessages((prev) => removePinnedMessage(prev, msgId));
 
           setMessages((prev) => {
-            // Only update if it belongs to currently open conversation
-            if (String(msgConvId) !== String(selectedConversationId))
-              return prev;
-
             return prev.map((m) =>
-              String(m._id || m.id) === String(msgId)
-                ? { ...m, ...message, pinnedAt: undefined, pinnedBy: undefined }
+              String(getMessageId(m)) === String(msgId)
+                ? {
+                    ...m,
+                    ...(message || {}),
+                    pinned: false,
+                    pinnedAt: undefined,
+                    pinnedBy: undefined,
+                  }
                 : m,
             );
           });
@@ -1526,6 +1678,7 @@ const MainLayout = ({ children }: { children?: any }) => {
     getPayloadConversationId,
     getPayloadTargetUserId,
     upsertMessageFromPayload,
+    upsertSystemMessageFromPayload,
     markCachedMessageRevoked,
     markCachedMessageEdited,
     isCurrentUserRemovedBySystemMessage,
@@ -2211,7 +2364,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           // Optimistically update UI
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === payloadOrText.id || msg._id === payloadOrText.id
+              msg.id === payloadOrText.id || msg._id === payloadOrText.id || msg.serverId === payloadOrText.id || msg.messageId === payloadOrText.id
                 ? {
                     ...msg,
                     text: payloadOrText.text,
@@ -2702,6 +2855,11 @@ const MainLayout = ({ children }: { children?: any }) => {
       return;
     }
 
+    if (pinnedMessages.length >= 5) {
+      toast.error("Chỉ có thể pin tối đa 5 tin nhắn trong một cuộc trò chuyện.");
+      return;
+    }
+
     pendingPinOperations.current.add(operationKey);
 
     console.log("[Pin] Pinning message:", {
@@ -2711,24 +2869,27 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     // Get current pinned state before optimistic update (for potential rollback)
     const currentMessage = messages.find(
-      (m) => String(m.id || m._id) === String(messageId),
+      (m) => String(getMessageId(m)) === String(messageId),
     );
+    const originalPinned = currentMessage?.pinned;
     const originalPinnedAt = currentMessage?.pinnedAt;
     const originalPinnedBy = currentMessage?.pinnedBy;
     const optimisticPinnedMessage = currentMessage
       ? {
           ...currentMessage,
+          pinned: true,
           pinnedAt: new Date().toISOString(),
           pinnedBy: user?.id,
         }
       : null;
 
-    // Optimistic update - add pinnedAt immediately
+    // Optimistic update - set pinned immediately
     setMessages((prev) =>
       prev.map((msg) =>
-        String(msg.id || msg._id) === String(messageId)
+        String(getMessageId(msg)) === String(messageId)
           ? {
               ...msg,
+              pinned: true,
               pinnedAt: new Date().toISOString(),
               pinnedBy: user?.id,
             }
@@ -2748,24 +2909,39 @@ const MainLayout = ({ children }: { children?: any }) => {
           res.statusText === "OK" ||
           res.status === "success")
       ) {
-        console.log("[Pin] Success:", {
-          conversationId: selectedConversationId,
-          messageId,
-        });
-        // Server will broadcast back to other clients, but we already updated optimistically
+        upsertSystemMessageFromPayload(res);
+        const returnedMessage = getPinActionMessage(res);
+        if (returnedMessage) {
+          const mergedMessage = {
+            ...optimisticPinnedMessage,
+            ...returnedMessage,
+            pinned: true,
+            pinnedAt: returnedMessage.pinnedAt || optimisticPinnedMessage?.pinnedAt,
+          };
+          setMessages((prev) =>
+            prev.map((msg) =>
+              String(getMessageId(msg)) === String(messageId)
+                ? { ...msg, ...mergedMessage }
+                : msg,
+            ),
+          );
+          setPinnedMessages((prev) => upsertPinnedMessage(prev, mergedMessage));
+        }
       } else {
         throw new Error(res?.error || res?.msg || res?.message || "Pin failed");
       }
     } catch (error) {
-      try {
-        await conversationService.pinMessage(messageId);
-      } catch (apiError) {
-        console.error("Failed to pin message:", apiError);
+      const shouldUseRestFallback =
+        error instanceof Error && error.message === "Socket not connected";
+
+      if (!shouldUseRestFallback) {
+        console.error("Failed to pin message via socket:", error);
         if (optimisticPinnedMessage) {
           setPinnedMessages((prev) => {
-            if (!originalPinnedAt) return removePinnedMessage(prev, messageId);
+            if (originalPinned !== true) return removePinnedMessage(prev, messageId);
             return upsertPinnedMessage(prev, {
               ...optimisticPinnedMessage,
+              pinned: true,
               pinnedAt: originalPinnedAt,
               pinnedBy: originalPinnedBy,
             });
@@ -2773,12 +2949,66 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
         setMessages((prev) =>
           prev.map((msg) =>
-            String(msg.id || msg._id) === String(messageId)
-              ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
+            String(getMessageId(msg)) === String(messageId)
+              ? {
+                  ...msg,
+                  pinned: originalPinned,
+                  pinnedAt: originalPinnedAt,
+                  pinnedBy: originalPinnedBy,
+                }
               : msg,
           ),
         );
-        throw apiError;
+        toast.error(getPinErrorMessage(error));
+        return;
+      }
+
+      try {
+        const apiResponse = await conversationService.pinMessage(messageId);
+        upsertSystemMessageFromPayload(apiResponse);
+        const returnedMessage = getPinActionMessage(apiResponse);
+        if (returnedMessage) {
+          const mergedMessage = {
+            ...optimisticPinnedMessage,
+            ...returnedMessage,
+            pinned: true,
+            pinnedAt: returnedMessage.pinnedAt || optimisticPinnedMessage?.pinnedAt,
+          };
+          setMessages((prev) =>
+            prev.map((msg) =>
+              String(getMessageId(msg)) === String(messageId)
+                ? { ...msg, ...mergedMessage }
+                : msg,
+            ),
+          );
+          setPinnedMessages((prev) => upsertPinnedMessage(prev, mergedMessage));
+        }
+      } catch (apiError) {
+        console.error("Failed to pin message:", apiError);
+        if (optimisticPinnedMessage) {
+          setPinnedMessages((prev) => {
+            if (originalPinned !== true) return removePinnedMessage(prev, messageId);
+            return upsertPinnedMessage(prev, {
+              ...optimisticPinnedMessage,
+              pinned: true,
+              pinnedAt: originalPinnedAt,
+              pinnedBy: originalPinnedBy,
+            });
+          });
+        }
+        setMessages((prev) =>
+          prev.map((msg) =>
+            String(getMessageId(msg)) === String(messageId)
+              ? {
+                  ...msg,
+                  pinned: originalPinned,
+                  pinnedAt: originalPinnedAt,
+                  pinnedBy: originalPinnedBy,
+                }
+              : msg,
+          ),
+        );
+        toast.error(getPinErrorMessage(apiError));
       }
     } finally {
       pendingPinOperations.current.delete(operationKey);
@@ -2810,8 +3040,9 @@ const MainLayout = ({ children }: { children?: any }) => {
 
     // Get current pinned state before optimistic update (for potential rollback)
     const currentMessage = messages.find(
-      (m) => String(m.id || m._id) === String(messageId),
+      (m) => String(getMessageId(m)) === String(messageId),
     );
+    const originalPinned = currentMessage?.pinned;
     const originalPinnedAt = currentMessage?.pinnedAt;
     const originalPinnedBy = currentMessage?.pinnedBy;
     const originalPinnedMessage =
@@ -2819,11 +3050,16 @@ const MainLayout = ({ children }: { children?: any }) => {
         (message) => String(getMessageId(message)) === String(messageId),
       ) || currentMessage;
 
-    // Optimistic update - remove pinnedAt immediately
+    // Optimistic update - clear pinned immediately
     setMessages((prev) =>
       prev.map((msg) =>
-        String(msg.id || msg._id) === String(messageId)
-          ? { ...msg, pinnedAt: undefined, pinnedBy: undefined }
+        String(getMessageId(msg)) === String(messageId)
+          ? {
+              ...msg,
+              pinned: false,
+              pinnedAt: undefined,
+              pinnedBy: undefined,
+            }
           : msg,
       ),
     );
@@ -2838,25 +3074,39 @@ const MainLayout = ({ children }: { children?: any }) => {
           res.statusText === "OK" ||
           res.status === "success")
       ) {
-        console.log("[Unpin] Success:", {
-          conversationId: selectedConversationId,
-          messageId,
-        });
-        // Server will broadcast back to other clients, but we already updated optimistically
+        upsertSystemMessageFromPayload(res);
+        const returnedMessage = getPinActionMessage(res);
+        if (returnedMessage) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              String(getMessageId(msg)) === String(messageId)
+                ? {
+                    ...msg,
+                    ...returnedMessage,
+                    pinned: false,
+                    pinnedAt: undefined,
+                    pinnedBy: undefined,
+                  }
+                : msg,
+            ),
+          );
+        }
       } else {
         throw new Error(
           res?.error || res?.msg || res?.message || "Unpin failed",
         );
       }
     } catch (error) {
-      try {
-        await conversationService.unpinMessage(messageId);
-      } catch (apiError) {
-        console.error("Failed to unpin message:", apiError);
-        if (originalPinnedMessage && originalPinnedAt) {
+      const shouldUseRestFallback =
+        error instanceof Error && error.message === "Socket not connected";
+
+      if (!shouldUseRestFallback) {
+        console.error("Failed to unpin message via socket:", error);
+        if (originalPinnedMessage && originalPinned === true) {
           setPinnedMessages((prev) =>
             upsertPinnedMessage(prev, {
               ...originalPinnedMessage,
+              pinned: true,
               pinnedAt: originalPinnedAt,
               pinnedBy: originalPinnedBy,
             }),
@@ -2864,12 +3114,48 @@ const MainLayout = ({ children }: { children?: any }) => {
         }
         setMessages((prev) =>
           prev.map((msg) =>
-            String(msg.id || msg._id) === String(messageId)
-              ? { ...msg, pinnedAt: originalPinnedAt, pinnedBy: originalPinnedBy }
+            String(getMessageId(msg)) === String(messageId)
+              ? {
+                  ...msg,
+                  pinned: originalPinned,
+                  pinnedAt: originalPinnedAt,
+                  pinnedBy: originalPinnedBy,
+                }
               : msg,
           ),
         );
-        throw apiError;
+        toast.error(getPinErrorMessage(error));
+        return;
+      }
+
+      try {
+        const apiResponse = await conversationService.unpinMessage(messageId);
+        upsertSystemMessageFromPayload(apiResponse);
+      } catch (apiError) {
+        console.error("Failed to unpin message:", apiError);
+        if (originalPinnedMessage && originalPinned === true) {
+          setPinnedMessages((prev) =>
+            upsertPinnedMessage(prev, {
+              ...originalPinnedMessage,
+              pinned: true,
+              pinnedAt: originalPinnedAt,
+              pinnedBy: originalPinnedBy,
+            }),
+          );
+        }
+        setMessages((prev) =>
+          prev.map((msg) =>
+            String(getMessageId(msg)) === String(messageId)
+              ? {
+                  ...msg,
+                  pinned: originalPinned,
+                  pinnedAt: originalPinnedAt,
+                  pinnedBy: originalPinnedBy,
+                }
+              : msg,
+          ),
+        );
+        toast.error(getPinErrorMessage(apiError));
       }
     } finally {
       pendingPinOperations.current.delete(operationKey);

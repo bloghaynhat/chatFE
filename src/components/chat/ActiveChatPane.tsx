@@ -44,6 +44,8 @@ import {
 } from "react-icons/fi";
 import { toast } from "sonner";
 
+const CONTEXT_MENU_EXIT_MS = 140;
+
 const mergeGroupSettings = (...sources: any[]) =>
   sources.reduce((merged, source) => {
     if (!source) return merged;
@@ -122,6 +124,8 @@ export const ActiveChatPane = ({
   const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
   const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+  const [chatInputHeight, setChatInputHeight] = useState(96);
+  const [isChatAtBottom, setIsChatAtBottom] = useState(true);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -132,8 +136,10 @@ export const ActiveChatPane = ({
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
   const chatContainerRef = useRef<HTMLElement | null>(null);
+  const contextMenuCloseTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const previousConversationIdRef = useRef<string | null>(null);
   const previousLastMessageIdRef = useRef<string>("");
+  const previousChatInputBottomInsetRef = useRef(96);
   const shouldStickToBottomRef = useRef(true);
   const photoVideoInputRef = useRef(null);
   const documentInputRef = useRef(null);
@@ -170,7 +176,7 @@ export const ActiveChatPane = ({
       const sourcePinnedMessages =
         pinnedMessages.length > 0
           ? pinnedMessages
-          : (messages || []).filter((m) => m.pinnedAt);
+          : (messages || []).filter((m) => m.pinned === true);
 
       if (!sourcePinnedMessages || sourcePinnedMessages.length === 0) {
         setEnrichedPinnedMessages([]);
@@ -641,17 +647,44 @@ export const ActiveChatPane = ({
     isLoading,
   ]);
 
+  const closeContextMenu = useCallback(() => {
+    setContextMenu((current: any) => {
+      if (!current || current.isClosing) return current;
+      return { ...current, isClosing: true };
+    });
+
+    if (contextMenuCloseTimeoutRef.current) {
+      window.clearTimeout(contextMenuCloseTimeoutRef.current);
+    }
+    contextMenuCloseTimeoutRef.current = window.setTimeout(() => {
+      setContextMenu(null);
+      contextMenuCloseTimeoutRef.current = null;
+    }, CONTEXT_MENU_EXIT_MS);
+  }, []);
+
   useEffect(() => {
-    const handleClickOutside = () => setContextMenu(null);
+    const handleClickOutside = () => closeContextMenu();
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
+  }, [closeContextMenu]);
+
+  useEffect(() => {
+    return () => {
+      if (contextMenuCloseTimeoutRef.current) {
+        window.clearTimeout(contextMenuCloseTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleContextMenu = (e, message) => {
     e.preventDefault();
     e.stopPropagation();
 
-    setContextMenu({ x: e.clientX, y: e.clientY, message });
+    if (contextMenuCloseTimeoutRef.current) {
+      window.clearTimeout(contextMenuCloseTimeoutRef.current);
+      contextMenuCloseTimeoutRef.current = null;
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY, message, isClosing: false });
   };
 
   const onDrop = useCallback((acceptedFiles, fileRejections, event) => {
@@ -833,7 +866,9 @@ export const ActiveChatPane = ({
     const container = event.currentTarget as HTMLElement;
     const distanceFromBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight;
-    shouldStickToBottomRef.current = distanceFromBottom < 180;
+    const isNearBottom = distanceFromBottom < 180;
+    shouldStickToBottomRef.current = isNearBottom;
+    setIsChatAtBottom(isNearBottom);
   }, []);
 
   const visibleMessages = useMemo(() => messages, [messages]);
@@ -857,6 +892,7 @@ export const ActiveChatPane = ({
       previousConversationIdRef.current = conversationId;
       previousLastMessageIdRef.current = String(lastMessageId || "");
       shouldStickToBottomRef.current = true;
+      setIsChatAtBottom(true);
       scheduleScrollToBottom("auto");
       return;
     }
@@ -865,6 +901,7 @@ export const ActiveChatPane = ({
 
     previousLastMessageIdRef.current = String(lastMessageId || "");
     if (isLastMessageFromCurrentUser || shouldStickToBottomRef.current) {
+      setIsChatAtBottom(true);
       scheduleScrollToBottom("auto");
     }
   }, [
@@ -878,6 +915,7 @@ export const ActiveChatPane = ({
   useEffect(() => {
     if (!isLoading) {
       shouldStickToBottomRef.current = true;
+      setIsChatAtBottom(true);
       scheduleScrollToBottom("auto");
     }
   }, [isLoading, selectedConversationId]);
@@ -1056,6 +1094,17 @@ export const ActiveChatPane = ({
   const inputDisabledTone =
     groupMessageRestriction && !chatRestriction ? "neutral" : "danger";
   const wallpaperUrl = selectedChat?.wallpaperUrl || null;
+  const chatInputBottomInset = Math.max(96, chatInputHeight + 20);
+
+  useLayoutEffect(() => {
+    const previousInset = previousChatInputBottomInsetRef.current;
+    previousChatInputBottomInsetRef.current = chatInputBottomInset;
+
+    if (chatInputBottomInset <= previousInset) return;
+    if (!shouldStickToBottomRef.current) return;
+
+    scheduleScrollToBottom("auto");
+  }, [chatInputBottomInset]);
 
   const handleInputChange = (event) => {
     if (inputDisabledReason) return;
@@ -1081,7 +1130,7 @@ export const ActiveChatPane = ({
     if (onSendMessage) {
       if (editingMessage) {
         const payload = {
-          id: editingMessage.id || editingMessage._id,
+          id: editingMessage.serverId || editingMessage._id || editingMessage.messageId || (String(editingMessage.id || "").startsWith("temp-") ? null : editingMessage.id),
           text: textToSend,
           type: "edit",
         };
@@ -1260,11 +1309,13 @@ export const ActiveChatPane = ({
           contextMenu?.message?.messageId ||
           null
         }
+        activeContextMenuClosing={Boolean(contextMenu?.isClosing)}
         setPreviewVideoUrl={setPreviewVideoUrl}
         onNavigateToMessage={handleNavigateToMessage}
         onPollUpdated={onPollUpdated}
         onOpenChat={onOpenChat}
         onChatInteractionRead={onChatInteractionRead}
+        inputBottomInset={chatInputBottomInset}
       />
 
       {contextMenu && (
@@ -1272,26 +1323,33 @@ export const ActiveChatPane = ({
           contextMenu={contextMenu}
           messages={messages}
           currentUserId={currentUserId}
-          onClose={() => setContextMenu(null)}
+          onClose={closeContextMenu}
           onReply={(message) => {
             setReplyingMessage(message);
-            setContextMenu(null);
+            if (editingMessage) {
+              setEditingMessage(null);
+              setDraftMessage("");
+            }
+            closeContextMenu();
           }}
           onEdit={(message) => {
             setEditingMessage(message);
+            if (replyingMessage) {
+              setReplyingMessage(null);
+            }
             setDraftMessage(getMessageText(message));
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onPinMessage={handlePinMessage}
           onUnpinMessage={handleUnpinMessage}
           onOpenForwardModal={(message) => {
             setMessageToForward(message);
             setForwardModalVisible(true);
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onTranslateMessage={(message) => {
             setMessageToTranslate(message);
-            setContextMenu(null);
+            closeContextMenu();
           }}
           onRevokeMessage={onRevokeMessage}
           onDeleteMessageForMe={onDeleteMessageForMe}
@@ -1385,6 +1443,13 @@ export const ActiveChatPane = ({
         disabledReason={inputDisabledReason}
         disabledTone={inputDisabledTone}
         onChatInteractionRead={onChatInteractionRead}
+        onInputHeightChange={setChatInputHeight}
+        isScrolledUp={!isChatAtBottom}
+        onScrollToBottom={() => {
+          shouldStickToBottomRef.current = true;
+          setIsChatAtBottom(true);
+          scrollToBottom("smooth");
+        }}
       />
 
       <CreatePollModal

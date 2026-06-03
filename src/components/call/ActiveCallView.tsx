@@ -412,7 +412,6 @@ export default function ActiveCallView() {
 
   if (state.status !== "active") return null;
 
-  const isVideo = state.type === "video";
   const remoteIds = remoteTiles.map((tile) => tile.participantId).filter(Boolean);
   const expectedIds = Object.keys(state.participants || {}).filter((id) => {
     const participant = state.participants?.[id];
@@ -450,6 +449,9 @@ export default function ActiveCallView() {
           },
         ];
   const participantCount = remotePeople.length + 1;
+  const hasRemoteVideo = remotePeople.some((tile) => tile.videoTrack && !tile.videoTrack.isMuted);
+  const hasLocalVideo = Boolean(localVideoTrack && state.localVideoEnabled && !localVideoTrack.isMuted);
+  const isVideo = state.type === "video" || hasLocalVideo || hasRemoteVideo;
   const gridClass =
     remotePeople.length <= 1
       ? "grid-cols-1"
@@ -586,24 +588,22 @@ export default function ActiveCallView() {
               <FiMicOff className="mx-auto h-6 w-6" />
             )}
           </button>
-          {isVideo && (
-            <button
-              onClick={toggleVideo}
-              className={`h-11 w-11 rounded-full transition hover:-translate-y-0.5 ${
-                state.localVideoEnabled
-                  ? "bg-[#edf7ff] text-[#229ed9] hover:bg-[#dff1ff]"
-                  : "bg-[#ff4d5e] text-white hover:bg-[#e94352]"
-              }`}
-              aria-label={state.localVideoEnabled ? t("call.cameraOff") : t("call.cameraOn")}
-              title={state.localVideoEnabled ? t("call.cameraOff") : t("call.cameraOn")}
-            >
-              {state.localVideoEnabled ? (
-                <FiVideo className="mx-auto h-6 w-6" />
-              ) : (
-                <FiVideoOff className="mx-auto h-6 w-6" />
-              )}
-            </button>
-          )}
+          <button
+            onClick={toggleVideo}
+            className={`h-11 w-11 rounded-full transition hover:-translate-y-0.5 ${
+              state.localVideoEnabled
+                ? "bg-[#edf7ff] text-[#229ed9] hover:bg-[#dff1ff]"
+                : "bg-[#ff4d5e] text-white hover:bg-[#e94352]"
+            }`}
+            aria-label={state.localVideoEnabled ? t("call.cameraOff") : t("call.cameraOn")}
+            title={state.localVideoEnabled ? t("call.cameraOff") : t("call.cameraOn")}
+          >
+            {state.localVideoEnabled ? (
+              <FiVideo className="mx-auto h-6 w-6" />
+            ) : (
+              <FiVideoOff className="mx-auto h-6 w-6" />
+            )}
+          </button>
           <button
             onClick={hangUpCall}
             className="h-12 w-12 rounded-full bg-[#ff4d5e] text-white shadow-[0_14px_28px_rgba(255,77,94,0.34)] transition hover:-translate-y-0.5 hover:bg-[#e94352]"

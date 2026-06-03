@@ -37,6 +37,7 @@ export const MessageItem = ({
   isLastInSequence = true,
   handleContextMenu,
   activeContextMessageId,
+  activeContextMenuClosing,
   setPreviewVideoUrl,
   currentUserId,
   onNavigateToMessage,
@@ -339,6 +340,10 @@ export const MessageItem = ({
     <div
       className={`telegram-message-row w-full flex ${mine ? "justify-end" : "justify-start"} items-end gap-2 ${isLastInSequence ? "mb-1.5" : "mb-[2px]"} group ${
         isContextActive ? "telegram-message-row-active" : ""
+      } ${
+        isContextActive && activeContextMenuClosing
+          ? "telegram-message-row-active-closing"
+          : ""
       }`}
       data-message-row="true"
       data-message-id={currentMessageId}
@@ -577,7 +582,7 @@ export const MessageItem = ({
                   : "text-gray-400 dark:text-gray-500 text-[10.5px]"
             }`}
           >
-            {message.pinnedAt && (
+            {message.pinned === true && (
               <FiMapPin
                 className="text-[14px] md:text-[15px] text-blue-500 dark:text-blue-400"
                 strokeWidth={2.5}

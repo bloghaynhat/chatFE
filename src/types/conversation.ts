@@ -9,6 +9,7 @@ export interface Message {
   // ID fields (backend may use either)
   _id?: string;
   messageId?: string;
+  serverId?: string;
   id?: string;
 
   createdAt: string;
@@ -76,6 +77,7 @@ export interface Message {
   quotedMessagePreview?: string;
 
   // Pin-related fields
+  pinned?: boolean;
   pinnedAt?: string;
   pinnedBy?: string;
 
