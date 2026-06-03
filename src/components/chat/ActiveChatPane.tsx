@@ -124,6 +124,7 @@ export const ActiveChatPane = ({
   const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
   const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+  const [chatInputHeight, setChatInputHeight] = useState(96);
 
   const attachMenuRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -137,6 +138,7 @@ export const ActiveChatPane = ({
   const contextMenuCloseTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const previousConversationIdRef = useRef<string | null>(null);
   const previousLastMessageIdRef = useRef<string>("");
+  const previousChatInputBottomInsetRef = useRef(96);
   const shouldStickToBottomRef = useRef(true);
   const photoVideoInputRef = useRef(null);
   const documentInputRef = useRef(null);
@@ -1086,6 +1088,17 @@ export const ActiveChatPane = ({
   const inputDisabledTone =
     groupMessageRestriction && !chatRestriction ? "neutral" : "danger";
   const wallpaperUrl = selectedChat?.wallpaperUrl || null;
+  const chatInputBottomInset = Math.max(96, chatInputHeight + 20);
+
+  useLayoutEffect(() => {
+    const previousInset = previousChatInputBottomInsetRef.current;
+    previousChatInputBottomInsetRef.current = chatInputBottomInset;
+
+    if (chatInputBottomInset <= previousInset) return;
+    if (!shouldStickToBottomRef.current) return;
+
+    scheduleScrollToBottom("auto");
+  }, [chatInputBottomInset]);
 
   const handleInputChange = (event) => {
     if (inputDisabledReason) return;
@@ -1296,6 +1309,7 @@ export const ActiveChatPane = ({
         onPollUpdated={onPollUpdated}
         onOpenChat={onOpenChat}
         onChatInteractionRead={onChatInteractionRead}
+        inputBottomInset={chatInputBottomInset}
       />
 
       {contextMenu && (
@@ -1416,6 +1430,7 @@ export const ActiveChatPane = ({
         disabledReason={inputDisabledReason}
         disabledTone={inputDisabledTone}
         onChatInteractionRead={onChatInteractionRead}
+        onInputHeightChange={setChatInputHeight}
       />
 
       <CreatePollModal

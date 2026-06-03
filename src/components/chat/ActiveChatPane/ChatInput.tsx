@@ -52,11 +52,13 @@ export const ChatInput = ({
   isLastMessageFromCurrentUser,
   disabledTone = "danger",
   onChatInteractionRead,
+  onInputHeightChange,
 }) => {
   const { t } = useLanguage();
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
   const [isSmartReplyOpen, setIsSmartReplyOpen] = useState(false);
   const [manualSmartReplyKey, setManualSmartReplyKey] = useState("");
+  const inputRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (replyingMessage) {
@@ -233,6 +235,21 @@ export const ChatInput = ({
     return text || "Attachments";
   };
 
+  const getMessageSenderName = (msg: any) => {
+    if (!msg) return t("app.unknown");
+    if (msg.senderId === currentUserId || msg.id_sender === currentUserId || msg.sender?.id === currentUserId) {
+      return t("app.you");
+    }
+    return (
+      msg.sender?.displayName ||
+      msg.sender?.name ||
+      msg.senderName ||
+      msg.displayName ||
+      msg.name ||
+      t("app.unknown")
+    );
+  };
+
   const canRequestSmartReply =
     Boolean(selectedConversationId) &&
     !draftMessage.trim() &&
@@ -249,8 +266,24 @@ export const ChatInput = ({
     }
   }, [canRequestSmartReply]);
 
+  useEffect(() => {
+    const root = inputRootRef.current;
+    if (!root || !onInputHeightChange) return;
+
+    const reportHeight = () => {
+      onInputHeightChange(Math.ceil(root.getBoundingClientRect().height));
+    };
+
+    reportHeight();
+    const observer = new ResizeObserver(reportHeight);
+    observer.observe(root);
+
+    return () => observer.disconnect();
+  }, [onInputHeightChange]);
+
   return (
     <div
+      ref={inputRootRef}
       data-chat-input-root
       className="absolute left-0 right-0 bottom-3 px-4 lg:px-5 bg-transparent"
       onPointerDown={onChatInteractionRead}
@@ -355,7 +388,7 @@ export const ChatInput = ({
             ref={attachMenuRef}
             className={`relative flex-1 h-auto bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${
               editingMessage
-                ? "min-h-[106px] rounded-[16px] flex flex-col items-stretch py-2"
+                ? "min-h-[112px] rounded-[18px] flex flex-col items-stretch overflow-hidden px-3 py-3"
                 : "min-h-[44px] lg:min-h-[48px] rounded-[24px] flex items-center"
             } ${
               disabledReason
@@ -381,13 +414,15 @@ export const ChatInput = ({
             )}
 
             {editingMessage && (
-              <>
-                <div className="absolute left-4 top-5 flex h-6 w-6 items-center justify-center text-[#ef5b7d]">
-                  <FiEdit2 className="text-[20px]" strokeWidth={2} />
+              <div className="flex items-center gap-3 pb-2">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center text-[#df5d7d]">
+                  <FiEdit2 className="text-[25px]" strokeWidth={1.8} />
                 </div>
-                <div className="mx-12 rounded-[5px] bg-[#fae9ed] px-3 py-1.5 dark:bg-rose-950/35">
-                  <div className="text-[13px] font-semibold leading-tight text-[#ef5b7d]">{t("chat.editMessage")}</div>
-                  <div className="truncate text-[13px] leading-tight text-gray-700 dark:text-slate-200">
+                <div className="min-w-0 flex-1 rounded-[5px] border-l-[4px] border-[#df5d7d] bg-[#fae9ed] px-3 py-1.5 dark:bg-rose-950/35">
+                  <div className="truncate text-[13px] font-semibold leading-tight text-[#df5d7d]">
+                    {getMessageSenderName(editingMessage)}
+                  </div>
+                  <div className="truncate text-[14px] leading-tight text-gray-900 dark:text-slate-100">
                     {getPreviewText(editingMessage)}
                   </div>
                 </div>
@@ -397,12 +432,12 @@ export const ChatInput = ({
                     setEditingMessage(null);
                     setDraftMessage("");
                   }}
-                  className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-[#ef5b7d] transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#df5d7d] transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
                   title={t("app.cancel")}
                 >
                   <FiX className="text-[24px]" strokeWidth={1.6} />
                 </button>
-              </>
+              </div>
             )}
 
             <div
@@ -448,8 +483,8 @@ export const ChatInput = ({
                 setIsAttachMenuOpen(false);
                 setIsMoreMenuOpen(false);
               }}
-              className={`absolute left-2 h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${
-                editingMessage ? "bottom-2" : "top-1/2 -translate-y-1/2"
+              className={`absolute h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${
+                editingMessage ? "bottom-2.5 left-3" : "left-2 top-1/2 -translate-y-1/2"
               }`}
               title={t("chat.openEmoji")}
             >
@@ -470,12 +505,12 @@ export const ChatInput = ({
               disabled={Boolean(disabledReason)}
               placeholder={disabledReason || t("chat.messagePlaceholder")}
               className={`w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${
-                editingMessage ? "pt-2 pb-1.5" : "py-[12px] lg:py-[14px]"
+                editingMessage ? "py-[10px]" : "py-[12px] lg:py-[14px]"
               }`}
             />
 
             <div
-              className={`absolute right-9 flex items-center ${editingMessage ? "bottom-1.5 h-10" : "bottom-0 top-0"}`}
+              className={`absolute right-9 flex items-center ${editingMessage ? "bottom-2 h-10" : "bottom-0 top-0"}`}
             >
               <AiToneAdjustMenu currentText={draftMessage} onApplyTone={(newText) => setDraftMessage(newText)} />
             </div>
@@ -488,7 +523,7 @@ export const ChatInput = ({
                 setIsEmojiPickerOpen(false);
               }}
               className={`absolute right-1.5 flex w-8 lg:w-9 items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition ${
-                editingMessage ? "bottom-1.5 h-10" : "bottom-0 top-0 h-full"
+                editingMessage ? "bottom-2 h-10" : "bottom-0 top-0 h-full"
               }`}
               title={t("chat.openAttachments")}
             >
