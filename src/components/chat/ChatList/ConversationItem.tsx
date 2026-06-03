@@ -25,7 +25,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
   onSelectChat,
   onContextMenu,
 }) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { user } = useAuth();
   const { drafts } = useDraft();
   const isActive = activeChatId === chat.id || openingChatId === chat.id;
@@ -125,7 +125,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
               ) : (
                 <>
                   {isMine && !isSavedMessages && <span>{t("app.you")}: </span>}
-                  {getChatMessagePreview(chat.lastMessage)}
+                  {getChatMessagePreview(chat.lastMessage, language)}
                 </>
               )}
             </p>

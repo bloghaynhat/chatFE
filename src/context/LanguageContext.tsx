@@ -29,6 +29,104 @@ type TranslationKey =
   | "app.unknownLocation"
   | "app.user"
   | "app.you"
+  | "auth.hidePassword"
+  | "auth.showPassword"
+  | "auth.passwordStrength"
+  | "auth.passwordWeak"
+  | "auth.passwordMedium"
+  | "auth.passwordStrong"
+  | "auth.passwordRuleLength"
+  | "auth.passwordRuleUppercase"
+  | "auth.passwordRuleNumberSpecial"
+  | "auth.requiredAll"
+  | "auth.phone"
+  | "auth.email"
+  | "auth.otp"
+  | "auth.password"
+  | "auth.displayName"
+  | "auth.confirmPassword"
+  | "auth.newPassword"
+  | "auth.phonePlaceholder"
+  | "auth.emailPlaceholder"
+  | "auth.displayNamePlaceholder"
+  | "auth.passwordPlaceholder"
+  | "auth.confirmPasswordPlaceholder"
+  | "auth.newPasswordPlaceholder"
+  | "auth.confirmNewPasswordPlaceholder"
+  | "auth.otpPlaceholder"
+  | "loginPage.subtitle"
+  | "loginPage.forgotPassword"
+  | "loginPage.noAccount"
+  | "loginPage.registerNow"
+  | "login.success"
+  | "login.emailVerifyRequired"
+  | "login.emailUnverified"
+  | "login.failed"
+  | "login.loading"
+  | "login.submit"
+  | "register.success"
+  | "register.failed"
+  | "register.passwordMismatch"
+  | "register.passwordMinLength"
+  | "register.phoneInvalid"
+  | "register.emailInvalid"
+  | "register.mustAgreeTerms"
+  | "register.loading"
+  | "register.submit"
+  | "registerPage.title"
+  | "registerPage.subtitle"
+  | "registerPage.haveAccount"
+  | "registerPage.backToLogin"
+  | "register.agreePrefix"
+  | "register.termsLink"
+  | "forgotPasswordPage.title"
+  | "forgotPasswordPage.subtitle"
+  | "forgotPasswordPage.rememberPassword"
+  | "forgotPasswordPage.backToLogin"
+  | "forgotPassword.requestFailed"
+  | "forgotPassword.emailRequired"
+  | "forgotPassword.emailInvalid"
+  | "forgotPassword.otpExpired"
+  | "forgotPassword.otpRequired"
+  | "forgotPassword.otpInvalid"
+  | "forgotPassword.newPasswordRequired"
+  | "forgotPassword.newPasswordMinLength"
+  | "forgotPassword.confirmMismatch"
+  | "forgotPassword.otpSent"
+  | "forgotPassword.missingTempTokenVerify"
+  | "forgotPassword.otpVerified"
+  | "forgotPassword.otpResent"
+  | "forgotPassword.missingTempTokenReset"
+  | "forgotPassword.resetSuccess"
+  | "forgotPassword.processing"
+  | "forgotPassword.sendOtp"
+  | "forgotPassword.verifyOtp"
+  | "forgotPassword.resetPassword"
+  | "forgotPassword.resendingOtp"
+  | "forgotPassword.resendOtp"
+  | "forgotPassword.loginNow"
+  | "forgotPassword.expiresIn"
+  | "forgotPassword.emailLabel"
+  | "verifyEmailPage.title"
+  | "verifyEmailPage.subtitle"
+  | "verifyEmailPage.donePrompt"
+  | "verifyEmailPage.loginNow"
+  | "emailVerification.resolveEmailNotFound"
+  | "emailVerification.resolveEmailFailed"
+  | "emailVerification.registerOtpSent"
+  | "emailVerification.accountOtpSent"
+  | "emailVerification.sendOtpFailed"
+  | "emailVerification.otpResent"
+  | "emailVerification.resendFailed"
+  | "emailVerification.required"
+  | "emailVerification.success"
+  | "emailVerification.failed"
+  | "emailVerification.resolvingEmail"
+  | "emailVerification.preparingOtp"
+  | "emailVerification.verifying"
+  | "emailVerification.verifyEmail"
+  | "emailVerification.resendOtp"
+  | "emailVerification.backToRegister"
   | "nav.savedMessages"
   | "nav.archivedChats"
   | "nav.contacts"
@@ -56,8 +154,30 @@ type TranslationKey =
   | "settings.vietnamese"
   | "settings.premium"
   | "privacy.title"
+  | "privacy.changePassword"
   | "privacy.blockList"
   | "privacy.blockListDescription"
+  | "changePassword.title"
+  | "changePassword.currentPassword"
+  | "changePassword.newPassword"
+  | "changePassword.confirmPassword"
+  | "changePassword.currentRequired"
+  | "changePassword.newRequired"
+  | "changePassword.confirmRequired"
+  | "changePassword.confirmMismatch"
+  | "changePassword.newWeak"
+  | "changePassword.ruleLength"
+  | "changePassword.ruleUppercase"
+  | "changePassword.ruleNumberSpecial"
+  | "changePassword.strength"
+  | "changePassword.weak"
+  | "changePassword.medium"
+  | "changePassword.strong"
+  | "changePassword.submit"
+  | "changePassword.saving"
+  | "changePassword.success"
+  | "changePassword.error"
+  | "changePassword.description"
   | "devices.title"
   | "devices.thisDevice"
   | "devices.current"
@@ -219,6 +339,7 @@ type TranslationKey =
   | "chat.aiExtractTasks"
   | "chat.extracting"
   | "chat.mute"
+  | "chat.unmute"
   | "chat.call"
   | "chat.videoCall"
   | "chat.shareContact"
@@ -360,6 +481,104 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Unknown location",
     "app.user": "User",
     "app.you": "You",
+    "auth.hidePassword": "Hide password",
+    "auth.showPassword": "Show password",
+    "auth.passwordStrength": "Password strength",
+    "auth.passwordWeak": "Weak",
+    "auth.passwordMedium": "Medium",
+    "auth.passwordStrong": "Strong",
+    "auth.passwordRuleLength": "At least 8 characters",
+    "auth.passwordRuleUppercase": "Contains an uppercase letter",
+    "auth.passwordRuleNumberSpecial": "Contains a number or special character",
+    "auth.requiredAll": "Please fill in all required information.",
+    "auth.phone": "Phone number",
+    "auth.email": "Email",
+    "auth.otp": "OTP code",
+    "auth.password": "Password",
+    "auth.displayName": "Display name",
+    "auth.confirmPassword": "Confirm password",
+    "auth.newPassword": "New password",
+    "auth.phonePlaceholder": "0912345678",
+    "auth.emailPlaceholder": "your@email.com",
+    "auth.displayNamePlaceholder": "Your name",
+    "auth.passwordPlaceholder": "Enter password",
+    "auth.confirmPasswordPlaceholder": "Re-enter password",
+    "auth.newPasswordPlaceholder": "Enter new password",
+    "auth.confirmNewPasswordPlaceholder": "Re-enter new password",
+    "auth.otpPlaceholder": "Enter OTP code",
+    "loginPage.subtitle": "Log in to your account",
+    "loginPage.forgotPassword": "Forgot password?",
+    "loginPage.noAccount": "Don't have an account?",
+    "loginPage.registerNow": "Register now",
+    "login.success": "Login successful",
+    "login.emailVerifyRequired": "Please verify your email to continue.",
+    "login.emailUnverified": "Email is not verified. Please enter the OTP to continue.",
+    "login.failed": "Login failed",
+    "login.loading": "Logging in...",
+    "login.submit": "Log in",
+    "register.success": "Registration successful. Please check your email to enter the OTP.",
+    "register.failed": "Registration failed",
+    "register.passwordMismatch": "Confirmation password does not match.",
+    "register.passwordMinLength": "Password must be at least 6 characters.",
+    "register.phoneInvalid": "Phone number must have 10 digits and start with 0.",
+    "register.emailInvalid": "Please enter a valid email address.",
+    "register.mustAgreeTerms": "You need to agree to the policies and terms.",
+    "register.loading": "Registering...",
+    "register.submit": "Register",
+    "registerPage.title": "Create a new account",
+    "registerPage.subtitle": "Join ChatChit and start connecting with friends.",
+    "registerPage.haveAccount": "Already have an account?",
+    "registerPage.backToLogin": "Back to login",
+    "register.agreePrefix": "I agree to the",
+    "register.termsLink": "policies and terms",
+    "forgotPasswordPage.title": "Forgot password?",
+    "forgotPasswordPage.subtitle": "Enter your email to receive password reset instructions.",
+    "forgotPasswordPage.rememberPassword": "Remember your password?",
+    "forgotPasswordPage.backToLogin": "Back to login",
+    "forgotPassword.requestFailed": "Request failed",
+    "forgotPassword.emailRequired": "Please enter your email.",
+    "forgotPassword.emailInvalid": "Email is invalid.",
+    "forgotPassword.otpExpired": "OTP has expired. Please request a new code.",
+    "forgotPassword.otpRequired": "Please enter the OTP.",
+    "forgotPassword.otpInvalid": "OTP must contain exactly 6 digits.",
+    "forgotPassword.newPasswordRequired": "Please enter a new password.",
+    "forgotPassword.newPasswordMinLength": "New password must be at least 6 characters.",
+    "forgotPassword.confirmMismatch": "Confirmation password does not match.",
+    "forgotPassword.otpSent": "OTP has been sent. Please check your email/SMS to continue.",
+    "forgotPassword.missingTempTokenVerify": "No tempToken was returned after OTP verification.",
+    "forgotPassword.otpVerified": "OTP is valid. Please enter your new password.",
+    "forgotPassword.otpResent": "OTP has been resent. Please check your email/SMS again.",
+    "forgotPassword.missingTempTokenReset": "Missing tempToken. Please verify the OTP again.",
+    "forgotPassword.resetSuccess": "Password reset successfully. You can log in again.",
+    "forgotPassword.processing": "Processing...",
+    "forgotPassword.sendOtp": "Send OTP",
+    "forgotPassword.verifyOtp": "Verify OTP",
+    "forgotPassword.resetPassword": "Reset password",
+    "forgotPassword.resendingOtp": "Resending...",
+    "forgotPassword.resendOtp": "Resend OTP",
+    "forgotPassword.loginNow": "Log in now",
+    "forgotPassword.expiresIn": "Code expires in {time}.",
+    "forgotPassword.emailLabel": "Your email:",
+    "verifyEmailPage.title": "Verify email",
+    "verifyEmailPage.subtitle": "Enter the OTP sent to your email to complete account registration.",
+    "verifyEmailPage.donePrompt": "Finished verifying?",
+    "verifyEmailPage.loginNow": "Log in now",
+    "emailVerification.resolveEmailNotFound": "Could not find the email for this account. Please enter your email to receive the OTP.",
+    "emailVerification.resolveEmailFailed": "Could not get the account email. Please enter your email to receive the OTP.",
+    "emailVerification.registerOtpSent": "The OTP was sent during registration. Please check your email and enter the code to verify.",
+    "emailVerification.accountOtpSent": "Your account is not verified. An OTP has been sent to your email.",
+    "emailVerification.sendOtpFailed": "Could not send OTP. Please press resend.",
+    "emailVerification.otpResent": "A new OTP has been sent to your email. Please use the latest code.",
+    "emailVerification.resendFailed": "Resending OTP failed.",
+    "emailVerification.required": "Please enter both email and OTP.",
+    "emailVerification.success": "Email verified successfully",
+    "emailVerification.failed": "OTP verification failed",
+    "emailVerification.resolvingEmail": "Getting account email...",
+    "emailVerification.preparingOtp": "Preparing OTP...",
+    "emailVerification.verifying": "Verifying...",
+    "emailVerification.verifyEmail": "Verify email",
+    "emailVerification.resendOtp": "Resend OTP code",
+    "emailVerification.backToRegister": "Back to registration",
     "nav.savedMessages": "Saved Messages",
     "nav.archivedChats": "Archived Chats",
     "nav.contacts": "Contacts",
@@ -385,10 +604,34 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "settings.languageSaved": "Language preference saved",
     "settings.english": "English",
     "settings.vietnamese": "Tiếng Việt",
-    "settings.premium": "Telegram Premium",
+    "settings.premium": "ChatChit Premium",
     "privacy.title": "Privacy and Security",
+    "privacy.changePassword": "Change Password",
     "privacy.blockList": "Block List",
-    "privacy.blockListDescription": "Manage people you have blocked. Blocked users cannot message or call you.",
+    "privacy.blockListDescription":
+      "Manage people you have blocked. Blocked users cannot message or call you.",
+    "changePassword.title": "Change Password",
+    "changePassword.currentPassword": "Current password",
+    "changePassword.newPassword": "New password",
+    "changePassword.confirmPassword": "Confirm new password",
+    "changePassword.currentRequired": "Current password is required.",
+    "changePassword.newRequired": "New password is required.",
+    "changePassword.confirmRequired": "Please confirm your new password.",
+    "changePassword.confirmMismatch": "New password and confirmation do not match.",
+    "changePassword.newWeak": "New password must satisfy all requirements.",
+    "changePassword.ruleLength": "At least 8 characters",
+    "changePassword.ruleUppercase": "Contains an uppercase letter",
+    "changePassword.ruleNumberSpecial": "Contains a number or special character",
+    "changePassword.strength": "Password strength",
+    "changePassword.weak": "Weak",
+    "changePassword.medium": "Medium",
+    "changePassword.strong": "Strong",
+    "changePassword.submit": "Update password",
+    "changePassword.saving": "Updating...",
+    "changePassword.success": "Password updated successfully.",
+    "changePassword.error": "Could not update password.",
+    "changePassword.description":
+      "Use a strong password that you do not use elsewhere. Other active sessions remain signed in unless you terminate them from Devices.",
     "devices.title": "Active Sessions",
     "devices.thisDevice": "This device",
     "devices.current": "Current",
@@ -397,10 +640,12 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "devices.loadingActiveSessions": "Loading active sessions...",
     "devices.currentNotFound": "Current device not found.",
     "devices.terminateOthers": "Terminate All Other Sessions",
-    "devices.terminateOthersDescription": "Logs out all devices except for this one.",
+    "devices.terminateOthersDescription":
+      "Logs out all devices except for this one.",
     "devices.activeSessions": "Active sessions",
     "devices.noOtherSessions": "No other active sessions.",
-    "devices.reviewDescription": "You can review all logged-in devices and remotely log out sessions you no longer use.",
+    "devices.reviewDescription":
+      "You can review all logged-in devices and remotely log out sessions you no longer use.",
     "devices.logoutDevice": "Log out this device",
     "devices.confirmLogoutDevice": "Log out this device?",
     "devices.confirmLogoutOthers": "Log out all other devices?",
@@ -441,8 +686,10 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "invite.groupLink": "Group Invite Link",
     "invite.regenerate": "Regenerate Link",
     "invite.revoke": "Revoke Link",
-    "invite.noPermission": "You do not have permission to view this invite link.",
-    "invite.loadError": "Could not load the invite link. Please check your group permissions.",
+    "invite.noPermission":
+      "You do not have permission to view this invite link.",
+    "invite.loadError":
+      "Could not load the invite link. Please check your group permissions.",
     "invite.noActiveLink": "No active invite link found.",
     "invite.generate": "Generate Link",
     "invite.url": "Invite URL",
@@ -459,7 +706,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profileCard.sentToast": "Contact card sent",
     "profileCard.sharedToast": "Contact card shared",
     "profileCard.sendFailed": "Could not send contact card",
-    "profileCard.shareFailedPrivacy": "Cannot share this contact card because of privacy settings",
+    "profileCard.shareFailedPrivacy":
+      "Cannot share this contact card because of privacy settings",
     "profileCard.shareFailed": "Cannot share this contact card",
     "profileCard.friends": "Friends",
     "profileCard.search": "Search",
@@ -521,7 +769,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.noImages": "No images",
     "chat.noVoice": "No voice messages found",
     "chat.enterKeyword": "Enter a keyword to search",
-    "chat.tryDifferentKeyword": "Try a different keyword or start a new message from the + button.",
+    "chat.tryDifferentKeyword":
+      "Try a different keyword or start a new message from the + button.",
     "chat.typeMessage": "Type a message",
     "chat.reply": "Reply",
     "chat.replyTo": "Reply to",
@@ -550,6 +799,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.aiExtractTasks": "Extract tasks (AI)",
     "chat.extracting": "Extracting...",
     "chat.mute": "Mute",
+    "chat.unmute": "Unmute",
     "chat.call": "Call",
     "chat.videoCall": "Video Call",
     "chat.shareContact": "Share contact",
@@ -591,12 +841,15 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "group.thisGroup": "this group",
     "group.deleting": "Deleting...",
     "group.leaving": "Leaving...",
-    "group.deleteConfirm": "Are you sure you want to delete \"{groupName}\"?",
-    "group.deleteWarning": "This will permanently remove the group and all its messages for every member. This action cannot be undone.",
+    "group.deleteConfirm": 'Are you sure you want to delete "{groupName}"?',
+    "group.deleteWarning":
+      "This will permanently remove the group and all its messages for every member. This action cannot be undone.",
     "group.deleteForAll": "Delete for all members",
-    "group.deleteForAllDescription": "Remove this group for everyone and delete all messages",
+    "group.deleteForAllDescription":
+      "Remove this group for everyone and delete all messages",
     "group.leaveConfirm": "Are you sure you want to leave this group?",
-    "group.leaveWarning": "You will lose access to messages and media. This action cannot be undone.",
+    "group.leaveWarning":
+      "You will lose access to messages and media. This action cannot be undone.",
     "chat.editMessage": "Edit Message",
     "chat.copy": "Copy",
     "chat.pin": "Pin",
@@ -648,7 +901,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profile.phoneNumber": "Phone Number",
     "profile.bio": "Bio",
     "profile.bioPlaceholder": "Tell us about yourself...",
-    "profile.unsavedConfirm": "You have unsaved changes. Are you sure you want to close?",
+    "profile.unsavedConfirm":
+      "You have unsaved changes. Are you sure you want to close?",
     "profile.avatarUpdated": "Avatar updated successfully!",
     "profile.updateFailed": "Failed to update profile",
     "profile.updated": "Profile updated successfully!",
@@ -681,6 +935,104 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "app.unknownLocation": "Vị trí không xác định",
     "app.user": "Người dùng",
     "app.you": "Bạn",
+    "auth.hidePassword": "Ẩn mật khẩu",
+    "auth.showPassword": "Hiện mật khẩu",
+    "auth.passwordStrength": "Độ mạnh mật khẩu",
+    "auth.passwordWeak": "Yếu",
+    "auth.passwordMedium": "Trung bình",
+    "auth.passwordStrong": "Mạnh",
+    "auth.passwordRuleLength": "Ít nhất 8 ký tự",
+    "auth.passwordRuleUppercase": "Có chữ in hoa",
+    "auth.passwordRuleNumberSpecial": "Có số hoặc ký tự đặc biệt",
+    "auth.requiredAll": "Vui lòng nhập đầy đủ thông tin.",
+    "auth.phone": "Số điện thoại",
+    "auth.email": "Email",
+    "auth.otp": "Mã OTP",
+    "auth.password": "Mật khẩu",
+    "auth.displayName": "Tên hiển thị",
+    "auth.confirmPassword": "Xác nhận mật khẩu",
+    "auth.newPassword": "Mật khẩu mới",
+    "auth.phonePlaceholder": "0912345678",
+    "auth.emailPlaceholder": "your@email.com",
+    "auth.displayNamePlaceholder": "Tên của bạn",
+    "auth.passwordPlaceholder": "Nhập mật khẩu",
+    "auth.confirmPasswordPlaceholder": "Nhập lại mật khẩu",
+    "auth.newPasswordPlaceholder": "Nhập mật khẩu mới",
+    "auth.confirmNewPasswordPlaceholder": "Nhập lại mật khẩu mới",
+    "auth.otpPlaceholder": "Nhập mã OTP",
+    "loginPage.subtitle": "Đăng nhập vào tài khoản của bạn",
+    "loginPage.forgotPassword": "Quên mật khẩu?",
+    "loginPage.noAccount": "Chưa có tài khoản?",
+    "loginPage.registerNow": "Đăng ký ngay",
+    "login.success": "Đăng nhập thành công",
+    "login.emailVerifyRequired": "Vui lòng xác thực email để tiếp tục.",
+    "login.emailUnverified": "Email chưa được xác thực. Vui lòng nhập OTP để tiếp tục.",
+    "login.failed": "Đăng nhập thất bại",
+    "login.loading": "Đang đăng nhập...",
+    "login.submit": "Đăng nhập",
+    "register.success": "Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.",
+    "register.failed": "Đăng ký thất bại",
+    "register.passwordMismatch": "Mật khẩu xác nhận không khớp.",
+    "register.passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự.",
+    "register.phoneInvalid": "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.",
+    "register.emailInvalid": "Vui lòng nhập email hợp lệ.",
+    "register.mustAgreeTerms": "Bạn cần đồng ý với chính sách và điều khoản.",
+    "register.loading": "Đang đăng ký...",
+    "register.submit": "Đăng ký",
+    "registerPage.title": "Tạo tài khoản mới",
+    "registerPage.subtitle": "Tham gia ChatChit và bắt đầu kết nối với bạn bè.",
+    "registerPage.haveAccount": "Đã có tài khoản?",
+    "registerPage.backToLogin": "Quay lại đăng nhập",
+    "register.agreePrefix": "Tôi đồng ý với các",
+    "register.termsLink": "chính sách và điều khoản",
+    "forgotPasswordPage.title": "Quên mật khẩu?",
+    "forgotPasswordPage.subtitle": "Nhập email để nhận hướng dẫn đặt lại mật khẩu.",
+    "forgotPasswordPage.rememberPassword": "Nhớ mật khẩu?",
+    "forgotPasswordPage.backToLogin": "Quay lại đăng nhập",
+    "forgotPassword.requestFailed": "Yêu cầu thất bại",
+    "forgotPassword.emailRequired": "Vui lòng nhập email.",
+    "forgotPassword.emailInvalid": "Email không hợp lệ.",
+    "forgotPassword.otpExpired": "OTP đã hết hạn. Vui lòng gửi lại mã mới.",
+    "forgotPassword.otpRequired": "Vui lòng nhập mã OTP.",
+    "forgotPassword.otpInvalid": "OTP phải gồm đúng 6 chữ số.",
+    "forgotPassword.newPasswordRequired": "Vui lòng nhập mật khẩu mới.",
+    "forgotPassword.newPasswordMinLength": "Mật khẩu mới phải có ít nhất 6 ký tự.",
+    "forgotPassword.confirmMismatch": "Mật khẩu xác nhận không khớp.",
+    "forgotPassword.otpSent": "Mã OTP đã được gửi. Vui lòng kiểm tra email/SMS để tiếp tục.",
+    "forgotPassword.missingTempTokenVerify": "Không nhận được tempToken từ bước xác thực OTP.",
+    "forgotPassword.otpVerified": "OTP hợp lệ. Hãy nhập mật khẩu mới.",
+    "forgotPassword.otpResent": "Đã gửi lại OTP. Vui lòng kiểm tra lại email/SMS.",
+    "forgotPassword.missingTempTokenReset": "Thiếu tempToken. Vui lòng xác thực OTP lại.",
+    "forgotPassword.resetSuccess": "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập lại.",
+    "forgotPassword.processing": "Đang xử lý...",
+    "forgotPassword.sendOtp": "Gửi OTP",
+    "forgotPassword.verifyOtp": "Xác thực OTP",
+    "forgotPassword.resetPassword": "Đặt lại mật khẩu",
+    "forgotPassword.resendingOtp": "Đang gửi lại...",
+    "forgotPassword.resendOtp": "Gửi lại OTP",
+    "forgotPassword.loginNow": "Đăng nhập ngay",
+    "forgotPassword.expiresIn": "Mã hết hạn sau {time}.",
+    "forgotPassword.emailLabel": "Email của bạn:",
+    "verifyEmailPage.title": "Xác thực email",
+    "verifyEmailPage.subtitle": "Nhập mã OTP đã gửi về email để hoàn tất đăng ký tài khoản.",
+    "verifyEmailPage.donePrompt": "Đã xác thực xong?",
+    "verifyEmailPage.loginNow": "Đăng nhập ngay",
+    "emailVerification.resolveEmailNotFound": "Không tìm thấy email của tài khoản này. Vui lòng nhập email để nhận OTP.",
+    "emailVerification.resolveEmailFailed": "Không thể lấy email tài khoản. Vui lòng nhập email để nhận OTP.",
+    "emailVerification.registerOtpSent": "Mã OTP đã được gửi từ bước đăng ký. Vui lòng kiểm tra email và nhập mã để xác thực.",
+    "emailVerification.accountOtpSent": "Tài khoản chưa được xác thực. Mã OTP đã được gửi đến email của bạn.",
+    "emailVerification.sendOtpFailed": "Không thể gửi OTP. Vui lòng nhấn gửi lại.",
+    "emailVerification.otpResent": "Mã OTP mới đã được gửi đến email của bạn. Vui lòng dùng mã mới nhất.",
+    "emailVerification.resendFailed": "Gửi lại OTP thất bại.",
+    "emailVerification.required": "Vui lòng nhập đầy đủ email và OTP.",
+    "emailVerification.success": "Xác thực email thành công",
+    "emailVerification.failed": "Xác thực OTP thất bại",
+    "emailVerification.resolvingEmail": "Đang lấy email tài khoản...",
+    "emailVerification.preparingOtp": "Đang chuẩn bị OTP...",
+    "emailVerification.verifying": "Đang xác thực...",
+    "emailVerification.verifyEmail": "Xác thực email",
+    "emailVerification.resendOtp": "Gửi lại mã OTP",
+    "emailVerification.backToRegister": "Quay lại đăng ký",
     "nav.savedMessages": "Tin nhắn đã lưu",
     "nav.archivedChats": "Đoạn chat lưu trữ",
     "nav.contacts": "Danh bạ",
@@ -706,10 +1058,34 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "settings.languageSaved": "Đã lưu tùy chọn ngôn ngữ",
     "settings.english": "English",
     "settings.vietnamese": "Tiếng Việt",
-    "settings.premium": "Telegram Premium",
+    "settings.premium": "ChatChit Premium",
     "privacy.title": "Quyền riêng tư và bảo mật",
+    "privacy.changePassword": "Đổi mật khẩu",
     "privacy.blockList": "Danh sách chặn",
-    "privacy.blockListDescription": "Quản lý những người bạn đã chặn. Người bị chặn không thể nhắn tin hoặc gọi cho bạn.",
+    "privacy.blockListDescription":
+      "Quản lý những người bạn đã chặn. Người bị chặn không thể nhắn tin hoặc gọi cho bạn.",
+    "changePassword.title": "Đổi mật khẩu",
+    "changePassword.currentPassword": "Mật khẩu hiện tại",
+    "changePassword.newPassword": "Mật khẩu mới",
+    "changePassword.confirmPassword": "Xác nhận mật khẩu mới",
+    "changePassword.currentRequired": "Vui lòng nhập mật khẩu hiện tại.",
+    "changePassword.newRequired": "Vui lòng nhập mật khẩu mới.",
+    "changePassword.confirmRequired": "Vui lòng xác nhận mật khẩu mới.",
+    "changePassword.confirmMismatch": "Mật khẩu mới và xác nhận mật khẩu không khớp.",
+    "changePassword.newWeak": "Mật khẩu mới cần đạt đầy đủ yêu cầu.",
+    "changePassword.ruleLength": "Ít nhất 8 ký tự",
+    "changePassword.ruleUppercase": "Có chữ in hoa",
+    "changePassword.ruleNumberSpecial": "Có số hoặc ký tự đặc biệt",
+    "changePassword.strength": "Độ mạnh mật khẩu",
+    "changePassword.weak": "Yếu",
+    "changePassword.medium": "Trung bình",
+    "changePassword.strong": "Mạnh",
+    "changePassword.submit": "Cập nhật mật khẩu",
+    "changePassword.saving": "Đang cập nhật...",
+    "changePassword.success": "Đổi mật khẩu thành công.",
+    "changePassword.error": "Không thể đổi mật khẩu.",
+    "changePassword.description":
+      "Hãy dùng mật khẩu mạnh và không dùng lại ở nơi khác. Các phiên đăng nhập khác vẫn được giữ trừ khi bạn đăng xuất từ mục Thiết bị.",
     "devices.title": "Phiên đăng nhập",
     "devices.thisDevice": "Thiết bị này",
     "devices.current": "Hiện tại",
@@ -718,10 +1094,12 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "devices.loadingActiveSessions": "Đang tải các phiên đang hoạt động...",
     "devices.currentNotFound": "Không tìm thấy thiết bị hiện tại.",
     "devices.terminateOthers": "Đăng xuất tất cả thiết bị khác",
-    "devices.terminateOthersDescription": "Đăng xuất tất cả thiết bị ngoại trừ thiết bị này.",
+    "devices.terminateOthersDescription":
+      "Đăng xuất tất cả thiết bị ngoại trừ thiết bị này.",
     "devices.activeSessions": "Phiên đang hoạt động",
     "devices.noOtherSessions": "Không có phiên hoạt động khác.",
-    "devices.reviewDescription": "Bạn có thể xem tất cả thiết bị đã đăng nhập và đăng xuất từ xa các phiên không còn sử dụng.",
+    "devices.reviewDescription":
+      "Bạn có thể xem tất cả thiết bị đã đăng nhập và đăng xuất từ xa các phiên không còn sử dụng.",
     "devices.logoutDevice": "Đăng xuất thiết bị này",
     "devices.confirmLogoutDevice": "Đăng xuất thiết bị này?",
     "devices.confirmLogoutOthers": "Đăng xuất tất cả thiết bị khác?",
@@ -752,7 +1130,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "sidebar.userInfo": "Thông tin người dùng",
     "sidebar.inviteLink": "Liên kết mời",
     "sidebar.inviteManage": "Nhấn để quản lý liên kết mời nhóm",
-    "sidebar.inviteRestricted": "Chỉ quản trị viên hoặc thành viên được phép mới có thể mời",
+    "sidebar.inviteRestricted":
+      "Chỉ quản trị viên hoặc thành viên được phép mới có thể mời",
     "sidebar.notifications": "Thông báo",
     "sidebar.changeWallpaper": "Đổi hình nền",
     "sidebar.updatingWallpaper": "Đang cập nhật hình nền...",
@@ -763,7 +1142,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "invite.regenerate": "Tạo lại liên kết",
     "invite.revoke": "Thu hồi liên kết",
     "invite.noPermission": "Bạn không có quyền xem liên kết mời này.",
-    "invite.loadError": "Không thể tải liên kết mời. Vui lòng kiểm tra quyền nhóm.",
+    "invite.loadError":
+      "Không thể tải liên kết mời. Vui lòng kiểm tra quyền nhóm.",
     "invite.noActiveLink": "Chưa có liên kết mời đang hoạt động.",
     "invite.generate": "Tạo liên kết",
     "invite.url": "URL mời",
@@ -780,7 +1160,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profileCard.sentToast": "Đã gửi danh thiếp",
     "profileCard.sharedToast": "Đã chia sẻ danh thiếp",
     "profileCard.sendFailed": "Không thể gửi danh thiếp",
-    "profileCard.shareFailedPrivacy": "Không thể chia sẻ danh thiếp do cài đặt quyền riêng tư",
+    "profileCard.shareFailedPrivacy":
+      "Không thể chia sẻ danh thiếp do cài đặt quyền riêng tư",
     "profileCard.shareFailed": "Không thể chia sẻ danh thiếp này",
     "profileCard.friends": "Bạn bè",
     "profileCard.search": "Tìm kiếm",
@@ -842,7 +1223,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.noImages": "Không có ảnh",
     "chat.noVoice": "Không tìm thấy tin nhắn thoại",
     "chat.enterKeyword": "Nhập từ khóa để tìm kiếm",
-    "chat.tryDifferentKeyword": "Thử từ khóa khác hoặc bắt đầu tin nhắn mới từ nút +.",
+    "chat.tryDifferentKeyword":
+      "Thử từ khóa khác hoặc bắt đầu tin nhắn mới từ nút +.",
     "chat.typeMessage": "Nhập tin nhắn",
     "chat.reply": "Trả lời",
     "chat.replyTo": "Trả lời",
@@ -871,6 +1253,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.aiExtractTasks": "Trích xuất công việc (AI)",
     "chat.extracting": "Đang trích xuất...",
     "chat.mute": "Tắt thông báo",
+    "chat.unmute": "Bật thông báo",
     "chat.call": "Gọi",
     "chat.videoCall": "Gọi video",
     "chat.shareContact": "Chia sẻ liên hệ",
@@ -880,7 +1263,7 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.searchSmartPlaceholder": "Tìm kiếm... (gõ '/ai ' để tìm thông minh)",
     "chat.savedMessagesLower": "Tin nhắn đã lưu",
     "chat.openingConversation": "Đang mở cuộc trò chuyện...",
-    "chat.members": "thành viên",
+    "chat.members": "Thành viên",
     "chat.justNow": "Vừa xong",
     "chat.lastSeenMinutes": "hoạt động {count} phút trước",
     "chat.lastSeenHours": "hoạt động {count} giờ trước",
@@ -912,12 +1295,15 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "group.thisGroup": "nhóm này",
     "group.deleting": "Đang xóa...",
     "group.leaving": "Đang rời nhóm...",
-    "group.deleteConfirm": "Bạn có chắc muốn xóa \"{groupName}\"?",
-    "group.deleteWarning": "Thao tác này sẽ xóa vĩnh viễn nhóm và toàn bộ tin nhắn với mọi thành viên. Không thể hoàn tác.",
+    "group.deleteConfirm": 'Bạn có chắc muốn xóa "{groupName}"?',
+    "group.deleteWarning":
+      "Thao tác này sẽ xóa vĩnh viễn nhóm và toàn bộ tin nhắn với mọi thành viên. Không thể hoàn tác.",
     "group.deleteForAll": "Xóa với tất cả thành viên",
-    "group.deleteForAllDescription": "Xóa nhóm này với mọi người và xóa toàn bộ tin nhắn",
+    "group.deleteForAllDescription":
+      "Xóa nhóm này với mọi người và xóa toàn bộ tin nhắn",
     "group.leaveConfirm": "Bạn có chắc muốn rời nhóm này?",
-    "group.leaveWarning": "Bạn sẽ mất quyền truy cập tin nhắn và media. Không thể hoàn tác.",
+    "group.leaveWarning":
+      "Bạn sẽ mất quyền truy cập tin nhắn và media. Không thể hoàn tác.",
     "chat.editMessage": "Sửa tin nhắn",
     "chat.copy": "Sao chép",
     "chat.pin": "Ghim",
@@ -969,7 +1355,8 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "profile.phoneNumber": "Số điện thoại",
     "profile.bio": "Tiểu sử",
     "profile.bioPlaceholder": "Giới thiệu về bạn...",
-    "profile.unsavedConfirm": "Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?",
+    "profile.unsavedConfirm":
+      "Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?",
     "profile.avatarUpdated": "Cập nhật ảnh đại diện thành công!",
     "profile.updateFailed": "Không thể cập nhật hồ sơ",
     "profile.updated": "Cập nhật hồ sơ thành công!",
@@ -1004,7 +1391,8 @@ const getInitialLanguage = (): LanguageCode => {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [language, setLanguageState] = useState<LanguageCode>(getInitialLanguage);
+  const [language, setLanguageState] =
+    useState<LanguageCode>(getInitialLanguage);
 
   const setLanguage = useCallback((nextLanguage: LanguageCode) => {
     setLanguageState(nextLanguage);

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { FiCheck, FiInbox, FiTrash2, FiUserX } from "react-icons/fi";
 import type { Conversation } from "../../types/conversation";
+import { useLanguage } from "../../context";
+import { getChatMessagePreview } from "../../utils/chatPreview";
 
 interface MessageRequestsTabProps {
   requests: Conversation[];
@@ -25,6 +27,7 @@ export const MessageRequestsTab: React.FC<MessageRequestsTabProps> = ({
   onReject,
   onClearAll,
 }) => {
+  const { language } = useLanguage();
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [isClearingAll, setIsClearingAll] = useState(false);
 
@@ -104,6 +107,11 @@ export const MessageRequestsTab: React.FC<MessageRequestsTabProps> = ({
         const isActive =
           activeChatId === conversationId || openingChatId === conversationId;
         const isPending = pendingActionId === conversationId;
+        const previewMessage =
+          chat.lastMessage ||
+          ((chat as any).lastMessage?.media?.length || (chat as any).lastMessage?.files?.length
+            ? { type: "file" }
+            : { text: "Tin nhắn mới từ người lạ" });
 
         return (
           <div
@@ -153,10 +161,7 @@ export const MessageRequestsTab: React.FC<MessageRequestsTabProps> = ({
                       isActive ? "text-white/85" : "text-slate-500"
                     }`}
                   >
-                    {chat.lastMessage?.textPreview ||
-                      (chat.lastMessage?.type === "media"
-                        ? "Đã gửi media"
-                        : "Tin nhắn mới từ người lạ")}
+                    {getChatMessagePreview(previewMessage, language)}
                   </p>
                 </div>
 

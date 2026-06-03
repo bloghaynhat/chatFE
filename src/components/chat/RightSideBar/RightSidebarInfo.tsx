@@ -35,6 +35,7 @@ interface RightSidebarInfoProps {
   isLoading: boolean;
   notificationsEnabled: boolean;
   setNotificationsEnabled: (enabled: boolean) => void;
+  isNotificationUpdating?: boolean;
   onClose: () => void;
   onEditClick?: () => void;
   canEdit?: boolean;
@@ -66,6 +67,7 @@ export const RightSidebarInfo = ({
   isLoading,
   notificationsEnabled,
   setNotificationsEnabled,
+  isNotificationUpdating = false,
   onClose,
   onEditClick,
   canEdit,
@@ -344,6 +346,7 @@ export const RightSidebarInfo = ({
               targetUserDetails={targetUserDetails}
               notificationsEnabled={notificationsEnabled}
               setNotificationsEnabled={setNotificationsEnabled}
+              isNotificationUpdating={isNotificationUpdating}
               onOpenInviteLink={() => setIsInviteModalOpen(true)}
               canOpenInviteLink={canInviteMembers}
               wallpaperUrl={wallpaperUrl}

@@ -187,7 +187,7 @@ export const PinnedList: React.FC<PinnedListProps> = ({
                     </div>
 
                     {/* Message Type Badge */}
-                    {msg.type === "media" || msg.files || msg.media ? (
+                    {["image", "file", "video", "voice", "sticker", "gif"].includes(String(msg.type || "").toLowerCase()) || msg.files || msg.media ? (
                       <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-medium rounded">
                         📎 Media
                       </div>

@@ -56,6 +56,12 @@ const clearClientSession = async () => {
   }
 };
 
+const clearStoredAuthSession = async () => {
+  await authStorage.removeItem("token");
+  await authStorage.removeItem("refreshToken");
+  await authStorage.removeItem("user");
+};
+
 export const authService = {
   register: async (userData) => {
     const response = await api.post("/auth/register", userData, {
@@ -72,7 +78,7 @@ export const authService = {
     const response = await api.post(
       "/auth/send-verification",
       payload,
-      options,
+      { skipAuth: true, ...options },
     );
     return unwrapData(response);
   },
@@ -92,9 +98,23 @@ export const authService = {
     const response = await api.post(
       "/auth/resend-verification",
       payload,
-      options,
+      { skipAuth: true, ...options },
     );
     return unwrapData(response);
+  },
+
+  getVerificationEmailByPhone: async (phone: string) => {
+    const response = await api.get("/auth/unverified-email", {
+      params: { phone },
+      skipAuth: true,
+    });
+    const payload = unwrapData(response);
+
+    return (
+      payload?.email ||
+      payload?.data?.email ||
+      ""
+    );
   },
 
   login: async (payload) => {
@@ -198,6 +218,10 @@ export const authService = {
       skipAuth: true,
     });
     return unwrapData(response);
+  },
+
+  async clearLocalSession() {
+    await clearStoredAuthSession();
   },
 
   async updatePassword(payload) {

@@ -21,6 +21,11 @@ import { useEffect, useMemo, useState } from "react";
 import { AiSummaryModal } from "../AiSummaryModal";
 import { aiService } from "../../../services/aiService";
 import { socketService } from "../../../services/socketService";
+import {
+  isConversationMuted,
+  isConversationMutedValue,
+  setConversationMuted,
+} from "../../../services/muteRegistry";
 import { toast } from "sonner";
 import { useLanguage } from "../../../context";
 
@@ -75,6 +80,8 @@ export const ChatHeader = ({
   const [isAiSummaryModalOpen, setIsAiSummaryModalOpen] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
+  const [isMuteUpdating, setIsMuteUpdating] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [presence, setPresence] = useState<any>(null);
 
   const isSavedMessages =
@@ -94,6 +101,7 @@ export const ChatHeader = ({
             "video-call",
             "share-contact",
             "send-gift",
+            "mute",
             "block-user",
             "disable-sharing",
             "delete-chat",
@@ -249,7 +257,7 @@ export const ChatHeader = ({
       "ai-summarize": t("chat.aiSummarize"),
       "ai-smart-search": t("chat.aiSmartSearch"),
       "ai-extract-tasks": t("chat.aiExtractTasks"),
-      mute: t("chat.mute"),
+      mute: isMuted ? t("chat.unmute") : t("chat.mute"),
       call: t("chat.call"),
       "video-call": t("chat.videoCall"),
       "share-contact": t("chat.shareContact"),
@@ -261,6 +269,51 @@ export const ChatHeader = ({
 
   const handleToggleInfo = () => {
     setIsRightSidebarOpen(!isRightSidebarOpen);
+  };
+
+  useEffect(() => {
+    setIsMuted(
+      isConversationMuted(selectedConversationId) || isConversationMutedValue(selectedChat),
+    );
+  }, [selectedChat, selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+
+    const handleMuteChanged = (event: any) => {
+      if (String(event?.detail?.conversationId) !== String(selectedConversationId)) return;
+      setIsMuted(Boolean(event.detail.muted));
+    };
+
+    window.addEventListener("conversation:mute-local-changed", handleMuteChanged);
+    return () => window.removeEventListener("conversation:mute-local-changed", handleMuteChanged);
+  }, [selectedConversationId]);
+
+  const handleToggleMute = async () => {
+    if (!selectedConversationId || isMuteUpdating) return;
+
+    const nextMuted = !isMuted;
+    const previousMuted = isMuted;
+
+    setIsMuteUpdating(true);
+    setIsMuted(nextMuted);
+    setConversationMuted(String(selectedConversationId), nextMuted);
+
+    try {
+      if (nextMuted) {
+        await socketService.muteConversation(selectedConversationId, undefined);
+      } else {
+        await socketService.unmuteConversation(selectedConversationId);
+      }
+
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (error: any) {
+      setIsMuted(previousMuted);
+      setConversationMuted(String(selectedConversationId), previousMuted);
+      toast.error(error?.message || "Could not update notifications");
+    } finally {
+      setIsMuteUpdating(false);
+    }
   };
 
   const handleMoreActionClick = (action: any) => {
@@ -312,6 +365,11 @@ export const ChatHeader = ({
 
     if (action.id === "call") {
       onStartAudioCall?.(selectedConversationId);
+      return;
+    }
+
+    if (action.id === "mute") {
+      void handleToggleMute();
       return;
     }
 

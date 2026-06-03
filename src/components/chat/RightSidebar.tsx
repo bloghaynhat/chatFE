@@ -18,6 +18,11 @@ import { groupBlockService } from "../../services/groupBlockService";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getWallpaperPresetByValue } from "../../constants/wallpaperPresets";
+import {
+  isConversationMuted,
+  isConversationMutedValue,
+  setConversationMuted,
+} from "../../services/muteRegistry";
 
 const getMemberUserId = (member: any) =>
   member?.userId || member?.user?.id || member?.user?._id || member?.id;
@@ -135,6 +140,7 @@ export const RightSidebar = ({
   const [info, setInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [isNotificationUpdating, setIsNotificationUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeSubView, setActiveSubView] = useState<
     "none" | "members" | "admins" | "addMember"
@@ -185,6 +191,29 @@ export const RightSidebar = ({
     selectedChat?.type === "saved_messages" ||
     selectedChat?.isSavedMessages ||
     selectedChat?.isSelfChat;
+
+  useEffect(() => {
+    if (!selectedChat?.id) {
+      setNotificationsEnabled(true);
+      return;
+    }
+
+    setNotificationsEnabled(
+      !(isConversationMuted(String(selectedChat.id)) || isConversationMutedValue(selectedChat)),
+    );
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!selectedChat?.id) return;
+
+    const handleMuteChanged = (event: any) => {
+      if (String(event?.detail?.conversationId) !== String(selectedChat.id)) return;
+      setNotificationsEnabled(!event.detail.muted);
+    };
+
+    window.addEventListener("conversation:mute-local-changed", handleMuteChanged);
+    return () => window.removeEventListener("conversation:mute-local-changed", handleMuteChanged);
+  }, [selectedChat?.id]);
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const cancelBlockRef = useRef<HTMLButtonElement | null>(null);
   const queryClient = useQueryClient();
@@ -1061,6 +1090,33 @@ export const RightSidebar = ({
     }
   };
 
+  const handleToggleNotifications = async (enabled: boolean) => {
+    if (!selectedChat?.id || isNotificationUpdating) return;
+
+    const conversationId = String(selectedChat.id);
+    const previousEnabled = notificationsEnabled;
+
+    setIsNotificationUpdating(true);
+    setNotificationsEnabled(enabled);
+    setConversationMuted(conversationId, !enabled);
+
+    try {
+      if (enabled) {
+        await socketService.unmuteConversation(conversationId);
+      } else {
+        await socketService.muteConversation(conversationId, undefined);
+      }
+
+      window.dispatchEvent(new Event("chatList:refresh"));
+    } catch (error: any) {
+      setNotificationsEnabled(previousEnabled);
+      setConversationMuted(conversationId, !previousEnabled);
+      toast.error(error?.message || "Could not update notifications");
+    } finally {
+      setIsNotificationUpdating(false);
+    }
+  };
+
   return (
     <>
       {/* Overlay for mobile/tablet */}
@@ -1109,7 +1165,8 @@ export const RightSidebar = ({
             members={members}
             isLoading={isLoading}
             notificationsEnabled={notificationsEnabled}
-            setNotificationsEnabled={setNotificationsEnabled}
+            setNotificationsEnabled={handleToggleNotifications}
+            isNotificationUpdating={isNotificationUpdating}
             onClose={onClose}
             onEditClick={handleEditClick}
             canEdit={canEditGroup}

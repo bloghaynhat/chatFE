@@ -1,9 +1,10 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks";
 
 export const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -13,8 +14,21 @@ export const PublicRoute = ({ children }) => {
     );
   }
 
-  // If user is already authenticated, redirect to home page
   if (isAuthenticated) {
+    if (user?.verified?.email === false && user?.email) {
+      if (location.pathname === "/verify-email") {
+        return children;
+      }
+
+      return (
+        <Navigate
+          to="/verify-email"
+          replace
+          state={{ email: user.email, fromLogin: true, redirectTo: "/" }}
+        />
+      );
+    }
+
     return <Navigate to="/" replace />;
   }
 

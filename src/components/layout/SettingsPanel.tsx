@@ -1,4 +1,4 @@
-import { FiArrowLeft, FiEdit2, FiMoreVertical, FiPhone, FiAtSign, FiGift, FiBell, FiDatabase, FiLock, FiSettings, FiFolder, FiSmile, FiMonitor, FiStar } from "react-icons/fi";
+import { FiArrowLeft, FiEdit2, FiMoreVertical, FiPhone, FiAtSign, FiGift, FiBell, FiDatabase, FiLock, FiSettings, FiFolder, FiSmile, FiMonitor } from "react-icons/fi";
 import { MdTranslate } from "react-icons/md";
 import { useAuth } from "../../hooks";
 import { useCallback, useEffect, useState } from "react";
@@ -117,7 +117,7 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
 
         {/* Menu list */}
         <div className="flex flex-col py-2 border-b border-gray-100/60 dark:border-slate-800">
-           <SettingsMenuItem icon={<FiBell />} label={t("settings.notifications")} />
+           <SettingsMenuItem icon={<FiBell />} label={t("settings.notifications")} onClick={() => onNavigate("notifications-sound")} />
            <SettingsMenuItem icon={<FiDatabase />} label={t("settings.dataStorage")} />
            <SettingsMenuItem icon={<FiLock />} label={t("settings.privacySecurity")} onClick={() => onNavigate("privacy-security")} />
            <SettingsMenuItem icon={<FiSettings />} label={t("settings.general")} />
@@ -147,17 +147,6 @@ export const SettingsPanel = ({ isCollapsed, onBack, onNavigate }: any) => {
                />
              </div>
            )}
-        </div>
-
-        <div className="h-2 bg-gray-100/50 dark:bg-slate-950 w-full" />
-
-        <div className="flex flex-col py-2">
-           <div className="flex items-center px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition">
-             <div className="w-9 flex justify-center text-blue-500 text-[22px] mr-2">
-               <FiStar className="fill-blue-500" />
-             </div>
-             <span className="text-[15px] text-gray-900 dark:text-white font-medium flex-1">{t("settings.premium")}</span>
-           </div>
         </div>
       </div>
     </div>

@@ -15,12 +15,44 @@ const DraftContext = createContext<DraftContextType | undefined>(undefined);
 export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const { user } = useAuth();
+  const draftsRef = useRef<Record<string, string>>({});
   
   // Timer for debouncing save
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Caching fetched conversation drafts to avoid multiple API calls
   const fetchedConversations = useRef<Set<string>>(new Set());
+  const serverDraftConversations = useRef<Set<string>>(new Set());
+  const pendingDeleteAfterSave = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    draftsRef.current = drafts;
+  }, [drafts]);
+
+  const ignoreMissingDraftError = (error: any) => {
+    const message = String(error?.message || error?.payload?.msg || "").toLowerCase();
+    const code = String(error?.code || error?.payload?.code || "").toUpperCase();
+    return (
+      error?.status === 400 &&
+      code === "BAD_REQUEST" &&
+      (message.includes("not found") || message.includes("not exist"))
+    );
+  };
+
+  const deleteServerDraft = useCallback(async (conversationId: string) => {
+    if (!serverDraftConversations.current.has(conversationId)) return;
+
+    try {
+      await conversationService.deleteDraft(conversationId);
+    } catch (error) {
+      if (!ignoreMissingDraftError(error)) {
+        console.error("Failed to delete draft for conversation", conversationId, error);
+      }
+    } finally {
+      serverDraftConversations.current.delete(conversationId);
+      pendingDeleteAfterSave.current.delete(conversationId);
+    }
+  }, []);
 
   const loadDrafts = useCallback(async (conversationId: string) => {
     if (!user || fetchedConversations.current.has(conversationId)) return;
@@ -31,10 +63,15 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Find current draft for text
         const currentDraft = fetchedDrafts.find((d: any) => d.text);
         if (currentDraft?.text) {
+          serverDraftConversations.current.add(conversationId);
           setDrafts((prev) => ({
             ...prev,
             [conversationId]: currentDraft.text,
           }));
+          draftsRef.current = {
+            ...draftsRef.current,
+            [conversationId]: currentDraft.text,
+          };
         }
       }
       fetchedConversations.current.add(conversationId);
@@ -44,6 +81,14 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [user]);
 
   const setDraft = useCallback((conversationId: string, text: string) => {
+    const previousText = draftsRef.current[conversationId] || "";
+    if (previousText === text) return;
+
+    draftsRef.current = {
+      ...draftsRef.current,
+      [conversationId]: text,
+    };
+
     setDrafts((prev) => {
       // Avoid unnecessary state updates if it's the same text
       if (prev[conversationId] === text) return prev;
@@ -56,26 +101,42 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     if (!text.trim()) {
-      // If text is empty, delete immediately
-      conversationService.deleteDraft(conversationId).catch((error) => {
-        console.error("Failed to delete draft immediately", error);
-      });
+      pendingDeleteAfterSave.current.add(conversationId);
+      void deleteServerDraft(conversationId);
       return;
     }
 
+    pendingDeleteAfterSave.current.delete(conversationId);
+
     // Set new debounce timer to save
     debounceTimers.current[conversationId] = setTimeout(() => {
-      conversationService.saveDraft(conversationId, text).catch((error) => {
-        console.error("Failed to save draft for conversation", conversationId, error);
-      });
+      conversationService
+        .saveDraft(conversationId, text)
+        .then(() => {
+          serverDraftConversations.current.add(conversationId);
+          if (
+            pendingDeleteAfterSave.current.has(conversationId) ||
+            !draftsRef.current[conversationId]?.trim()
+          ) {
+            void deleteServerDraft(conversationId);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to save draft for conversation", conversationId, error);
+        });
     }, 1000); // 1-second debounce
-  }, []);
+  }, [deleteServerDraft]);
 
   const getDraft = useCallback((conversationId: string) => {
     return drafts[conversationId] || "";
   }, [drafts]);
 
   const clearDraft = useCallback((conversationId: string) => {
+    draftsRef.current = {
+      ...draftsRef.current,
+    };
+    delete draftsRef.current[conversationId];
+
     setDrafts((prev) => {
       const next = { ...prev };
       delete next[conversationId];
@@ -87,10 +148,9 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       delete debounceTimers.current[conversationId];
     }
 
-    conversationService.deleteDraft(conversationId).catch((error) => {
-      console.error("Failed to clear draft for conversation", conversationId, error);
-    });
-  }, []);
+    pendingDeleteAfterSave.current.add(conversationId);
+    void deleteServerDraft(conversationId);
+  }, [deleteServerDraft]);
 
   // Cleanup on unmount
   useEffect(() => {

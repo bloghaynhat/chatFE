@@ -108,6 +108,7 @@ export const MessageItem = ({
   let isForwarded = Boolean(message?.originalMessageId);
   let fwData = null;
   let text = rawText;
+  const messageType = String(message?.type || message?.messageType || "").toLowerCase();
 
   if (typeof rawText === "string" && rawText.startsWith("[FWM]::")) {
     isForwarded = true;
@@ -143,6 +144,7 @@ export const MessageItem = ({
   // Extract all images
   const images = messageFiles.filter(
     (f) =>
+      messageType === "image" ||
       f?.type === "image" ||
       f?.type === "IMAGE" ||
       f?.type?.startsWith("image/") ||
@@ -158,6 +160,7 @@ export const MessageItem = ({
   // Extract all videos
   const videos = messageFiles.filter(
     (f) =>
+      messageType === "video" ||
       f?.type === "video" ||
       f?.type === "VIDEO" ||
       f?.type?.startsWith("video/") ||
@@ -168,8 +171,11 @@ export const MessageItem = ({
   // Extract all audios
   const audios = messageFiles.filter(
     (f) =>
+      messageType === "voice" ||
       f?.type === "audio" ||
+      f?.type === "voice" ||
       f?.type === "AUDIO" ||
+      f?.type === "VOICE" ||
       f?.type?.startsWith("audio/") ||
       f?.mimetype?.startsWith("audio/") ||
       f?.url?.match(/\.(mp3|wav|ogg|m4a|aac)$/i),
@@ -184,20 +190,16 @@ export const MessageItem = ({
   const isDocument =
     !isMedia &&
     !isAudio &&
-    (message?.type === "document" ||
-      message?.type === "DOCUMENT" ||
-      message?.type === "file" ||
+    (messageType === "file" ||
       (messageFiles &&
         messageFiles.length > 0 &&
         !mediaItems.includes(messageFiles[0]) &&
         !audios.includes(messageFiles[0])));
 
-  const isSystem = message?.type === "system" || message?.type === "SYSTEM";
-  const isPoll = message?.type === "poll" || message?.type === "POLL" || Boolean(message?.poll);
+  const isSystem = messageType === "system";
+  const isPoll = messageType === "poll" || Boolean(message?.poll);
   const isProfileCard =
-    message?.type === "profile_card" ||
-    message?.type === "PROFILE_CARD" ||
-    message?.type === "profile-card" ||
+    messageType === "profile_card" ||
     Boolean(message?.profileCard || message?.profileCardUserId);
   const isReminder = Boolean(extractReminderFromMessage(message, text));
   const callMessage = parseCallMessage(message, text);
@@ -347,6 +349,16 @@ export const MessageItem = ({
           from { opacity: 0; transform: translateY(-3px) scale(0.88); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes outgoingMessageIn {
+          0% { transform: translate3d(0, 8px, 0) scale(0.985); }
+          70% { transform: translate3d(0, -1px, 0) scale(1.002); }
+          100% { transform: translate3d(0, 0, 0) scale(1); }
+        }
+        .telegram-message-sending {
+          animation: outgoingMessageIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          transform-origin: right bottom;
+          will-change: transform;
+        }
       `}</style>
       {isGroup && !mine && (
         <div
@@ -381,7 +393,7 @@ export const MessageItem = ({
               } ${
                 isLastInSequence ? "telegram-bubble-last telegram-bubble-tail" : "telegram-bubble-middle"
               }`
-        } ${message.status === 'sending' ? 'opacity-70 transition-opacity duration-300' : ''} ${
+        } ${message.status === "sending" && mine ? "telegram-message-sending" : ""} ${
           isJumboEmoji
             ? mine
               ? "self-end bg-transparent"
@@ -456,7 +468,7 @@ export const MessageItem = ({
         ) : isCallMessage ? (
           <CallMessageBubble message={message} text={text} mine={mine} />
         ) : (
-          !onlyImagesOrVideos && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
+          !onlyImagesOrVideos && !isAudio && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
         )}
 
         {/* Bottom area: Reactions + Timestamp */}

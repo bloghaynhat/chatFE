@@ -25,7 +25,20 @@ export interface Message {
   textPreview: string;
 
   // Message type and status
-  type: "text" | "media" | "mixed" | "call" | "poll" | "system" | "profile_card";
+  type:
+    | "text"
+    | "image"
+    | "file"
+    | "link"
+    | "video"
+    | "voice"
+    | "sticker"
+    | "gif"
+    | "call"
+    | "system"
+    | "profile_card"
+    | "poll"
+    | "reminder";
   status?: "sent" | "delivered" | "seen";
   isSeen?: boolean;
   readAt?: string;
@@ -112,7 +125,7 @@ export interface MediaFile {
   url: string;
   size: number;
   mimetype: string;
-  type?: "image" | "video" | "audio" | "document";
+  type?: "image" | "video" | "voice" | "audio" | "file";
   width?: number;
   height?: number;
   duration?: number;

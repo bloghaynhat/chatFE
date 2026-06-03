@@ -1,9 +1,10 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks";
 
 export const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
+  const location = useLocation();
 
   // DEV: show auth state when PrivateRoute renders
   // eslint-disable-next-line no-console
@@ -25,10 +26,16 @@ export const PrivateRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirect to verify email if user is logged in but hasn't verified their email
-  // if (user?.verified?.email === false && user?.email) {
-  //   return <Navigate to="/verify-email" replace state={{ email: user.email, fromLogin: true }} />;
-  // }
+  if (user?.verified?.email === false && user?.email) {
+    const redirectTo = `${location.pathname}${location.search}`;
+    return (
+      <Navigate
+        to="/verify-email"
+        replace
+        state={{ email: user.email, fromLogin: true, redirectTo }}
+      />
+    );
+  }
 
   return children;
 };
