@@ -1326,10 +1326,17 @@ export const ActiveChatPane = ({
           onClose={closeContextMenu}
           onReply={(message) => {
             setReplyingMessage(message);
+            if (editingMessage) {
+              setEditingMessage(null);
+              setDraftMessage("");
+            }
             closeContextMenu();
           }}
           onEdit={(message) => {
             setEditingMessage(message);
+            if (replyingMessage) {
+              setReplyingMessage(null);
+            }
             setDraftMessage(getMessageText(message));
             closeContextMenu();
           }}
