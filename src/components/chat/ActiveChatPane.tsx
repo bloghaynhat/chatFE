@@ -1130,7 +1130,7 @@ export const ActiveChatPane = ({
     if (onSendMessage) {
       if (editingMessage) {
         const payload = {
-          id: editingMessage.id || editingMessage._id,
+          id: editingMessage.serverId || editingMessage._id || editingMessage.messageId || (String(editingMessage.id || "").startsWith("temp-") ? null : editingMessage.id),
           text: textToSend,
           type: "edit",
         };

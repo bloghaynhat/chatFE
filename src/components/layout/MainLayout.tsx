@@ -2218,7 +2218,7 @@ const MainLayout = ({ children }: { children?: any }) => {
           // Optimistically update UI
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === payloadOrText.id || msg._id === payloadOrText.id
+              msg.id === payloadOrText.id || msg._id === payloadOrText.id || msg.serverId === payloadOrText.id || msg.messageId === payloadOrText.id
                 ? {
                     ...msg,
                     text: payloadOrText.text,
