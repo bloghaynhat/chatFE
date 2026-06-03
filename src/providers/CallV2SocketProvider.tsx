@@ -16,6 +16,7 @@ import {
   CallV2BusyPayload,
   CallV2EndedPayload,
   CallV2ParticipantStatus,
+  CallV2SessionStatus,
 } from "../services/callV2.types";
 
 type CallV2Status = "idle" | "calling" | "ringing" | "incoming" | "active" | "ended";
@@ -155,6 +156,15 @@ const resolveIncomingGroupContext = async (conversationId: string) => {
     return null;
   }
 };
+
+const isTerminalCallStatus = (status?: CallV2SessionStatus | string | null) =>
+  status === CallV2SessionStatus.ENDED ||
+  status === CallV2SessionStatus.MISSED ||
+  status === CallV2SessionStatus.REJECTED ||
+  status === CallV2SessionStatus.CANCELLED;
+
+const hasJoinedStatus = (participant?: CallV2ParticipantInfo) =>
+  participant?.status === CallV2ParticipantStatus.JOINED;
 
 function callV2Reducer(state: CallV2State, action: CallV2Action): CallV2State {
   switch (action.type) {
@@ -548,12 +558,36 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     [clearIncomingTimer, connectFromJoin],
   );
 
+  const isCurrentUserLastJoinedParticipant = useCallback(() => {
+    if (!state.isGroup || state.status !== "active") return false;
+
+    const remoteLiveKitParticipants = roomRef.current?.remoteParticipants.size ?? 0;
+    if (remoteLiveKitParticipants > 0) return false;
+
+    const joinedParticipantIds = Object.entries(state.participants || {})
+      .filter(([, participant]) => hasJoinedStatus(participant))
+      .map(([participantId]) => participantId);
+
+    if (joinedParticipantIds.length === 0) return true;
+    return joinedParticipantIds.every((participantId) => participantId === user?.id);
+  }, [state.isGroup, state.participants, state.status, user?.id]);
+
   const leaveCallV2 = useCallback(async () => {
     const callId = state.callId;
     if (callId) {
       try {
-        const res = await callV2Service.leaveCall(callId);
-        refreshCallMessage(res.call?.conversationId);
+        if (state.status === "calling" || (state.isGroup && isCurrentUserLastJoinedParticipant())) {
+          const res = await callV2Service.endCall(callId);
+          refreshCallMessage(res.call?.conversationId);
+        } else {
+          const res = await callV2Service.leaveCall(callId);
+          refreshCallMessage(res.call?.conversationId);
+
+          if (!res.terminal && !isTerminalCallStatus(res.call?.status) && isCurrentUserLastJoinedParticipant()) {
+            const endRes = await callV2Service.endCall(callId);
+            refreshCallMessage(endRes.call?.conversationId);
+          }
+        }
         callV2Socket.leaveCallRoom(callId);
       } catch {
         // ignore
@@ -563,7 +597,7 @@ export function CallV2SocketProvider({ children }: { children: ReactNode }) {
     clearIncomingTimer();
     dispatch({ type: "RESET" });
     currentCallIdRef.current = null;
-  }, [state.callId, cleanupRoom, clearIncomingTimer]);
+  }, [state.callId, state.isGroup, state.status, isCurrentUserLastJoinedParticipant, cleanupRoom, clearIncomingTimer]);
 
   const rejectCallV2 = useCallback(async () => {
     if (!state.callId) return;

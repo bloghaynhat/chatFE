@@ -456,7 +456,7 @@ export const MessageItem = ({
         ) : isCallMessage ? (
           <CallMessageBubble message={message} text={text} mine={mine} />
         ) : (
-          !onlyImagesOrVideos && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
+          !onlyImagesOrVideos && !isAudio && <MessageText message={message} text={text} mine={mine} isSeen={isSeen} />
         )}
 
         {/* Bottom area: Reactions + Timestamp */}

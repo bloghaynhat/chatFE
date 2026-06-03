@@ -26,6 +26,7 @@ const renderTextWithLinks = (text) => {
 };
 export const MessageText = ({ message, text, mine, isSeen }) => {
   const hasReactions = message?.reactions && message.reactions.length > 0;
+  if (!text) return null;
 
   // Xác định xem toàn bộ tin nhắn có phải chỉ chứa ĐÚNG MỘT emoji tồn tại trong Database không
   const trimmedText = text ? text.trim() : "";
