@@ -1461,6 +1461,7 @@ export const ActiveChatPane = ({
         onChatInteractionRead={onChatInteractionRead}
         onInputHeightChange={setChatInputHeight}
         isScrolledUp={!isChatAtBottom}
+        isGroupChat={isGroupChat}
         onScrollToBottom={() => {
           shouldStickToBottomRef.current = true;
           setIsChatAtBottom(true);

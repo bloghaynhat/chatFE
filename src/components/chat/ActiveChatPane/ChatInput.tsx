@@ -69,6 +69,7 @@ export const ChatInput = ({
   onInputHeightChange,
   isScrolledUp = false,
   onScrollToBottom,
+  isGroupChat = false,
 }) => {
   const { t } = useLanguage();
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
@@ -276,8 +277,14 @@ export const ChatInput = ({
     !replyingMessage &&
     !forwardingMessage &&
     !disabledReason;
+  const canUseBotMention = Boolean(isGroupChat);
 
   const insertBotMention = () => {
+    if (!canUseBotMention) {
+      setIsBotMentionOpen(false);
+      return;
+    }
+
     setDraftMessage((prev: string) => {
       const lastAtIndex = prev.lastIndexOf("@");
       if (lastAtIndex === -1) {
@@ -292,13 +299,19 @@ export const ChatInput = ({
     });
     setIsBotMentionOpen(false);
   };
-  const hasBotMentionInDraft = /@bot\b/i.test(draftMessage);
+  const hasBotMentionInDraft = canUseBotMention && /@bot\b/i.test(draftMessage);
 
   useEffect(() => {
     if (!canRequestSmartReply) {
       setIsSmartReplyOpen(false);
     }
   }, [canRequestSmartReply]);
+
+  useEffect(() => {
+    if (!canUseBotMention) {
+      setIsBotMentionOpen(false);
+    }
+  }, [canUseBotMention]);
 
   useEffect(() => {
     const root = inputRootRef.current;
@@ -527,6 +540,11 @@ export const ChatInput = ({
               value={draftMessage}
               onChange={(e) => {
                 handleInputChange(e);
+                if (!canUseBotMention) {
+                  setIsBotMentionOpen(false);
+                  return;
+                }
+
                 const value = e.target.value;
                 const lastAtIndex = value.lastIndexOf("@");
                 const mentionQuery = lastAtIndex >= 0 ? value.slice(lastAtIndex + 1) : "";
@@ -537,12 +555,12 @@ export const ChatInput = ({
                 setIsBotMentionOpen(Boolean(shouldShow));
               }}
               onKeyDown={(e) => {
-                if (isBotMentionOpen && (e.key === "Tab" || e.key === "Enter")) {
+                if (canUseBotMention && isBotMentionOpen && (e.key === "Tab" || e.key === "Enter")) {
                   e.preventDefault();
                   insertBotMention();
                   return;
                 }
-                if (e.key === "Escape" && isBotMentionOpen) {
+                if (canUseBotMention && e.key === "Escape" && isBotMentionOpen) {
                   e.preventDefault();
                   setIsBotMentionOpen(false);
                   return;
