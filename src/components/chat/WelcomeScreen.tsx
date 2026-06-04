@@ -197,8 +197,8 @@ export const WelcomeScreen = () => {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:34px_34px]" />
         </div>
 
-        <div className="relative z-10 flex w-full max-w-[680px] flex-col items-center">
-          <h1 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white md:text-3xl lg:text-[32px]">
+        <div className="relative z-10 flex w-full max-w-[680px] flex-col items-center select-none">
+          <h1 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white md:text-3xl lg:text-[32px] ">
             Chào mừng đến với ChatChit!
           </h1>
           <p className="mb-8 max-w-[500px] text-sm leading-relaxed text-gray-500 dark:text-gray-400 md:mb-12 md:text-base">
@@ -251,18 +251,17 @@ export const WelcomeScreen = () => {
             </button>
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-2 md:mt-10">
+          <div className="mt-6 flex items-center justify-center gap-2 md:mt-10 select-none">
             {slides.map((slide, index) => (
               <button
                 key={slide.id}
                 type="button"
                 aria-label={`Đến slide ${index + 1}`}
                 onClick={() => goToSlide(index)}
-                className={`h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
-                  index === activeIndex
-                    ? "w-6 bg-blue-500"
-                    : "w-2 bg-gray-300 hover:bg-gray-400 dark:bg-slate-700 dark:hover:bg-slate-600"
-                }`}
+                className={`h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${index === activeIndex
+                  ? "w-6 bg-blue-500"
+                  : "w-2 bg-gray-300 hover:bg-gray-400 dark:bg-slate-700 dark:hover:bg-slate-600"
+                  }`}
               />
             ))}
           </div>

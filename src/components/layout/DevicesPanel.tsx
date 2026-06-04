@@ -6,9 +6,12 @@ import {
   FiSmartphone,
   FiTrash2,
   FiXCircle,
+  FiGlobe,
+  FiLogOut,
 } from "react-icons/fi";
 import { authService } from "../../services/authService";
 import { useLanguage } from "../../context";
+import { useIpLocation } from "../../hooks";
 
 type SessionDevice = {
   deviceId: string;
@@ -79,7 +82,18 @@ const SessionRow = ({
     unknownDevice: string;
     unknownLocation: string;
   };
-}) => (
+}) => {
+  const geoLoc = useIpLocation(session.ip);
+
+  const displayLocation = (session.location && session.location !== "unknown")
+    ? session.location
+    : geoLoc
+      ? geoLoc
+      : (session.ip && session.ip !== "unknown")
+        ? session.ip
+        : labels.unknownLocation;
+
+  return (
   <div className="py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition -mx-5 px-5 flex justify-between gap-4">
     <div className="flex gap-3 min-w-0">
       <DeviceIcon session={session} />
@@ -89,7 +103,7 @@ const SessionRow = ({
             {getDeviceTitle(session, labels.unknown)}
           </p>
           {session.isCurrent && (
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full">
+            <span className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full">
               {labels.current}
             </span>
           )}
@@ -97,9 +111,12 @@ const SessionRow = ({
         <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-snug truncate">
           {getDeviceSubtitle(session, labels.unknownDevice)}
         </p>
-        <p className="text-[14px] text-gray-400 dark:text-gray-500 leading-snug truncate">
-          {session.location || session.ip || labels.unknownLocation}
-        </p>
+        <div className="flex items-center gap-1.5 mt-0.5 text-[14px] text-gray-400 dark:text-gray-500 leading-snug truncate">
+          <FiGlobe className="shrink-0 text-gray-300 dark:text-gray-600" />
+          <span>
+            {displayLocation}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -123,7 +140,8 @@ const SessionRow = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
   const { t } = useLanguage();
@@ -132,6 +150,7 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
   const [error, setError] = useState("");
   const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
   const [isRevokingOthers, setIsRevokingOthers] = useState(false);
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
 
   const loadSessions = useCallback(async () => {
     setIsLoading(true);
@@ -192,6 +211,22 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
       setError(err?.message || t("devices.logoutOthersError"));
     } finally {
       setIsRevokingOthers(false);
+    }
+  };
+
+  const logoutAllSessions = async () => {
+    const confirmed = window.confirm(t("devices.confirmLogoutAll") || "Are you sure you want to log out from ALL devices including this one?");
+    if (!confirmed) return;
+
+    setIsLoggingOutAll(true);
+    setError("");
+    try {
+      await authService.logoutAll();
+      window.dispatchEvent(new Event("auth:logout"));
+      window.location.href = "/login";
+    } catch (err: any) {
+      setError(err?.message || t("devices.logoutAllError") || "Failed to logout all devices");
+      setIsLoggingOutAll(false);
     }
   };
 
@@ -299,6 +334,23 @@ export const DevicesPanel = ({ isCollapsed, onBack }: any) => {
             ))
           )}
         </div>
+        
+        {sessions.length > 0 && (
+          <div className="px-5 pb-6">
+            <button
+              onClick={logoutAllSessions}
+              disabled={isLoggingOutAll}
+              className="flex items-center gap-3 w-full justify-center text-red-500 hover:text-red-600 disabled:text-gray-300 dark:disabled:text-gray-600 transition py-3 rounded-xl border border-red-100 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/10 mt-4"
+            >
+              {isLoggingOutAll ? (
+                <FiRefreshCw className="text-[18px] animate-spin" />
+              ) : (
+                <FiLogOut className="text-[18px]" />
+              )}
+              <span className="text-[15px] font-medium">{t("devices.logoutAll") || "Logout all devices"}</span>
+            </button>
+          </div>
+        )}
 
         <div className="bg-[#f4f4f5] dark:bg-slate-800/80 px-4 py-3 border-t border-gray-200/50 dark:border-slate-700/50 pb-8 min-h-[50vh]">
           <p className="text-[13.5px] text-gray-500 dark:text-gray-400 leading-relaxed">

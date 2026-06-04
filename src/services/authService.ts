@@ -192,6 +192,14 @@ export const authService = {
     }
   },
 
+  async logoutAll() {
+    try {
+      await api.post("/auth/logout-all");
+    } finally {
+      await clearClientSession();
+    }
+  },
+
   async forgotPassword(payload) {
     const response = await api.post("/auth/forgot-password", payload, {
       skipAuth: true,

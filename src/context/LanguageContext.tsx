@@ -196,6 +196,9 @@ type TranslationKey =
   | "devices.loadError"
   | "devices.logoutDeviceError"
   | "devices.logoutOthersError"
+  | "devices.logoutAll"
+  | "devices.confirmLogoutAll"
+  | "devices.logoutAllError"
   | "blockList.title"
   | "blockList.loading"
   | "blockList.loadError"
@@ -673,6 +676,9 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "devices.loadError": "Could not load active sessions.",
     "devices.logoutDeviceError": "Could not log out this device.",
     "devices.logoutOthersError": "Could not log out other devices.",
+    "devices.logoutAll": "Logout all devices",
+    "devices.confirmLogoutAll": "Are you sure you want to log out from ALL devices including this one?",
+    "devices.logoutAllError": "Failed to logout all devices.",
     "blockList.title": "Block List",
     "blockList.loading": "Loading blocked users...",
     "blockList.loadError": "Failed to load blocked users",
@@ -1147,6 +1153,9 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "devices.loadError": "Không thể tải các phiên đang hoạt động.",
     "devices.logoutDeviceError": "Không thể đăng xuất thiết bị này.",
     "devices.logoutOthersError": "Không thể đăng xuất các thiết bị khác.",
+    "devices.logoutAll": "Đăng xuất tất cả thiết bị",
+    "devices.confirmLogoutAll": "Bạn có chắc muốn đăng xuất khỏi TẤT CẢ thiết bị bao gồm cả thiết bị này?",
+    "devices.logoutAllError": "Không thể đăng xuất tất cả thiết bị.",
     "blockList.title": "Danh sách chặn",
     "blockList.loading": "Đang tải người dùng bị chặn...",
     "blockList.loadError": "Không thể tải người dùng bị chặn",
