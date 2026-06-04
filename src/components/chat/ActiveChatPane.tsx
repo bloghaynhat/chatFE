@@ -27,6 +27,7 @@ import { FilePreviewModal } from "./ActiveChatPane/FilePreviewModal";
 import { DragDropOverlay } from "./ActiveChatPane/DragDropOverlay";
 import { CreatePollModal } from "./ActiveChatPane/CreatePollModal";
 import { ContactPickerModal } from "./ActiveChatPane/ContactPickerModal";
+import { BlockUserModal } from "./RightSideBar/RightSideBarTypes/BlockUserModal";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
@@ -123,6 +124,8 @@ export const ActiveChatPane = ({
   const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
   const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
   const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
+  const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false);
+  const [isBlockingUser, setIsBlockingUser] = useState(false);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
   const [chatInputHeight, setChatInputHeight] = useState(96);
   const [isChatAtBottom, setIsChatAtBottom] = useState(true);
@@ -503,17 +506,19 @@ export const ActiveChatPane = ({
     ],
   );
 
-  const handleBlockUser = useCallback(async () => {
+  const handleBlockUser = useCallback(() => {
     if (!privateTargetUserId) return;
+    setIsBlockConfirmOpen(true);
+  }, [privateTargetUserId]);
 
-    const confirmed = window.confirm(
-      "Block this user? They will not be able to message or call you.",
-    );
-    if (!confirmed) return;
+  const handleConfirmBlockUser = useCallback(async () => {
+    if (!privateTargetUserId || isBlockingUser) return;
 
     try {
+      setIsBlockingUser(true);
       await blockUser(privateTargetUserId);
       setChatRestriction("You blocked this user");
+      setIsBlockConfirmOpen(false);
       window.dispatchEvent(
         new CustomEvent("blockStatus:changed", {
           detail: { userId: privateTargetUserId, isBlocked: true },
@@ -523,8 +528,10 @@ export const ActiveChatPane = ({
     } catch (err: any) {
       console.error("[ActiveChatPane] Failed to block user:", err);
       toast.error(err?.message || "Failed to block user");
+    } finally {
+      setIsBlockingUser(false);
     }
-  }, [privateTargetUserId]);
+  }, [isBlockingUser, privateTargetUserId]);
 
   const refreshActiveCallV2 = useCallback(async () => {
     const conversationId = selectedConversationId || selectedChat?.id;
@@ -1273,6 +1280,15 @@ export const ActiveChatPane = ({
         activeCallV2={activeCallV2}
         callV2Status={callV2.state.status}
         onJoinActiveCallV2={() => void handleJoinActiveCallV2()}
+      />
+
+      <BlockUserModal
+        isOpen={isBlockConfirmOpen}
+        onClose={() => setIsBlockConfirmOpen(false)}
+        onConfirm={handleConfirmBlockUser}
+        isLoading={isBlockingUser}
+        isBlocked={false}
+        userName={callPeerInfo?.name || selectedChat?.displayName || selectedChat?.name}
       />
 
       {/* Pinned Messages Bar */}
