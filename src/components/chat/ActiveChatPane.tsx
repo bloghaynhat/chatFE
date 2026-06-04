@@ -29,6 +29,7 @@ import { CreatePollModal } from "./ActiveChatPane/CreatePollModal";
 import { ContactPickerModal } from "./ActiveChatPane/ContactPickerModal";
 import { BlockUserModal } from "./RightSideBar/RightSideBarTypes/BlockUserModal";
 import { WelcomeScreen } from "./WelcomeScreen";
+import { RightSidebarSearch } from "./RightSideBar/RightSidebarSearch";
 import { getMessageText } from "../../utils/chatUtils";
 import type { Message } from "../../types/conversation";
 import { pollService } from "../../services/pollService";
@@ -97,6 +98,7 @@ export const ActiveChatPane = ({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isHeaderSearchOpen, setIsHeaderSearchOpen] = useState(false);
+  const [isRightSidebarSearchOpen, setIsRightSidebarSearchOpen] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [headerSearchValue, setHeaderSearchValue] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
@@ -600,14 +602,14 @@ export const ActiveChatPane = ({
     }
   };
 
-  // Navigate to a specific message
   const handleNavigateToMessage = (messageId: string) => {
-    // Scroll after a short delay to allow DOM update
-    setTimeout(() => {
+    let retries = 0;
+    const maxRetries = 15; // increased retries to allow multiple pages to load
+
+    const findAndScroll = () => {
       const messageElement = document.getElementById(`message-${messageId}`);
       if (messageElement) {
         messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Add highlight effect
         messageElement.classList.add(
           "bg-orange-100",
           "dark:bg-emerald-900/60",
@@ -622,8 +624,30 @@ export const ActiveChatPane = ({
             "ring-blue-500",
           );
         }, 2000);
+        return true;
       }
-    }, 100);
+      return false;
+    };
+
+    const attemptFind = () => {
+      if (findAndScroll()) return;
+
+      if (retries < maxRetries) {
+        retries++;
+        const chatContainer = document.querySelector<HTMLElement>("[data-chat-container]");
+        if (chatContainer) {
+          // Temporarily scroll to top to trigger loading older messages
+          chatContainer.scrollTop = 0;
+          setTimeout(attemptFind, 500); // wait for messages to load and retry
+        } else {
+          toast.info(t("chat.messageNotLoaded"));
+        }
+      } else {
+        toast.info(t("chat.messageNotLoaded"));
+      }
+    };
+
+    setTimeout(attemptFind, 100);
   };
 
   const lastSearchTargetRef = useRef<string | null>(null);
@@ -1271,6 +1295,8 @@ export const ActiveChatPane = ({
         headerSearchInputRef={headerSearchInputRef}
         isRightSidebarOpen={isRightSidebarOpen}
         setIsRightSidebarOpen={setIsRightSidebarOpen}
+        isRightSidebarSearchOpen={isRightSidebarSearchOpen}
+        setIsRightSidebarSearchOpen={setIsRightSidebarSearchOpen}
         pinnedCount={enrichedPinnedMessages.length}
         onStartAudioCall={() => void handleStartCall("audio")}
         onStartVideoCall={() => void handleStartCall("video")}
@@ -1399,6 +1425,18 @@ export const ActiveChatPane = ({
         setHeaderSearchValue={setHeaderSearchValue}
       />
 
+      <RightSidebarSearch
+        isOpen={isRightSidebarSearchOpen}
+        onClose={() => setIsRightSidebarSearchOpen(false)}
+        conversationId={selectedConversationId}
+        initialQuery={headerSearchValue}
+        onNavigateToMessage={(messageId) => {
+          handleNavigateToMessage(messageId);
+        }}
+        selectedChat={selectedChat}
+        currentUserId={currentUserId}
+      />
+
       {/* Pinned List Sidebar */}
       <PinnedList
         pinnedMessages={enrichedPinnedMessages}
@@ -1469,7 +1507,7 @@ export const ActiveChatPane = ({
             return container ? container.scrollHeight > container.clientHeight + 5 : false;
           })()
         }
-<!--         isScrolledUp={!isChatAtBottom} -->
+        // <!--         isScrolledUp={!isChatAtBottom} -->
         isGroupChat={isGroupChat}
         onScrollToBottom={() => {
           shouldStickToBottomRef.current = true;

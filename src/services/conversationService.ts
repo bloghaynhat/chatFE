@@ -414,4 +414,26 @@ export const conversationService = {
     const response: any = await api.delete(`/conversations/${conversationId}/drafts`);
     return response.data || response;
   },
+
+  async searchMessages(
+    conversationId: string,
+    params: {
+      query: string;
+      cursor?: string;
+      limit?: number;
+      from?: string;
+      to?: string;
+      senderId?: string;
+      contextLimit?: number;
+    }
+  ): Promise<{ messages: Message[]; nextCursor: string | null; hasMore: boolean }> {
+    const response: any = await api.get(`/conversations/${conversationId}/search`, { params });
+    const payload = response.data || response;
+    
+    return {
+      messages: normalizeMessages(payload),
+      nextCursor: payload?.nextCursor || payload?.data?.nextCursor || null,
+      hasMore: Boolean(payload?.hasMore || payload?.data?.hasMore || false),
+    };
+  },
 };
