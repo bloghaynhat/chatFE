@@ -501,6 +501,73 @@ const MainLayout = ({ children }: { children?: any }) => {
     [],
   );
 
+  const mergeReminderIntoMessage = useCallback((message: any, reminder: any) => {
+    if (!message || !reminder) return message;
+
+    const reminderId = reminder.id || reminder._id || reminder.reminderId;
+    const reminderMessageId = reminder.messageId || reminder.message?.id || reminder.message?._id;
+    const messageReminderId =
+      message.reminderId ||
+      message.reminder?.id ||
+      message.reminder?._id ||
+      message.metadata?.reminderId;
+    const messageId = getMessageId(message);
+
+    const matchesReminder =
+      (reminderId && String(messageReminderId) === String(reminderId)) ||
+      (reminderMessageId && messageId && String(messageId) === String(reminderMessageId));
+
+    if (!matchesReminder) return message;
+
+    return normalizeMessageLifecycle({
+      ...message,
+      reminderId: message.reminderId || reminderId,
+      reminder: {
+        ...(message.reminder || {}),
+        ...reminder,
+      },
+      metadata: {
+        ...(message.metadata || {}),
+        reminder: {
+          ...(message.metadata?.reminder || {}),
+          ...reminder,
+        },
+        remindAt: reminder.remindAt || message.metadata?.remindAt,
+        repeatRule: reminder.repeatRule || message.metadata?.repeatRule,
+        notifyBeforeMinutes:
+          reminder.notifyBeforeMinutes ?? message.metadata?.notifyBeforeMinutes,
+        status: reminder.status || message.metadata?.status,
+      },
+    });
+  }, []);
+
+  const markCachedReminderUpdated = useCallback(
+    (conversationId: string, reminder: any = {}) => {
+      if (!conversationId || !reminder) return false;
+
+      const entry = conversationMessageCacheRef.current.get(String(conversationId));
+      if (!entry) return false;
+
+      let touched = false;
+      const nextMessages = (entry.messages || []).map((message) => {
+        const nextMessage = mergeReminderIntoMessage(message, reminder);
+        if (nextMessage !== message) touched = true;
+        return nextMessage;
+      });
+
+      if (touched) {
+        conversationMessageCacheRef.current.set(String(conversationId), {
+          ...entry,
+          messages: nextMessages,
+          cachedAt: Date.now(),
+        });
+      }
+
+      return touched;
+    },
+    [mergeReminderIntoMessage],
+  );
+
   const shouldSkipDuplicateMemberRemoval = useCallback(
     (conversationId?: string, userId?: string) => {
       if (!conversationId || !userId) return false;
@@ -1294,7 +1361,27 @@ const MainLayout = ({ children }: { children?: any }) => {
         const handleUtilityChanged = (payload: any) => {
           upsertMessageFromPayload(payload);
           const conversationId = getPayloadConversationId(payload);
-          if (String(conversationId) === String(selectedConversationId)) {
+          const reminder = payload?.reminder || payload?.data?.reminder;
+          if (conversationId && reminder) {
+            markCachedReminderUpdated(String(conversationId), reminder);
+            if (String(conversationId) === String(selectedConversationIdRef.current)) {
+              setMessages((prev) =>
+                prev.map((message: any) => mergeReminderIntoMessage(message, reminder)),
+              );
+            }
+          }
+          if (conversationId) {
+            window.dispatchEvent(
+              new CustomEvent("groupUtilities:refresh", {
+                detail: {
+                  conversationId,
+                  event: payload?.event,
+                  payload,
+                },
+              }),
+            );
+          }
+          if (String(conversationId) === String(selectedConversationIdRef.current)) {
             window.dispatchEvent(new Event("chatList:refresh"));
           }
         };
@@ -1308,6 +1395,19 @@ const MainLayout = ({ children }: { children?: any }) => {
         socketService.onGroupReminderPinned(handleUtilityChanged);
         socketService.onGroupReminderUnpinned(handleUtilityChanged);
         socketService.onGroupReminderDue(handleUtilityChanged);
+
+        socketService.onAiReminderAgentResult((payload: any) => {
+          const conversationId = getPayloadConversationId(payload);
+          if (conversationId && String(conversationId) !== String(selectedConversationIdRef.current)) return;
+          const title = payload?.reminder?.title || "reminder";
+          toast.success(`AI da tao reminder: ${title}`);
+        });
+
+        socketService.onAiReminderAgentError((payload: any) => {
+          const conversationId = getPayloadConversationId(payload);
+          if (conversationId && String(conversationId) !== String(selectedConversationIdRef.current)) return;
+          toast.error(payload?.reason || "AI chua du thong tin de tao reminder.");
+        });
 
         // Handle message pin
         socketService.onMessagePinned((payload: any) => {
@@ -1659,6 +1759,8 @@ const MainLayout = ({ children }: { children?: any }) => {
       socketService.off("group:reminder:pinned");
       socketService.off("group:reminder:unpinned");
       socketService.off("group:reminder:due");
+      socketService.off("ai:reminder_agent:result");
+      socketService.off("ai:reminder_agent:error");
       socketService.off("conversation:updated");
       socketService.off("conversation:members_added");
       socketService.off("conversation:member_removed");
@@ -1679,6 +1781,8 @@ const MainLayout = ({ children }: { children?: any }) => {
     getPayloadTargetUserId,
     upsertMessageFromPayload,
     upsertSystemMessageFromPayload,
+    markCachedReminderUpdated,
+    mergeReminderIntoMessage,
     markCachedMessageRevoked,
     markCachedMessageEdited,
     isCurrentUserRemovedBySystemMessage,
