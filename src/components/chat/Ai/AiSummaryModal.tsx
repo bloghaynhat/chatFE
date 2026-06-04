@@ -8,15 +8,17 @@ interface AiSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
   conversationId: string;
+  members?: any[];
 }
 
 export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
   isOpen,
   onClose,
   conversationId,
+  members,
 }) => {
   const { copied, error, isLoading, summary, copySummary, retry } =
-    useAiSummary(conversationId, isOpen);
+    useAiSummary(conversationId, isOpen, members);
 
   if (!isOpen) return null;
 
