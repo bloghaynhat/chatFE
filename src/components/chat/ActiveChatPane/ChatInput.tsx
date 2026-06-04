@@ -24,6 +24,19 @@ import { useLanguage } from "../../../context";
 
 // frequentEmojis removed
 
+const botMentionRegex = /(@bot\b)/gi;
+
+const renderDraftWithBotMention = (text: string) =>
+  text.split(botMentionRegex).map((part, index) =>
+    part.toLowerCase() === "@bot" ? (
+      <span key={index} className="font-semibold text-[#2ea6f3] dark:text-blue-300">
+        {part}
+      </span>
+    ) : (
+      <span key={index}>{part}</span>
+    ),
+  );
+
 export const ChatInput = ({
   draftMessage,
   setDraftMessage,
@@ -61,6 +74,7 @@ export const ChatInput = ({
   const [fetchedReplyingSender, setFetchedReplyingSender] = useState<any>(null);
   const [isSmartReplyOpen, setIsSmartReplyOpen] = useState(false);
   const [manualSmartReplyKey, setManualSmartReplyKey] = useState("");
+  const [isBotMentionOpen, setIsBotMentionOpen] = useState(false);
   const inputRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -262,6 +276,23 @@ export const ChatInput = ({
     !replyingMessage &&
     !forwardingMessage &&
     !disabledReason;
+
+  const insertBotMention = () => {
+    setDraftMessage((prev: string) => {
+      const lastAtIndex = prev.lastIndexOf("@");
+      if (lastAtIndex === -1) {
+        return `${prev ? `${prev.trimEnd()} ` : ""}@bot `;
+      }
+
+      const beforeAt = prev.slice(0, lastAtIndex);
+      const afterAt = prev.slice(lastAtIndex + 1);
+      const afterTokenEnd = afterAt.search(/\s/);
+      const rest = afterTokenEnd === -1 ? "" : afterAt.slice(afterTokenEnd);
+      return `${beforeAt}@bot ${rest.trimStart()}`;
+    });
+    setIsBotMentionOpen(false);
+  };
+  const hasBotMentionInDraft = /@bot\b/i.test(draftMessage);
 
   useEffect(() => {
     if (!canRequestSmartReply) {
@@ -494,8 +525,28 @@ export const ChatInput = ({
               minRows={1}
               maxRows={5}
               value={draftMessage}
-              onChange={handleInputChange}
+              onChange={(e) => {
+                handleInputChange(e);
+                const value = e.target.value;
+                const lastAtIndex = value.lastIndexOf("@");
+                const mentionQuery = lastAtIndex >= 0 ? value.slice(lastAtIndex + 1) : "";
+                const shouldShow =
+                  lastAtIndex >= 0 &&
+                  !/\s/.test(mentionQuery) &&
+                  "bot".startsWith(mentionQuery.toLowerCase());
+                setIsBotMentionOpen(Boolean(shouldShow));
+              }}
               onKeyDown={(e) => {
+                if (isBotMentionOpen && (e.key === "Tab" || e.key === "Enter")) {
+                  e.preventDefault();
+                  insertBotMention();
+                  return;
+                }
+                if (e.key === "Escape" && isBotMentionOpen) {
+                  e.preventDefault();
+                  setIsBotMentionOpen(false);
+                  return;
+                }
                 if (e.key === "Enter" && !e.shiftKey && !disabledReason) {
                   e.preventDefault();
                   handleSendMessage();
@@ -503,10 +554,40 @@ export const ChatInput = ({
               }}
               disabled={Boolean(disabledReason)}
               placeholder={disabledReason || t("chat.messagePlaceholder")}
-              className={`w-full bg-transparent text-[14px] lg:text-[15px] text-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${
+              className={`w-full bg-transparent text-[14px] lg:text-[15px] placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${
+                hasBotMentionInDraft
+                  ? "text-transparent caret-gray-700 dark:caret-gray-100"
+                  : "text-gray-700 dark:text-gray-100"
+              } ${
                 (editingMessage || replyingMessage) ? "py-[10px]" : "py-[12px] lg:py-[14px]"
               }`}
             />
+
+            {isBotMentionOpen && !disabledReason && (
+              <div className="absolute bottom-[calc(100%+8px)] left-10 z-[90] w-[220px] rounded-xl border border-white/70 bg-white/95 p-1.5 shadow-xl backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/95">
+              <button
+                type="button"
+                onClick={insertBotMention}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-800 transition hover:bg-blue-50 hover:text-[#2ea6f3] dark:text-slate-100 dark:hover:bg-slate-700"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-[#2ea6f3] dark:bg-blue-950/50">
+                  @
+                </span>
+                <span>@bot</span>
+              </button>
+            </div>
+            )}
+
+            {hasBotMentionInDraft && (
+              <div
+                aria-hidden="true"
+                className={`pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-[14px] leading-[1.32] text-gray-700 dark:text-gray-100 lg:text-[15px] ${
+                  (editingMessage || replyingMessage) ? "py-[10px] pl-11 pr-[88px]" : "py-[12px] pl-11 pr-[88px] lg:py-[14px]"
+                }`}
+              >
+                {renderDraftWithBotMention(draftMessage)}
+              </div>
+            )}
 
             <div
               className={`absolute right-9 flex items-center ${(editingMessage || replyingMessage) ? "bottom-2 h-10" : "bottom-0 top-0"}`}
