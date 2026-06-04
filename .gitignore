@@ -28,6 +28,6 @@ contexts
 docs
 CLAUDE.md
 # Environment variables
-# .env
+.env
 # .env.local
 # .env.*.local
