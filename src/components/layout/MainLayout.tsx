@@ -2854,7 +2854,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
   const handleRevokeMessage = async (message) => {
     try {
-      const messageId = message?.id || message?._id;
+      const messageId = getMessageId(message);
       if (!messageId) return;
 
       const res: any = await socketService.revokeMessage(messageId);
@@ -2879,7 +2879,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
 
   const handleDeleteMessageForMe = async (message) => {
-    const messageId = message?.id || message?._id;
+    const messageId = getMessageId(message);
     if (!messageId) return;
 
     try {
@@ -2910,7 +2910,7 @@ const MainLayout = ({ children }: { children?: any }) => {
   };
 
   const handleDeleteMessageForEveryone = async (message: any) => {
-    const messageId = message?.id || message?._id;
+    const messageId = getMessageId(message);
     if (!messageId) return;
 
     try {
