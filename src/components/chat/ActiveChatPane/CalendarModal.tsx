@@ -27,7 +27,7 @@ export const CalendarModal = ({
     >
       <div
         onMouseDown={(event) => event.stopPropagation()}
-        className="w-[min(400px,92vw)] max-h-[min(78vh,620px)] overflow-y-auto rounded-2xl lg:rounded-3xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-2xl px-5 lg:px-6 py-4 lg:py-5"
+        className="w-[min(400px,92vw)] max-h-[min(78vh,620px)] overflow-y-auto custom-scrollbar rounded-2xl lg:rounded-3xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-2xl px-5 lg:px-6 py-4 lg:py-5"
       >
         <p className="text-[28px] lg:text-[32px] font-semibold text-gray-900 dark:text-gray-100 leading-tight mb-3">
           {selectedCalendarHeadline}

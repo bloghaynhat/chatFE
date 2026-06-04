@@ -660,7 +660,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 <FiX />
               </button>
             </div>
-            <nav className="flex overflow-x-auto snap-x snap-mandatory md:flex-col space-x-2 md:space-x-0 md:space-y-1 pb-1 md:pb-0 px-4 md:px-0 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <nav className="flex overflow-x-auto custom-scrollbar snap-x snap-mandatory md:flex-col space-x-2 md:space-x-0 md:space-y-1 pb-1 md:pb-0 px-4 md:px-0 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -694,7 +694,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -18 }}
                 transition={{ duration: 0.18 }}
-                className="flex-1 overflow-y-auto p-6"
+                className="flex-1 overflow-y-auto custom-scrollbar p-6"
               >
                 {activeTab === "general" && (
                   <div className="flex min-h-full flex-col">

@@ -71,7 +71,7 @@ export const AiSearchModal: React.FC<AiSearchModalProps> = ({
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto flex-1 min-h-[200px]">
+        <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-[200px]">
           <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
             <p className="text-sm text-gray-500 mb-1">Câu hỏi của bạn:</p>
             <p className="text-gray-800 font-medium">"{query}"</p>

@@ -1,4 +1,6 @@
 import { getMessageId } from "../../../../utils/chatUtils";
+import { translateKnownPreviewText } from "../../../../utils/chatPreview";
+import { useLanguage } from "../../../../context";
 
 export const SystemMessage = ({
   message,
@@ -8,6 +10,13 @@ export const SystemMessage = ({
   text,
   hasUploadedWallpaper,
 }) => {
+  const { language } = useLanguage();
+
+  let translatedText = text;
+  if (typeof text === "string") {
+    translatedText = translateKnownPreviewText(text, language);
+  }
+
   return (
     <div
       ref={isFirst ? firstMessageRef : null}
@@ -21,7 +30,7 @@ export const SystemMessage = ({
             : "bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-200 shadow-sm"
         }`}
       >
-        {text}
+        {translatedText}
       </div>
     </div>
   );

@@ -31,29 +31,29 @@ body {
     opacity: 0;
   }
 
-  .chat-scrollbar {
+  .chat-scrollbar, .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(71, 85, 105, 0.42) transparent;
     scrollbar-gutter: stable;
   }
 
-  .chat-scrollbar::-webkit-scrollbar {
+  .chat-scrollbar::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
     width: 10px;
   }
 
-  .chat-scrollbar::-webkit-scrollbar-track {
+  .chat-scrollbar::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
     border-radius: 999px;
   }
 
-  .chat-scrollbar::-webkit-scrollbar-thumb {
+  .chat-scrollbar::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(71, 85, 105, 0.38);
     border-radius: 999px;
     border: 3px solid transparent;
     background-clip: padding-box;
   }
 
-  .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  .chat-scrollbar::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(51, 65, 85, 0.58);
   }
 
@@ -197,19 +197,19 @@ body {
     --bubble-bg: rgba(30, 41, 59, 0.94);
   }
 
-  .dark .chat-scrollbar {
+  .dark .chat-scrollbar, .dark .custom-scrollbar {
     scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
   }
 
-  .dark .chat-scrollbar::-webkit-scrollbar-track {
+  .dark .chat-scrollbar::-webkit-scrollbar-track, .dark .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  .dark .chat-scrollbar::-webkit-scrollbar-thumb {
+  .dark .chat-scrollbar::-webkit-scrollbar-thumb, .dark .custom-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(203, 213, 225, 0.34);
   }
 
-  .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover, .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(226, 232, 240, 0.54);
   }
 }

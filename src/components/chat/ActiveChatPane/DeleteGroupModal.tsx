@@ -74,7 +74,7 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
               <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">

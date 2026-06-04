@@ -109,7 +109,7 @@ export const RightSidebarMembers = ({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {displayMembers.map((member: any) => {
           const participant = member.user || member;
           const displayRole = (member.role === "owner" || member.role === "OWNER") ? t("group.owner") : (member.role === "admin" || member.role === "ADMIN" ? t("group.admin") : "");

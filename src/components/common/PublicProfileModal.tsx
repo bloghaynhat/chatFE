@@ -274,7 +274,7 @@ export const PublicProfileModal = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="w-full sm:max-w-[460px] max-h-[78dvh] sm:max-h-[86vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-white/70 dark:border-slate-700"
+            className="w-full sm:max-w-[460px] max-h-[78dvh] sm:max-h-[86vh] overflow-y-auto custom-scrollbar rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-white/70 dark:border-slate-700"
           >
             <div className="sticky top-0 z-10 flex justify-end p-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
               <button

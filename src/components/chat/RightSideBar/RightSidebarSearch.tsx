@@ -148,7 +148,7 @@ export const RightSidebarSearch: React.FC<RightSidebarSearchProps> = ({
       <div
         ref={listRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-2"
+        className="flex-1 overflow-y-auto custom-scrollbar p-2"
       >
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center py-8">
