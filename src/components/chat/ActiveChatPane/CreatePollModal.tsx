@@ -109,7 +109,7 @@ export const CreatePollModal = ({
           </button>
         </div>
 
-        <div className="space-y-2 overflow-y-auto px-3 py-3">
+        <div className="space-y-2 overflow-y-auto custom-scrollbar px-3 py-3">
           <section className="overflow-hidden rounded-xl bg-white dark:bg-slate-900">
             <div className="flex items-start gap-3 px-4 py-3">
               <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e7f3ff] text-[#3390ec] dark:bg-[#172b3e]">

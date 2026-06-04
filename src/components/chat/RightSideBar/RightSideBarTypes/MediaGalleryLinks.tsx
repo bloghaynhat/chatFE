@@ -58,7 +58,7 @@ export const MediaGalleryLinks: React.FC<MediaGalleryLinksProps> = ({ links, isL
           <p className="text-sm">{t("chat.noLinks")}</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {links.map((link) => {
             const domain = extractDomain(link.url);
 

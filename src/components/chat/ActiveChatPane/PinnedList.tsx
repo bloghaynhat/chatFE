@@ -137,7 +137,7 @@ export const PinnedList: React.FC<PinnedListProps> = ({
         </div>
 
         {/* Pinned Messages List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
           {filteredMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
               <FiMapPin className="text-5xl mb-3 opacity-50" />

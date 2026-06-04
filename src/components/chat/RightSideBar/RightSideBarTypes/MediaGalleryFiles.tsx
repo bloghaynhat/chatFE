@@ -76,7 +76,7 @@ export const MediaGalleryFiles: React.FC<MediaGalleryFilesProps> = ({ files, isL
           <p className="text-sm">{t("chat.noFiles")}</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {files.map((file) => {
             const { icon, color } = getFileIcon(file.name);
 

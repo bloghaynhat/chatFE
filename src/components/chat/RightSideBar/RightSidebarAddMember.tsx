@@ -91,7 +91,7 @@ export const RightSidebarAddMember = ({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900" style={{ minHeight: 0 }}>
+      <div className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900" style={{ minHeight: 0 }}>
         <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex-shrink-0">
           {selectedIds.size > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">

@@ -53,7 +53,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
           <div className="grid grid-cols-2 gap-2">
             {files.map((file, index) => {
               const isImage = file.type.startsWith("image/") && file.isImageMode !== false;

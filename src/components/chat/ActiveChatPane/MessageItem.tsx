@@ -390,7 +390,7 @@ export const MessageItem = ({
         id={`message-${message.id || message._id}`}
         key={currentMessageId}
         data-message-id={currentMessageId}
-        className={`w-fit max-w-[464px] mx-[6px] text-[14px] md:text-[15px] flex flex-col relative ${
+        className={`w-fit max-w-[464px] mx-[6px] text-[14px] md:text-[15px] flex flex-col relative select-none ${
           isJumboEmoji
             ? ""
             : `telegram-bubble ${mine ? "telegram-bubble-mine" : "telegram-bubble-other"} ${

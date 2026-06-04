@@ -55,7 +55,7 @@ export const RightSidebarEdit = ({
       </div>
 
       {/* Edit Group Content */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-slate-950">
+      <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden bg-gray-50 dark:bg-slate-950">
         {/* Avatar area */}
         <div className="flex flex-col items-center pt-8 pb-6 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm mt-0">
           <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-4xl font-semibold mb-6 shadow-md overflow-hidden relative cursor-pointer group">

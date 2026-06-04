@@ -75,7 +75,7 @@ export const AiSummaryContent: React.FC<AiSummaryContentProps> = ({
   onRetry,
   summary,
 }) => (
-  <div className="p-5 overflow-y-auto flex-1 h-[300px]">
+  <div className="p-5 overflow-y-auto custom-scrollbar flex-1 h-[300px]">
     {isLoading ? (
       <SummaryLoadingState />
     ) : error ? (

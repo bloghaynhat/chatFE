@@ -88,7 +88,7 @@ export const NoteFormModal = ({
           </button>
         </div>
 
-        <div className="max-h-[calc(90dvh-132px)] space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+        <div className="max-h-[calc(90dvh-132px)] space-y-4 overflow-y-auto custom-scrollbar overscroll-contain px-5 py-4">
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -218,7 +218,7 @@ export const ReminderFormModal = ({
           </button>
         </div>
 
-        <div className="max-h-[calc(90dvh-132px)] space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+        <div className="max-h-[calc(90dvh-132px)] space-y-4 overflow-y-auto custom-scrollbar overscroll-contain px-5 py-4">
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
