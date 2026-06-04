@@ -1469,6 +1469,8 @@ export const ActiveChatPane = ({
             return container ? container.scrollHeight > container.clientHeight + 5 : false;
           })()
         }
+<!--         isScrolledUp={!isChatAtBottom} -->
+        isGroupChat={isGroupChat}
         onScrollToBottom={() => {
           shouldStickToBottomRef.current = true;
           setIsChatAtBottom(true);
