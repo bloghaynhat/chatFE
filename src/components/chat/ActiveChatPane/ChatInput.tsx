@@ -332,11 +332,10 @@ export const ChatInput = ({
     <div
       ref={inputRootRef}
       data-chat-input-root
-      className={`absolute left-0 right-0 bottom-0 px-4 pb-3 lg:px-5 bg-transparent transition-[border-color] duration-200 ${
-        isScrolledUp
+      className={`absolute left-0 right-0 bottom-0 px-4 pb-3 lg:px-5 bg-transparent transition-[border-color] duration-200 ${isScrolledUp
           ? "border-t border-gray-300/45 bg-white/20 pt-3 backdrop-blur-[1px] dark:border-slate-600/45 dark:bg-slate-950/20"
           : "border-t border-transparent pt-0"
-      }`}
+        }`}
       onPointerDown={onChatInteractionRead}
       onFocus={onChatInteractionRead}
     >
@@ -423,27 +422,24 @@ export const ChatInput = ({
         ) : (
           <div
             ref={attachMenuRef}
-            className={`relative flex-1 h-auto bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${
-              (editingMessage || replyingMessage)
+            className={`relative flex-1 h-auto bg-white/95 dark:bg-slate-800/95 shadow-lg border outline outline-2 outline-transparent transition-all ${(editingMessage || replyingMessage)
                 ? "min-h-[112px] rounded-[18px] flex flex-col items-stretch overflow-hidden px-3 py-3"
                 : "min-h-[44px] lg:min-h-[48px] rounded-[24px] flex items-center"
-            } ${
-              disabledReason
+              } ${disabledReason
                 ? disabledTone === "neutral"
                   ? "border-blue-100 dark:border-slate-700"
                   : "border-red-200 dark:border-red-800"
                 : isListeningText
                   ? "border-blue-300 dark:border-blue-500/50 shadow-blue-500/10"
                   : "border-white/90 dark:border-slate-700/90"
-            }`}
+              }`}
           >
             {disabledReason && (
               <div
-                className={`absolute inset-0 z-[80] flex items-center justify-center rounded-full px-5 text-center text-sm font-semibold backdrop-blur-sm ${
-                  disabledTone === "neutral"
+                className={`absolute inset-0 z-[80] flex items-center justify-center rounded-full px-5 text-center text-sm font-semibold backdrop-blur-sm ${disabledTone === "neutral"
                     ? "bg-white/95 text-gray-500 dark:bg-slate-800/95 dark:text-slate-300"
                     : "bg-red-50/95 text-red-600 dark:bg-red-950/90 dark:text-red-200"
-                }`}
+                  }`}
               >
                 <FiLock className="mr-2 shrink-0 text-[16px]" />
                 <span className="truncate">{disabledReason}</span>
@@ -457,7 +453,7 @@ export const ChatInput = ({
                 </div>
                 <div className={`min-w-0 flex-1 rounded-[5px] border-l-[4px] px-3 py-1.5 ${editingMessage ? "border-[#df5d7d] bg-[#fae9ed] dark:bg-rose-950/35" : "border-[#2ea6f3] bg-[#eef6fc] dark:bg-blue-950/35"}`}>
                   <div className={`truncate text-[13px] font-semibold leading-tight ${editingMessage ? "text-[#df5d7d]" : "text-[#2ea6f3]"}`}>
-                    {editingMessage 
+                    {editingMessage
                       ? getMessageSenderName(editingMessage)
                       : replyingMessage?.senderId === currentUserId ? t("app.you") : fetchedReplyingSender?.displayName || fetchedReplyingSender?.fullName || fetchedReplyingSender?.lastName || replyingMessage?.sender?.name || replyingMessage?.senderName || replyingMessage?.sender?.displayName || t("app.unknown")}
                   </div>
@@ -526,9 +522,8 @@ export const ChatInput = ({
                 setIsAttachMenuOpen(false);
                 setIsMoreMenuOpen(false);
               }}
-              className={`absolute h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${
-                (editingMessage || replyingMessage) ? "bottom-2.5 left-3" : "left-2 top-1/2 -translate-y-1/2"
-              }`}
+              className={`absolute h-8 w-8 lg:h-9 lg:w-9 inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition ${(editingMessage || replyingMessage) ? "bottom-2.5 left-3" : "left-2 top-1/2 -translate-y-1/2"
+                }`}
               title={t("chat.openEmoji")}
             >
               <FiSmile className="text-[20px] lg:text-[22px]" />
@@ -572,36 +567,33 @@ export const ChatInput = ({
               }}
               disabled={Boolean(disabledReason)}
               placeholder={disabledReason || t("chat.messagePlaceholder")}
-              className={`w-full bg-transparent text-[14px] lg:text-[15px] placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${
-                hasBotMentionInDraft
+              className={`w-full bg-transparent text-[14px] lg:text-[15px] placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none disabled:cursor-not-allowed resize-none pl-11 pr-[88px] ${hasBotMentionInDraft
                   ? "text-transparent caret-gray-700 dark:caret-gray-100"
                   : "text-gray-700 dark:text-gray-100"
-              } ${
-                (editingMessage || replyingMessage) ? "py-[10px]" : "py-[12px] lg:py-[14px]"
-              }`}
+                } ${(editingMessage || replyingMessage) ? "py-[10px]" : "py-[12px] lg:py-[14px]"
+                }`}
             />
 
             {isBotMentionOpen && !disabledReason && (
               <div className="absolute bottom-[calc(100%+8px)] left-10 z-[90] w-[220px] rounded-xl border border-white/70 bg-white/95 p-1.5 shadow-xl backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/95">
-              <button
-                type="button"
-                onClick={insertBotMention}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-800 transition hover:bg-blue-50 hover:text-[#2ea6f3] dark:text-slate-100 dark:hover:bg-slate-700"
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-[#2ea6f3] dark:bg-blue-950/50">
-                  @
-                </span>
-                <span>@bot</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={insertBotMention}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-800 transition hover:bg-blue-50 hover:text-[#2ea6f3] dark:text-slate-100 dark:hover:bg-slate-700"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-[#2ea6f3] dark:bg-blue-950/50">
+                    @
+                  </span>
+                  <span>@bot</span>
+                </button>
+              </div>
             )}
 
             {hasBotMentionInDraft && (
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-[14px] leading-[1.32] text-gray-700 dark:text-gray-100 lg:text-[15px] ${
-                  (editingMessage || replyingMessage) ? "py-[10px] pl-11 pr-[88px]" : "py-[12px] pl-11 pr-[88px] lg:py-[14px]"
-                }`}
+                className={`pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-[14px] leading-[1.32] text-gray-700 dark:text-gray-100 lg:text-[15px] ${(editingMessage || replyingMessage) ? "py-[10px] pl-11 pr-[88px]" : "py-[12px] pl-11 pr-[88px] lg:py-[14px]"
+                  }`}
               >
                 {renderDraftWithBotMention(draftMessage)}
               </div>
@@ -620,9 +612,8 @@ export const ChatInput = ({
                 setIsMoreMenuOpen(false);
                 setIsEmojiPickerOpen(false);
               }}
-              className={`absolute right-1.5 flex w-8 lg:w-9 items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition ${
-                (editingMessage || replyingMessage) ? "bottom-2 h-10" : "bottom-0 top-0 h-full"
-              }`}
+              className={`absolute right-1.5 flex w-8 lg:w-9 items-center justify-center text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition ${(editingMessage || replyingMessage) ? "bottom-2 h-10" : "bottom-0 top-0 h-full"
+                }`}
               title={t("chat.openAttachments")}
             >
               <FiPaperclip className="text-[20px] lg:text-[22px]" />
@@ -640,11 +631,10 @@ export const ChatInput = ({
                   setManualSmartReplyKey(`manual-${Date.now()}`);
                   setIsVoiceMenuOpen(false);
                 }}
-                className={`absolute bottom-[calc(100%+12px)] right-0 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 shadow-md backdrop-blur-sm transition lg:h-12 lg:w-12 ${
-                  isSmartReplyOpen
+                className={`absolute bottom-[calc(100%+12px)] right-0 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 shadow-md backdrop-blur-sm transition lg:h-12 lg:w-12 ${isSmartReplyOpen
                     ? "bg-blue-50 text-blue-600"
                     : "animate-pulse bg-white/80 text-gray-600 ring-2 ring-blue-400/25 hover:bg-white hover:text-blue-600"
-                } dark:border-slate-700/70 dark:bg-slate-800/85 dark:text-slate-200 dark:hover:text-blue-300`}
+                  } dark:border-slate-700/70 dark:bg-slate-800/85 dark:text-slate-200 dark:hover:text-blue-300`}
                 title={t("chat.aiSmartReply")}
               >
                 <FiZap className="text-[20px] lg:text-[22px]" />
@@ -696,13 +686,12 @@ export const ChatInput = ({
             )}
 
             <button
-              className={`h-11 w-11 lg:h-12 lg:w-12 rounded-full inline-flex items-center justify-center shadow-md transition cursor-pointer z-50 relative ${
-                disabledReason
+              className={`h-11 w-11 lg:h-12 lg:w-12 rounded-full inline-flex items-center justify-center shadow-md transition cursor-pointer z-50 relative ${disabledReason
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : isListeningText
                     ? "bg-blue-100 text-blue-600 animate-pulse hover:bg-blue-200"
                     : "bg-[#2ea6f3] text-white hover:bg-[#1f97e5]"
-              }`}
+                }`}
               onClick={() => {
                 if (disabledReason) return;
                 if (editingMessage || draftMessage.trim() || forwardingMessage || replyingMessage) {

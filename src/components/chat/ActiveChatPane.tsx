@@ -139,7 +139,7 @@ export const ActiveChatPane = ({
   const messagesEndRef = useRef(null);
   const firstMessageRef = useRef(null);
   const chatContainerRef = useRef<HTMLElement | null>(null);
-  const contextMenuCloseTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const contextMenuCloseTimeoutRef = useRef<number | ReturnType<typeof setTimeout> | null>(null);
   const previousConversationIdRef = useRef<string | null>(null);
   const previousLastMessageIdRef = useRef<string>("");
   const previousChatInputBottomInsetRef = useRef(96);
@@ -1460,7 +1460,16 @@ export const ActiveChatPane = ({
         disabledTone={inputDisabledTone}
         onChatInteractionRead={onChatInteractionRead}
         onInputHeightChange={setChatInputHeight}
-        isScrolledUp={!isChatAtBottom}
+        isScrolledUp={
+          !isChatAtBottom &&
+          (() => {
+            const container =
+              chatContainerRef.current ||
+              document.querySelector<HTMLElement>("[data-chat-container]");
+            return container ? container.scrollHeight > container.clientHeight + 5 : false;
+          })()
+        }
+<!--         isScrolledUp={!isChatAtBottom} -->
         isGroupChat={isGroupChat}
         onScrollToBottom={() => {
           shouldStickToBottomRef.current = true;
