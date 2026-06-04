@@ -333,6 +333,9 @@ type TranslationKey =
   | "chat.recordAudio"
   | "chat.sendAudioFile"
   | "chat.searchConversation"
+  | "chat.searchMessagesTitle"
+  | "chat.searchMessagesFailed"
+  | "chat.messageNotLoaded"
   | "chat.openConversationActions"
   | "chat.aiSummarize"
   | "chat.aiSmartSearch"
@@ -796,6 +799,9 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.recordAudio": "Record Audio",
     "chat.sendAudioFile": "Send as an audio file",
     "chat.searchConversation": "Search in conversation",
+    "chat.searchMessagesTitle": "Search messages",
+    "chat.searchMessagesFailed": "Search failed",
+    "chat.messageNotLoaded": "Message is too old to be loaded",
     "chat.openConversationActions": "Open conversation actions",
     "chat.aiSummarize": "Summarize conversation (AI)",
     "chat.aiSmartSearch": "Smart search (AI)",
@@ -1252,6 +1258,9 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "chat.recordAudio": "Ghi âm",
     "chat.sendAudioFile": "Gửi dưới dạng tệp âm thanh",
     "chat.searchConversation": "Tìm trong cuộc trò chuyện",
+    "chat.searchMessagesTitle": "Tìm kiếm tin nhắn",
+    "chat.searchMessagesFailed": "Tìm kiếm thất bại",
+    "chat.messageNotLoaded": "Tin nhắn ở quá xa, không thể cuộn tới lúc này.",
     "chat.openConversationActions": "Mở thao tác cuộc trò chuyện",
     "chat.aiSummarize": "Tóm tắt cuộc trò chuyện (AI)",
     "chat.aiSmartSearch": "Tìm kiếm thông minh (AI)",

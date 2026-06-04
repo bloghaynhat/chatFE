@@ -102,7 +102,7 @@ export const MessageList = ({
   const hasUploadedWallpaper = Boolean(wallpaperUrl && !wallpaperPreset);
   const bottomInset = Math.max(96, Number(inputBottomInset) || 96);
   const containerClassName =
-    `chat-highlight-container chat-scrollbar flex-1 overflow-y-auto px-4 lg:px-6 pt-4 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
+    `chat-highlight-container chat-scrollbar flex-1 flex flex-col overflow-y-auto px-4 lg:px-6 pt-4 transition-[background-image,background-color] duration-500 ${DEFAULT_CHAT_WALLPAPER_CLASS}`;
   const wallpaperStyle = wallpaperUrl
     ? {
         backgroundImage:
@@ -118,8 +118,8 @@ export const MessageList = ({
     paddingBottom: `${bottomInset}px`,
   };
   const overlayClassName = wallpaperUrl
-    ? "min-h-full -mx-4 lg:-mx-6 -mt-4 px-4 lg:px-6 pt-4 bg-white/30 dark:bg-black/35 backdrop-blur-[1px]"
-    : "";
+    ? "flex-1 flex flex-col -mx-4 lg:-mx-6 -mt-4 px-4 lg:px-6 pt-4 bg-white/30 dark:bg-black/35 backdrop-blur-[1px]"
+    : "flex-1 flex flex-col";
   const overlayStyle = wallpaperUrl
     ? {
         marginBottom: `-${bottomInset}px`,
@@ -208,7 +208,7 @@ export const MessageList = ({
       <div className={overlayClassName} style={overlayStyle}>
       {visibleMessages.length > 0 && (
         <PhotoProvider maskOpacity={0.8}>
-          <div className="flex flex-col gap-0 items-start max-w-4xl mx-auto w-full">
+          <div className="flex flex-col gap-0 items-start max-w-4xl mx-auto w-full mt-auto">
             <div className="mx-auto px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 shadow-sm transition-all duration-300 ease-in-out">
               {isLoadingOlderMessages ? (
                 <div className="flex items-center gap-2">

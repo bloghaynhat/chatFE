@@ -66,6 +66,8 @@ export const ChatHeader = ({
   headerSearchInputRef,
   isRightSidebarOpen,
   setIsRightSidebarOpen,
+  isRightSidebarSearchOpen,
+  setIsRightSidebarSearchOpen,
   pinnedCount = 0,
   onStartAudioCall,
   onStartVideoCall,
@@ -637,6 +639,9 @@ export const ChatHeader = ({
                     } finally {
                       setIsAiSearching(false);
                     }
+                  } else if (event.key === "Enter" && headerSearchValue.trim()) {
+                    setIsRightSidebarSearchOpen(true);
+                    setIsRightSidebarOpen(false);
                   }
                 }}
                 placeholder={t("chat.searchSmartPlaceholder")}
