@@ -66,8 +66,7 @@ export const extractReminderFromMessage = (message: any, text?: string) => {
     remindAt:
       message?.metadata?.remindAt ||
       message?.remindAt ||
-      message?.scheduledAt ||
-      message?.createdAt,
+      message?.scheduledAt,
     repeatRule: message?.metadata?.repeatRule || message?.repeatRule || "none",
     notifyBeforeMinutes:
       message?.metadata?.notifyBeforeMinutes || message?.notifyBeforeMinutes,

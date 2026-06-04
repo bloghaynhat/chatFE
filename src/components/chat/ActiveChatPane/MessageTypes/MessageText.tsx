@@ -4,6 +4,7 @@ import { AnimatedEmojiMessage, JUMBO_EMOJI_ASSETS } from "./AnimatedEmojiMessage
 const renderTextWithLinks = (text) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const botMentionRegex = /(@bot\b)/gi;
   const parts = text.split(urlRegex);
 
   return parts.map((part, i) => {
@@ -21,7 +22,19 @@ const renderTextWithLinks = (text) => {
         </a>
       );
     }
-    return <Fragment key={i}>{part}</Fragment>;
+    return (
+      <Fragment key={i}>
+        {part.split(botMentionRegex).map((mentionPart, mentionIndex) =>
+          mentionPart.toLowerCase() === "@bot" ? (
+            <span key={mentionIndex} className="font-semibold text-[#2ea6f3] dark:text-blue-300">
+              {mentionPart}
+            </span>
+          ) : (
+            <Fragment key={mentionIndex}>{mentionPart}</Fragment>
+          ),
+        )}
+      </Fragment>
+    );
   });
 };
 export const MessageText = ({ message, text, mine, isSeen }) => {

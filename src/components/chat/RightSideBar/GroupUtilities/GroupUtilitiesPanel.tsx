@@ -127,7 +127,9 @@ const ReminderCard = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.94 }}
       whileHover={{ y: -2 }}
-      className={`group relative rounded-lg border p-3 shadow-sm transition-shadow hover:shadow-md ${cardTone}`}
+      className={`group relative rounded-lg border p-3 shadow-sm transition-shadow hover:shadow-md ${
+        isMenuOpen ? "z-40" : "z-0"
+      } ${cardTone}`}
     >
       <div className="flex gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-amber-600 shadow-sm dark:bg-slate-900/70 dark:text-amber-300">
@@ -179,7 +181,7 @@ const ReminderCard = ({
       </div>
 
       {isMenuOpen && (
-        <div className="absolute right-3 top-10 z-10 w-40 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute right-3 top-10 z-50 w-40 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-xl dark:border-slate-700 dark:bg-slate-900">
           <button
             type="button"
             onClick={() => {
@@ -594,6 +596,18 @@ export const GroupRemindersPanel = ({ groupId }: { groupId: string }) => {
     ];
 
     return () => cleanups.forEach((cleanup) => cleanup?.());
+  }, [groupId, queryClient]);
+
+  useEffect(() => {
+    const handleUtilitiesRefresh = (event: any) => {
+      const payloadGroupId = event?.detail?.conversationId;
+      if (!payloadGroupId || String(payloadGroupId) === String(groupId)) {
+        invalidate();
+      }
+    };
+
+    window.addEventListener("groupUtilities:refresh", handleUtilitiesRefresh);
+    return () => window.removeEventListener("groupUtilities:refresh", handleUtilitiesRefresh);
   }, [groupId, queryClient]);
 
   const saveMutation = useMutation({

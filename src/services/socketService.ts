@@ -575,6 +575,14 @@ class SocketService {
       "group:reminder_due",
       "group:reminder:due",
     ].forEach((event) => forwardUtilityEvent(event, "group:reminder:due"));
+
+    this.messagesSocket.on("ai:reminder_agent:result", (data) => {
+      this.emit("ai:reminder_agent:result", data);
+    });
+
+    this.messagesSocket.on("ai:reminder_agent:error", (data) => {
+      this.emit("ai:reminder_agent:error", data);
+    });
   }
 
   setupFriendListeners() {
@@ -1002,6 +1010,14 @@ class SocketService {
 
   onGroupUtilitiesChanged(callback) {
     return this.on("group:utilities:changed", callback);
+  }
+
+  onAiReminderAgentResult(callback) {
+    return this.on("ai:reminder_agent:result", callback);
+  }
+
+  onAiReminderAgentError(callback) {
+    return this.on("ai:reminder_agent:error", callback);
   }
 
   joinRoom(conversationId) {
