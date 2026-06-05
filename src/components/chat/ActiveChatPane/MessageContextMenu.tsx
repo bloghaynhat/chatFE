@@ -212,7 +212,7 @@ export const MessageContextMenu = ({
         })}
       </div>
 
-      <div className="w-[200px] max-w-full max-h-[calc(100vh-120px)] overflow-y-auto bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
+      <div className="w-[200px] max-w-full max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar bg-white dark:bg-slate-800 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 flex flex-col text-[#0f1419] dark:text-gray-100 border border-gray-100/50 dark:border-slate-700/50 text-[15px]">
         {isMyMessage && (
           <div className="px-3.5 py-1.5 mb-1 flex items-center gap-2 text-[13px] text-gray-500 font-medium">
             <div className="flex -space-x-[4px] text-blue-500">

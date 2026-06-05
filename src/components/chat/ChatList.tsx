@@ -1915,7 +1915,7 @@ export const ChatList = ({
 
   return (
     <div className="flex flex-col h-full w-full">
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
         {!isSearchView ? (
           isLoading ? (
             <div className="flex justify-center py-8">

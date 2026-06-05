@@ -1,5 +1,6 @@
 import React, { Fragment } from "react";
 import { AnimatedEmojiMessage, JUMBO_EMOJI_ASSETS } from "./AnimatedEmojiMessage";
+import { useLanguage } from "../../../../context";
 
 const renderTextWithLinks = (text) => {
   if (!text) return null;
@@ -38,11 +39,23 @@ const renderTextWithLinks = (text) => {
   });
 };
 export const MessageText = ({ message, text, mine, isSeen }) => {
+  const { language } = useLanguage();
   const hasReactions = message?.reactions && message.reactions.length > 0;
   if (!text) return null;
 
+  let displayText = text;
+  if (typeof displayText === "string") {
+    if (language === "en") {
+      displayText = displayText.replace(/^Nhắc hẹn:\s*/i, "Reminder: ");
+      displayText = displayText.replace(/^Đến giờ:\s*/i, "It's time: ");
+    } else if (language === "vi") {
+      displayText = displayText.replace(/^Reminder:\s*/i, "Nhắc hẹn: ");
+      displayText = displayText.replace(/^It's time:\s*/i, "Đến giờ: ");
+    }
+  }
+
   // Xác định xem toàn bộ tin nhắn có phải chỉ chứa ĐÚNG MỘT emoji tồn tại trong Database không
-  const trimmedText = text ? text.trim() : "";
+  const trimmedText = displayText ? displayText.trim() : "";
   const isJumboEmoji = !!JUMBO_EMOJI_ASSETS[trimmedText] && text.replace(/\s+/g, "") === trimmedText;
 
   // Nếu tin nhắn được tạo cách đây dưới 5 giây tức là tin nhắn vừa gửi/nhận xong
@@ -55,7 +68,7 @@ export const MessageText = ({ message, text, mine, isSeen }) => {
           <AnimatedEmojiMessage emoji={trimmedText} isNew={isNewMsg} isMine={mine} />
         ) : (
           <p className="cursor-text select-text whitespace-pre-wrap break-words text-[15px] leading-[1.32]">
-            {renderTextWithLinks(text)}
+            {renderTextWithLinks(displayText)}
             {!hasReactions && <span className="inline-block w-[58px] h-0" aria-hidden="true" />}
           </p>
         ))}

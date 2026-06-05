@@ -85,7 +85,7 @@ export const ReminderMessage = ({ message, text, mine }: any) => {
   const isDone = status === "done";
 
   return (
-    <div className="min-w-[300px] max-w-[420px] px-2.5 pt-2.5 pb-1">
+    <div className="min-w-[300px] max-w-[420px] px-2.5 pt-2.5 pb-1 select-none">
       <div
         className={`overflow-hidden rounded-xl border bg-white shadow-sm dark:bg-slate-900 ${
           isCancelled

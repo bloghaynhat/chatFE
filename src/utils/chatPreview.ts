@@ -35,7 +35,7 @@ const getCallPreview = (message: any, language: PreviewLanguage) => {
   return duration ? `${label} ${duration}` : label;
 };
 
-const translateKnownPreviewText = (value: string, language: PreviewLanguage) => {
+export const translateKnownPreviewText = (value: string, language: PreviewLanguage) => {
   const text = value.trim();
   if (!text) return text;
 
@@ -110,6 +110,42 @@ const translateKnownPreviewText = (value: string, language: PreviewLanguage) => 
     return language === "vi"
       ? text
       : `${removedMember[1]} removed ${removedMember[2]} from the group`;
+  }
+
+  const createdReminderMatch = text.match(/^(Nhắc hẹn|Reminder)\s+"(.+?)"\s+(sẽ diễn ra lúc|will take place at)\s+(.+)$/i);
+  if (createdReminderMatch) {
+    let dateStr = createdReminderMatch[4];
+    const date = new Date(dateStr);
+    if (!Number.isNaN(date.getTime())) {
+      const h = date.getHours().toString().padStart(2, "0");
+      const m = date.getMinutes().toString().padStart(2, "0");
+      const d = date.getDate().toString().padStart(2, "0");
+      const mo = (date.getMonth() + 1).toString().padStart(2, "0");
+      const y = date.getFullYear();
+      if (language === "vi") {
+        dateStr = `${h}:${m} ngày ${d}/${mo}/${y}`;
+      } else {
+        dateStr = `${h}:${m} on ${mo}/${d}/${y}`;
+      }
+    }
+
+    return language === "vi"
+      ? `Nhắc hẹn "${createdReminderMatch[2]}" sẽ diễn ra lúc ${dateStr}`
+      : `Reminder "${createdReminderMatch[2]}" will take place at ${dateStr}`;
+  }
+
+  const textMatchesReminder = text.match(/^(Nhắc hẹn|Reminder):\s*(.+)$/i);
+  if (textMatchesReminder) {
+    return language === "vi" 
+      ? `Nhắc hẹn: ${textMatchesReminder[2]}` 
+      : `Reminder: ${textMatchesReminder[2]}`;
+  }
+
+  const textMatchesTime = text.match(/^(Đến giờ|It's time):\s*(.+)$/i);
+  if (textMatchesTime) {
+    return language === "vi" 
+      ? `Đến giờ: ${textMatchesTime[2]}` 
+      : `It's time: ${textMatchesTime[2]}`;
   }
 
   return text;

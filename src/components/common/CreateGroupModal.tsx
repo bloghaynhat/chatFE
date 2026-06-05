@@ -205,7 +205,7 @@ export const CreateGroupModal = ({
 
         {/* Content Area */}
         <div
-          className="flex-1 overflow-y-auto bg-white"
+          className="flex-1 overflow-y-auto custom-scrollbar bg-white"
           style={{ minHeight: 0 }}
         >
           {step === "select" ? (

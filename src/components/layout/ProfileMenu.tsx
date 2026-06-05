@@ -71,7 +71,7 @@ export const ProfileMenu = ({ onClose, onOpenProfile }) => {
 
       <div className="h-px bg-gray-200 dark:bg-slate-700" />
 
-      <div className="max-h-96 overflow-y-auto">
+      <div className="max-h-96 overflow-y-auto custom-scrollbar">
         {menuItems.map((item, index) => (
           <div key={item.id}>
             <button

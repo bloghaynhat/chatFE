@@ -454,7 +454,7 @@ export const GroupNotesPanel = ({ groupId }: { groupId: string }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
         {notesQuery.isLoading ? (
           <div className="flex h-48 items-center justify-center text-sm text-gray-500">Loading notes...</div>
         ) : notesQuery.isError ? (
@@ -534,7 +534,7 @@ export const GroupNotesPanel = ({ groupId }: { groupId: string }) => {
                 Close
               </button>
             </div>
-            <div className="max-h-[calc(84dvh-72px)] overflow-y-auto whitespace-pre-wrap px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
+            <div className="max-h-[calc(84dvh-72px)] overflow-y-auto custom-scrollbar whitespace-pre-wrap px-5 py-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
               {expandedNote.content}
             </div>
           </motion.div>
@@ -685,7 +685,7 @@ export const GroupRemindersPanel = ({ groupId }: { groupId: string }) => {
         </button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto border-b border-gray-100 px-3 py-2 dark:border-slate-800">
+      <div className="flex gap-2 overflow-x-auto custom-scrollbar border-b border-gray-100 px-3 py-2 dark:border-slate-800">
         {["all", "active", "done", "cancelled"].map((status) => (
           <button
             key={status}
@@ -702,7 +702,7 @@ export const GroupRemindersPanel = ({ groupId }: { groupId: string }) => {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
         {remindersQuery.isLoading ? (
           <div className="flex h-48 items-center justify-center text-sm text-gray-500">Loading reminders...</div>
         ) : remindersQuery.isError ? (

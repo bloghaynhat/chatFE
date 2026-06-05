@@ -178,7 +178,7 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {currentActiveTab === "images" && (
           <MediaGalleryImages
             images={media.images}

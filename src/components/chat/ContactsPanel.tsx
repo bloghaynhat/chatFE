@@ -355,7 +355,7 @@ export const ContactsPanel = ({ isCollapsed, onBackToChats, onSelectChat }: any)
     <div className="flex flex-col h-full">
       <ContactsHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} onBack={onBackToChats} />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         <FriendRequestsSection
           friendRequests={friendRequests}
           processingRequestId={processingRequestId}

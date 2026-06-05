@@ -455,7 +455,22 @@ type TranslationKey =
   | "archive.conversation"
   | "archive.conversations"
   | "archive.previewFallback"
-  | "app.featureUnderDevelopment";
+  | "app.featureUnderDevelopment"
+  | "terms.pageTitle"
+  | "terms.back"
+  | "terms.introTitle"
+  | "terms.introContent"
+  | "terms.rightsTitle"
+  | "terms.rightsContent"
+  | "terms.privacyTitle"
+  | "terms.privacyContent"
+  | "terms.privacyItem1"
+  | "terms.privacyItem2"
+  | "terms.privacyItem3"
+  | "terms.commitmentTitle"
+  | "terms.commitmentContent1"
+  | "terms.commitmentContent2"
+  | "terms.understandAndBack";
 
 type LanguageContextValue = {
   language: LanguageCode;
@@ -925,6 +940,21 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "archive.conversation": "conversation",
     "archive.conversations": "conversations",
     "archive.previewFallback": "archived",
+    "terms.pageTitle": "Terms and Privacy Policy",
+    "terms.back": "Back",
+    "terms.introTitle": "1. Introduction",
+    "terms.introContent": "Welcome to our application. By accessing or using our services, you agree to be bound by these Terms of Service and our Privacy Policy. Please read them carefully before using the app.",
+    "terms.rightsTitle": "2. Rights and Responsibilities",
+    "terms.rightsContent": "You are responsible for maintaining the confidentiality of your account information. You agree to notify us immediately of any unauthorized use of your account. We reserve the right to suspend or terminate your account if you violate any terms.",
+    "terms.privacyTitle": "3. Information Security",
+    "terms.privacyContent": "We take your privacy seriously. We collect and use your data only to improve our services and provide a better user experience. We do not sell your personal information to third parties.",
+    "terms.privacyItem1": "We use industry-standard encryption to protect your data.",
+    "terms.privacyItem2": "You can manage your data and privacy settings in the app.",
+    "terms.privacyItem3": "Your data will not be shared without your explicit consent.",
+    "terms.commitmentTitle": "4. User Commitment",
+    "terms.commitmentContent1": "By using this application, you commit to not engaging in any abusive, harassing, or illegal activities.",
+    "terms.commitmentContent2": "We are dedicated to providing a safe and respectful environment for all users.",
+    "terms.understandAndBack": "I Understand and Go Back",
   },
   vi: {
     "app.back": "Quay lại",
@@ -1384,6 +1414,21 @@ const translations: Record<LanguageCode, Record<TranslationKey, string>> = {
     "archive.conversation": "cuộc trò chuyện",
     "archive.conversations": "cuộc trò chuyện",
     "archive.previewFallback": "đã lưu trữ",
+    "terms.pageTitle": "Chính sách Điều khoản và Dịch vụ",
+    "terms.back": "Quay lại",
+    "terms.introTitle": "1. Giới thiệu",
+    "terms.introContent": "Chào mừng bạn đến với ứng dụng của chúng tôi. Bằng cách truy cập hoặc sử dụng dịch vụ, bạn đồng ý tuân thủ các Điều khoản Dịch vụ và Chính sách Bảo mật này. Vui lòng đọc kỹ trước khi sử dụng ứng dụng.",
+    "terms.rightsTitle": "2. Quyền và Trách nhiệm",
+    "terms.rightsContent": "Bạn có trách nhiệm bảo mật thông tin tài khoản của mình. Bạn đồng ý thông báo ngay cho chúng tôi về bất kỳ việc sử dụng trái phép tài khoản nào. Chúng tôi có quyền đình chỉ hoặc chấm dứt tài khoản của bạn nếu vi phạm bất kỳ điều khoản nào.",
+    "terms.privacyTitle": "3. Bảo mật Thông tin",
+    "terms.privacyContent": "Chúng tôi coi trọng quyền riêng tư của bạn. Chúng tôi thu thập và sử dụng dữ liệu của bạn chỉ để cải thiện dịch vụ và mang lại trải nghiệm người dùng tốt hơn. Chúng tôi không bán thông tin cá nhân của bạn cho bên thứ ba.",
+    "terms.privacyItem1": "Chúng tôi sử dụng mã hóa theo tiêu chuẩn ngành để bảo vệ dữ liệu của bạn.",
+    "terms.privacyItem2": "Bạn có thể quản lý dữ liệu và cài đặt quyền riêng tư trong ứng dụng.",
+    "terms.privacyItem3": "Dữ liệu của bạn sẽ không bị chia sẻ nếu không có sự đồng ý rõ ràng của bạn.",
+    "terms.commitmentTitle": "4. Cam kết Người dùng",
+    "terms.commitmentContent1": "Bằng cách sử dụng ứng dụng này, bạn cam kết không tham gia vào bất kỳ hoạt động lạm dụng, quấy rối hoặc bất hợp pháp nào.",
+    "terms.commitmentContent2": "Chúng tôi luôn nỗ lực cung cấp một môi trường an toàn và tôn trọng cho tất cả người dùng.",
+    "terms.understandAndBack": "Đã hiểu và Quay lại",
   },
 };
 

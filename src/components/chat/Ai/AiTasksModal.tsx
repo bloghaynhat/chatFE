@@ -87,7 +87,7 @@ export const AiTasksModal: React.FC<AiTasksModalProps> = ({
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto flex-1 min-h-[300px]">
+        <div className="p-5 overflow-y-auto custom-scrollbar flex-1 min-h-[300px]">
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <div className="relative">
